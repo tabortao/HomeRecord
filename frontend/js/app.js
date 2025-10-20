@@ -13,6 +13,9 @@ let appState = {
     tomatoTaskId: null
 };
 
+// 全局筛选状态
+let currentFilter = 'all';
+
 // 初始化应用
 function initApp() {
     // 检查用户登录状态
@@ -316,6 +319,11 @@ async function loadStatistics() {
 // 加载任务列表
 async function loadTasks() {
     try {
+        // 确保首次加载时使用默认的全部学科分类
+        if (appState.currentCategory === undefined) {
+            appState.currentCategory = '';
+        }
+        
         const tasks = await api.taskAPI.getTasks(
             appState.currentUser.id,
             appState.currentDate,
@@ -338,7 +346,33 @@ async function loadTasks() {
         `;
         
         // 绑定筛选器事件
-        let currentFilter = 'all';
+        // currentFilter 已定义为全局变量
+        
+        // 筛选器点击事件
+        document.getElementById('filter-all').addEventListener('click', () => {
+            currentFilter = 'all';
+            updateFilterButtons();
+            filterAndRenderTasks(tasks, 'all');
+        });
+        
+        document.getElementById('filter-completed').addEventListener('click', () => {
+            currentFilter = 'completed';
+            updateFilterButtons();
+            filterAndRenderTasks(tasks, 'completed');
+        });
+        
+        document.getElementById('filter-pending').addEventListener('click', () => {
+            currentFilter = 'pending';
+            updateFilterButtons();
+            filterAndRenderTasks(tasks, 'pending');
+        });
+        
+        // 更新筛选按钮激活状态
+        function updateFilterButtons() {
+            document.getElementById('filter-all').className = currentFilter === 'all' ? 'px-3 py-1 rounded-full bg-green-600 text-white text-sm font-medium' : 'px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm font-medium';
+            document.getElementById('filter-completed').className = currentFilter === 'completed' ? 'px-3 py-1 rounded-full bg-green-600 text-white text-sm font-medium' : 'px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm font-medium';
+            document.getElementById('filter-pending').className = currentFilter === 'pending' ? 'px-3 py-1 rounded-full bg-green-600 text-white text-sm font-medium' : 'px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm font-medium';
+        }
         
         // 确保在修改前保存当前分类状态
         const currentCategoryState = appState.currentCategory;
@@ -498,7 +532,7 @@ function filterAndRenderTasks(tasks, filter) {
                                 <h4 class="font-medium text-base ${taskStatusClass}">${task.name}</h4>
                                 ${task.description ? `<p class="text-sm text-gray-500 mt-1 ${taskStatusClass}">${task.description}</p>` : ''}
                             </div>
-                            <div class="flex items-center space-x-4 mr-3">
+                            <div class="flex items-center space-x-3">
                                 <div class="flex items-center text-sm text-purple-600 font-medium">
                                     <i class="fa fa-clock-o mr-1"></i>
                                     <span>${task.planned_time}分钟</span>
@@ -507,8 +541,6 @@ function filterAndRenderTasks(tasks, filter) {
                                     <i class="fa fa-star mr-1"></i>
                                     <span>${task.points}分</span>
                                 </div>
-                            </div>
-                            <div class="flex space-x-2">
                                 <button class="task-tomato p-1 hover:bg-green-100 rounded-full transition-colors duration-200" title="番茄钟">
                                     <img src="static/images/番茄钟.png" alt="番茄钟" class="w-5 h-5">
                                 </button>
@@ -1275,6 +1307,7 @@ async function handleExchangeWish(wishId, wishName, cost) {
                 if (result.success) {
                     await loadWishes();
                     await loadStatistics();
+                    await updateUserInfo(); // 确保所有页面的金币显示一致
                     domUtils.showToast('兑换成功！');
                 }
             } catch (error) {
