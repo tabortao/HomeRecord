@@ -1,0 +1,259 @@
+// 日期工具函数
+const dateUtils = {
+    // 获取当前日期的字符串格式 YYYY-MM-DD
+    getCurrentDate: () => {
+        const date = new Date();
+        return date.toISOString().split('T')[0];
+    },
+
+    // 格式化日期显示
+    formatDate: (dateString) => {
+        const date = new Date(dateString);
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${month}/${day}`;
+    },
+
+    // 获取本周的日期数组
+    getWeekDates: (dateString) => {
+        const date = dateString ? new Date(dateString) : new Date();
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1); // 调整到本周一
+        
+        const weekDates = [];
+        for (let i = 0; i < 7; i++) {
+            const currentDate = new Date(date);
+            currentDate.setDate(diff + i);
+            weekDates.push({
+                date: currentDate.toISOString().split('T')[0],
+                day: currentDate.getDate(),
+                isToday: currentDate.toDateString() === new Date().toDateString()
+            });
+        }
+        
+        return weekDates;
+    },
+
+    // 获取周信息显示
+    getWeekInfo: (dateString) => {
+        const date = dateString ? new Date(dateString) : new Date();
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        
+        // 计算第几周
+        const firstDay = new Date(year, 0, 1);
+        const days = Math.floor((date - firstDay) / (24 * 60 * 60 * 1000)) + 1;
+        const weekNumber = Math.ceil(days / 7);
+        
+        return `${year}年${month}月第${weekNumber}周`;
+    },
+
+    // 获取上一周的开始日期
+    getPrevWeekStart: (dateString) => {
+        const date = dateString ? new Date(dateString) : new Date();
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1); // 调整到本周一
+        const prevWeekStart = new Date(date);
+        prevWeekStart.setDate(diff - 7);
+        return prevWeekStart.toISOString().split('T')[0];
+    },
+
+    // 获取下一周的开始日期
+    getNextWeekStart: (dateString) => {
+        const date = dateString ? new Date(dateString) : new Date();
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1); // 调整到本周一
+        const nextWeekStart = new Date(date);
+        nextWeekStart.setDate(diff + 7);
+        return nextWeekStart.toISOString().split('T')[0];
+    }
+};
+
+// 时间工具函数
+const timeUtils = {
+    // 格式化分钟显示
+    formatMinutes: (minutes) => {
+        if (minutes < 60) {
+            return `${minutes}分钟`;
+        } else {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`;
+        }
+    },
+
+    // 格式化番茄钟时间
+    formatTomatoTime: (minutes) => {
+        const mins = Math.floor(minutes % 60).toString().padStart(2, '0');
+        const totalMinutes = Math.floor(minutes);
+        const formatted = totalMinutes >= 60 
+            ? `${Math.floor(totalMinutes / 60)}:${mins}`
+            : `0:${mins}`;
+        return formatted;
+    }
+};
+
+// 存储工具函数
+const storageUtils = {
+    // 保存用户信息到本地存储
+    saveUser: (userInfo) => {
+        localStorage.setItem('user', JSON.stringify(userInfo));
+    },
+
+    // 获取本地存储的用户信息
+    getUser: () => {
+        const userStr = localStorage.getItem('user');
+        return userStr ? JSON.parse(userStr) : null;
+    },
+
+    // 清除本地存储的用户信息
+    clearUser: () => {
+        localStorage.removeItem('user');
+    },
+
+    // 保存设置到本地存储
+    saveSettings: (settings) => {
+        localStorage.setItem('settings', JSON.stringify(settings));
+    },
+
+    // 获取本地存储的设置
+    getSettings: () => {
+        const settingsStr = localStorage.getItem('settings');
+        return settingsStr ? JSON.parse(settingsStr) : {};
+    }
+};
+
+// DOM工具函数
+const domUtils = {
+    // 显示消息提示
+    showToast: (message, type = 'success') => {
+        // 移除已存在的toast
+        const existingToast = document.querySelector('.toast-message');
+        if (existingToast) {
+            existingToast.remove();
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast-message fixed top-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg z-50 transition-opacity duration-300 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        // 2秒后自动隐藏
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 2000);
+    },
+
+    // 显示确认对话框
+    showConfirm: (title, message, onConfirm, onCancel) => {
+        // 移除已存在的confirm
+        const existingConfirm = document.querySelector('.confirm-dialog');
+        if (existingConfirm) {
+            existingConfirm.remove();
+        }
+
+        const confirmHtml = `
+            <div class="confirm-dialog fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg w-full max-w-sm p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">${title}</h3>
+                    <p class="text-gray-600 mb-4">${message}</p>
+                    <div class="flex space-x-4">
+                        <button class="confirm-cancel flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700">取消</button>
+                        <button class="confirm-ok flex-1 px-4 py-2 bg-green-600 text-white rounded-lg">确定</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = confirmHtml;
+        const confirmDialog = tempDiv.firstElementChild;
+        
+        document.body.appendChild(confirmDialog);
+        
+        // 绑定事件
+        confirmDialog.querySelector('.confirm-cancel').addEventListener('click', () => {
+            confirmDialog.remove();
+            if (onCancel) onCancel();
+        });
+        
+        confirmDialog.querySelector('.confirm-ok').addEventListener('click', () => {
+            confirmDialog.remove();
+            if (onConfirm) onConfirm();
+        });
+    },
+
+    // 显示输入对话框
+    showPrompt: (title, message, defaultValue = '', onConfirm, onCancel) => {
+        // 移除已存在的prompt
+        const existingPrompt = document.querySelector('.prompt-dialog');
+        if (existingPrompt) {
+            existingPrompt.remove();
+        }
+
+        const promptHtml = `
+            <div class="prompt-dialog fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg w-full max-w-sm p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">${title}</h3>
+                    <p class="text-gray-600 mb-4">${message}</p>
+                    <input type="text" class="prompt-input w-full px-4 py-2 border border-gray-300 rounded-lg mb-4" value="${defaultValue}">
+                    <div class="flex space-x-4">
+                        <button class="prompt-cancel flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700">取消</button>
+                        <button class="prompt-ok flex-1 px-4 py-2 bg-green-600 text-white rounded-lg">确定</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = promptHtml;
+        const promptDialog = tempDiv.firstElementChild;
+        
+        document.body.appendChild(promptDialog);
+        
+        // 聚焦输入框
+        const input = promptDialog.querySelector('.prompt-input');
+        input.focus();
+        input.select();
+        
+        // 绑定事件
+        promptDialog.querySelector('.prompt-cancel').addEventListener('click', () => {
+            promptDialog.remove();
+            if (onCancel) onCancel();
+        });
+        
+        promptDialog.querySelector('.prompt-ok').addEventListener('click', () => {
+            const value = input.value;
+            promptDialog.remove();
+            if (onConfirm) onConfirm(value);
+        });
+    }
+};
+
+// 颜色工具函数
+const colorUtils = {
+    // 获取任务分类对应的颜色
+    getCategoryColor: (categoryName) => {
+        const categoryColors = {
+            '语文': '#FF6B6B',
+            '数学': '#4ECDC4',
+            '英语': '#45B7D1',
+            '劳动': '#96CEB4',
+            '生活': '#FFEAA7',
+            '兴趣': '#DDA0DD',
+            '表扬': '#77DD77',
+            '批评': '#FF6347',
+            '独立': '#87CEEB',
+            '惩罚': '#FFA07A'
+        };
+        
+        return categoryColors[categoryName] || '#999999';
+    }
+};
+
+// 统一导出
+export { dateUtils, timeUtils, storageUtils, domUtils, colorUtils };

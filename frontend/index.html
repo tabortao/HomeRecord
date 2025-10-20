@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作业与积分小程序</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <link rel="icon" href="static/images/favicon/favicon.ico" type="image/x-icon">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+        .nav-item-active {
+            color: #22c55e;
+            border-bottom: 2px solid #22c55e;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .floating-btn {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: #22c55e;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
+            transition: all 0.3s ease;
+        }
+        .floating-btn:active {
+            transform: scale(0.95);
+        }
+        .task-card {
+            transition: all 0.3s ease;
+        }
+        .task-card:active {
+            background-color: #f3f4f6;
+        }
+        .tomato-bubble {
+            position: fixed;
+            bottom: 160px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: rgba(34, 197, 94, 0.8);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- 登录页面 -->
+    <div id="login-page" class="min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-bold text-center text-green-600 mb-6">作业与积分小程序</h1>
+            <div id="login-form">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">用户名</label>
+                    <input type="text" id="login-username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2">密码</label>
+                    <input type="password" id="login-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <button id="login-btn" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors">登录</button>
+                <div class="text-center mt-4">
+                    <span class="text-gray-600">还没有账号？</span>
+                    <button id="go-register" class="text-green-600 ml-1">立即注册</button>
+                </div>
+            </div>
+            <div id="register-form" class="hidden">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">用户名</label>
+                    <input type="text" id="register-username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">密码</label>
+                    <input type="password" id="register-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2">确认密码</label>
+                    <input type="password" id="confirm-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <button id="register-btn" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors">注册</button>
+                <div class="text-center mt-4">
+                    <span class="text-gray-600">已有账号？</span>
+                    <button id="go-login" class="text-green-600 ml-1">返回登录</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主应用页面 -->
+    <div id="app" class="hidden">
+        <!-- 顶部统计栏 -->
+        <div id="statistics-bar" class="bg-white p-4 border-b border-gray-200">
+            <div class="grid grid-cols-5 text-center">
+                <div>
+                    <div class="text-gray-500 text-xs">日时长</div>
+                    <div id="day-time" class="text-green-600 font-bold">0分钟</div>
+                </div>
+                <div>
+                    <div class="text-gray-500 text-xs">任务数</div>
+                    <div id="task-count" class="text-green-600 font-bold">0个</div>
+                </div>
+                <div>
+                    <div class="text-gray-500 text-xs">日金币</div>
+                    <div id="day-gold" class="text-green-600 font-bold">0</div>
+                </div>
+                <div>
+                    <div class="text-gray-500 text-xs">完成率</div>
+                    <div id="completion-rate" class="text-green-600 font-bold">0%</div>
+                </div>
+                <div>
+                    <div class="text-gray-500 text-xs">总金币</div>
+                    <div id="total-gold" class="text-green-600 font-bold">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容区域 -->
+        <div id="content" class="flex-1 p-4 pb-20">
+            <!-- 作业打卡页面 -->
+            <div id="task-page">
+                <!-- 日期选择器 -->
+                <div class="flex justify-between items-center mb-4">
+                    <button id="prev-week" class="text-green-600">
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <div>
+                        <h2 id="current-week" class="text-lg font-bold text-gray-800">2025年10月第41周</h2>
+                        <div class="flex justify-between mt-2">
+                            <span class="text-xs text-gray-500">周一</span>
+                            <span class="text-xs text-gray-500">周二</span>
+                            <span class="text-xs text-gray-500">周三</span>
+                            <span class="text-xs text-gray-500">周四</span>
+                            <span class="text-xs text-gray-500">周五</span>
+                            <span class="text-xs text-gray-500">周六</span>
+                            <span class="text-xs text-gray-500">周日</span>
+                        </div>
+                        <div id="week-days" class="flex justify-between mt-1">
+                            <!-- 日期将通过JS动态生成 -->
+                        </div>
+                    </div>
+                    <button id="next-week" class="text-green-600">
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+                <button id="current-date-btn" class="w-full bg-green-100 text-green-700 py-2 rounded-lg text-sm mb-4">返回今天</button>
+
+                <!-- 分类筛选 -->
+                <div class="flex overflow-x-auto space-x-2 mb-4 pb-2" id="category-filter">
+                    <button class="category-btn px-3 py-1 bg-green-600 text-white rounded-full text-sm whitespace-nowrap">全部学科</button>
+                    <!-- 分类将通过JS动态生成 -->
+                </div>
+
+                <!-- 任务列表 -->
+                <div id="task-list">
+                    <!-- 任务将通过JS动态生成 -->
+                    <div class="text-center text-gray-500 py-8">
+                        暂无任务，点击右下角按钮添加
+                    </div>
+                </div>
+            </div>
+
+            <!-- 小心愿页面 -->
+            <div id="wish-page" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">小心愿</h2>
+                    <div class="flex items-center">
+                        <span class="text-gray-500 mr-2">可用金币：</span>
+                        <span id="wish-gold" class="text-yellow-500 font-bold">0</span>
+                        <button id="exchange-history" class="ml-4 text-green-600 text-sm">领取记录</button>
+                    </div>
+                </div>
+                
+                <div id="wish-list" class="grid grid-cols-2 gap-4">
+                    <!-- 心愿将通过JS动态生成 -->
+                </div>
+            </div>
+
+            <!-- 我的页面 -->
+            <div id="profile-page" class="hidden">
+                <div class="bg-green-600 text-white rounded-lg p-4 mb-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 id="profile-username" class="text-xl font-bold">用户名</h2>
+                            <div class="flex items-center mt-1">
+                                <span><i class="fa fa-trophy mr-1"></i> 总番茄：</span>
+                                <span id="profile-tomato" class="ml-1">0</span>
+                            </div>
+                        </div>
+                        <div class="bg-white bg-opacity-20 rounded-full px-3 py-1">
+                            <span><i class="fa fa-coins mr-1"></i> 总金币：</span>
+                            <span id="profile-gold" class="font-bold">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 荣誉系统 -->
+                <div class="bg-white rounded-lg shadow p-4 mb-4">
+                    <h3 class="font-bold text-gray-800 mb-3">我的荣誉</h3>
+                    <div id="honor-list" class="grid grid-cols-4 gap-2">
+                        <!-- 荣誉将通过JS动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 数据管理 -->
+                <div class="bg-white rounded-lg shadow p-4 mb-4">
+                    <h3 class="font-bold text-gray-800 mb-3">数据管理</h3>
+                    <div class="space-y-3">
+                        <button id="export-data" class="w-full flex justify-between items-center p-3 border border-gray-200 rounded-lg">
+                            <span>导出数据</span>
+                            <i class="fa fa-download text-green-600"></i>
+                        </button>
+                        <button id="clear-data" class="w-full flex justify-between items-center p-3 border border-gray-200 rounded-lg">
+                            <span>清除数据</span>
+                            <i class="fa fa-trash text-red-500"></i>
+                        </button>
+                        <button id="operation-logs" class="w-full flex justify-between items-center p-3 border border-gray-200 rounded-lg">
+                            <span>操作记录</span>
+                            <i class="fa fa-history text-blue-500"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部导航栏 -->
+        <div id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-2">
+            <button class="nav-item flex flex-col items-center nav-item-active" data-page="task">
+                <i class="fa fa-check-circle text-xl"></i>
+                <span class="text-xs mt-1">作业打卡</span>
+            </button>
+            <button class="nav-item flex flex-col items-center" data-page="wish">
+                <i class="fa fa-gift text-xl"></i>
+                <span class="text-xs mt-1">小心愿</span>
+            </button>
+            <button class="nav-item flex flex-col items-center" data-page="profile">
+                <i class="fa fa-user text-xl"></i>
+                <span class="text-xs mt-1">我的</span>
+            </button>
+        </div>
+
+        <!-- 添加任务按钮 -->
+        <div class="floating-btn" id="add-task-btn">
+            <i class="fa fa-plus"></i>
+        </div>
+    </div>
+
+    <!-- 添加任务弹窗 -->
+    <div id="add-task-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg w-full max-w-md p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">添加任务</h3>
+            <form id="task-form">
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">任务名称</label>
+                    <input type="text" id="task-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="请输入任务名称">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">任务描述</label>
+                    <textarea id="task-description" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="请输入任务描述" rows="3"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">学科分类</label>
+                        <select id="task-category" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <!-- 分类选项将通过JS动态生成 -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">计划时长（分钟）</label>
+                        <input type="number" id="task-time" class="w-full px-4 py-2 border border-gray-300 rounded-lg" value="10" min="1">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">奖励金币</label>
+                        <input type="number" id="task-points" class="w-full px-4 py-2 border border-gray-300 rounded-lg" value="1" min="-99" max="99">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">重复设置</label>
+                        <select id="task-repeat" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <option value="无">无</option>
+                            <option value="每天">每天</option>
+                            <option value="每周一">每周一</option>
+                            <option value="每周二">每周二</option>
+                            <option value="每周三">每周三</option>
+                            <option value="每周四">每周四</option>
+                            <option value="每周五">每周五</option>
+                            <option value="每周六">每周六</option>
+                            <option value="每周日">每周日</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2">开始日期</label>
+                    <input type="date" id="task-date" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div class="flex space-x-4">
+                    <button type="button" id="cancel-task" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700">取消</button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 番茄钟弹窗 -->
+    <div id="tomato-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg w-full max-w-md p-6">
+            <h3 id="tomato-task-name" class="text-lg font-bold text-gray-800 mb-4">番茄钟 - 任务名称</h3>
+            <div class="text-center py-6">
+                <div id="tomato-timer" class="text-4xl font-bold text-green-600">00:10</div>
+                <div class="flex justify-center space-x-6 mt-8">
+                    <button id="tomato-start" class="px-6 py-2 bg-green-600 text-white rounded-lg">开始</button>
+                    <button id="tomato-reset" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700">重置</button>
+                    <button id="tomato-finish" class="px-6 py-2 bg-blue-600 text-white rounded-lg">完成</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 番茄钟悬浮球 -->
+    <div id="tomato-bubble" class="tomato-bubble hidden">
+        <div id="bubble-timer" class="text-lg font-bold">00:10</div>
+        <div class="text-xs">点击返回</div>
+    </div>
+
+    <script type="module" src="js/api.js"></script>
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
