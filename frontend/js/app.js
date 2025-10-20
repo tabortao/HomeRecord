@@ -119,6 +119,17 @@ function bindEvents() {
     if(document.getElementById('tomato-reset')) document.getElementById('tomato-reset').addEventListener('click', handleTomatoReset);
     if(document.getElementById('tomato-finish')) document.getElementById('tomato-finish').addEventListener('click', handleTomatoFinish);
     if(document.getElementById('tomato-bubble')) document.getElementById('tomato-bubble').addEventListener('click', showTomatoModal);
+    if(document.getElementById('tomato-close')) document.getElementById('tomato-close').addEventListener('click', handleTomatoClose);
+    
+    // 点击番茄钟弹窗外部区域时关闭弹窗并显示悬浮球
+    const tomatoModal = document.getElementById('tomato-modal');
+    if(tomatoModal) {
+        tomatoModal.addEventListener('click', function(e) {
+            if (e.target === tomatoModal) {
+                hideTomatoModal();
+            }
+        });
+    }
 
     // 小心愿页面事件
     document.getElementById('exchange-history').addEventListener('click', showExchangeHistory);
@@ -198,6 +209,14 @@ function switchPage(page) {
     if(document.getElementById('wish-page-header')) document.getElementById('wish-page-header').classList.add('hidden');
     if(document.getElementById('profile-page-header')) document.getElementById('profile-page-header').classList.add('hidden');
     
+    // 只在作业打卡页面显示统计栏，其他页面隐藏
+    const statisticsBar = document.getElementById('statistics-bar');
+    if (page === 'task') {
+        statisticsBar.classList.remove('hidden');
+    } else {
+        statisticsBar.classList.add('hidden');
+    }
+    
     // 显示选中的页面和对应的头部
     document.getElementById(`${page}-page`).classList.remove('hidden');
     if(document.getElementById(`${page}-page-header`)) document.getElementById(`${page}-page-header`).classList.remove('hidden');
@@ -227,83 +246,70 @@ function switchPage(page) {
 // 加载统计数据
 async function loadStatistics() {
     try {
-        const stats = await api.statisticsAPI.getStatistics(appState.currentUser.id, appState.currentDate);
-        
-        // 处理可能的DOM元素不存在情况
-        // 为统计项添加动画效果
-        const applyAnimation = (elementId) => {
-            const element = document.getElementById(elementId);
-            if (element) {
-                element.classList.add('stat-item');
-                setTimeout(() => element.classList.remove('stat-item'), 600);
-            }
-        };
-        
-        // 更新日时长
-        if(document.getElementById('day-time')) {
-            document.getElementById('day-time').textContent = timeUtils.formatMinutes(stats.day_time);
-            applyAnimation('day-time');
+        if (!appState.currentUser) {
+            console.log('用户未登录，跳过加载统计数据');
+            return;
         }
         
-        // 更新任务数
-        if(document.getElementById('task-count')) {
-            document.getElementById('task-count').textContent = `${stats.task_count}个`;
-            applyAnimation('task-count');
-        }
+        const date = appState.currentDate || dateUtils.getCurrentDate();
+        // 使用与其他API调用相同的基础URL格式
+        const url = `http://localhost:5000/api/statistics?user_id=${appState.currentUser.id}&date=${date}`;
+        console.log('请求统计数据URL:', url, '用户ID:', appState.currentUser.id, '日期:', date);
         
-        // 更新日金币
-        if(document.getElementById('day-gold')) {
-            document.getElementById('day-gold').textContent = stats.day_gold;
-            applyAnimation('day-gold');
-        }
-        
-        // 更新完成率
-        if(document.getElementById('completion-rate')) {
-            document.getElementById('completion-rate').textContent = `${stats.completion_rate}%`;
-            applyAnimation('completion-rate');
-        }
-        
-        // 更新总金币
-        const totalGoldElements = [
-            document.getElementById('total-gold'),
-            document.getElementById('user-gold-display')?.querySelector('#total-gold'),
-            document.getElementById('profile-gold')
-        ];
-        totalGoldElements.forEach(element => {
-            if (element) {
-                element.textContent = stats.total_gold;
-                applyAnimation(element.id);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
             }
         });
+
+        console.log('响应状态:', response.status, response.statusText);
         
-        // 更新小心愿页面的金币显示
-        if(document.getElementById('wish-gold')) {
-            document.getElementById('wish-gold').textContent = stats.total_gold;
-            applyAnimation('wish-gold');
+        if (!response.ok) {
+            throw new Error(`获取统计数据失败: ${response.status} ${response.statusText}`);
         }
+
+        const data = await response.json();
+        console.log('统计数据:', data);
+
+        // 日时长 - 统计今日各任务时间花费总和
+        const dayTimeElement = document.getElementById('day-time');
+        if (dayTimeElement) {
+            dayTimeElement.textContent = `${data.day_time || 0}分钟`;
+        }
+
+        // 任务数 - 显示今日总任务个数
+        const taskCountElement = document.getElementById('task-count');
+        if (taskCountElement) {
+            taskCountElement.textContent = `${data.task_count || 0}个`;
+        }
+
+        // 日金币 - 统计今日获得的金币总数
+        const dayGoldElement = document.getElementById('day-gold');
+        if (dayGoldElement) {
+            dayGoldElement.textContent = data.day_gold || 0;
+        }
+
+        // 完成率
+        const completionRateElement = document.getElementById('completion-rate');
+        if (completionRateElement) {
+            completionRateElement.textContent = `${data.completion_rate || 0}%`;
+        }
+
+        // 调用updateUserInfo函数确保金币数据一致性
+        await updateUserInfo();
+
+        // 添加简单的动画效果
+        const statElements = document.querySelectorAll('#statistics-bar > div > div');
+        statElements.forEach((el, index) => {
+            setTimeout(() => {
+                el.classList.add('stat-item');
+            }, index * 100);
+        });
+
     } catch (error) {
-        console.error('加载统计数据失败:', error);
-        
-        // 错误情况下显示默认值并添加友好提示
-        const defaultValues = {
-            'day-time': '0分钟',
-            'task-count': '0个',
-            'day-gold': '0',
-            'completion-rate': '0%',
-            'total-gold': '0',
-            'wish-gold': '0'
-        };
-        
-        Object.entries(defaultValues).forEach(([id, value]) => {
-            if (id === 'total-gold') {
-                const elements = document.querySelectorAll(`#${id}`);
-                elements.forEach(el => el.textContent = value);
-            } else if (document.getElementById(id)) {
-                document.getElementById(id).textContent = value;
-            }
-        });
-        
-        domUtils.showToast('统计数据加载失败，请稍后再试', 'error');
+        console.error('加载统计数据错误:', error);
+        console.log('错误详情:', error.message, error.stack);
     }
 }
 
@@ -437,6 +443,7 @@ function filterAndRenderTasks(tasks, filter) {
     // 获取所有分类
     const categories = ['全部学科', ...Object.keys(tasksByCategory)];
     categories.forEach(category => {
+        // 正确处理'全部学科'的选中状态
         const isActive = appState.currentCategory === (category === '全部学科' ? '' : category);
         const categoryButton = document.createElement('button');
         categoryButton.className = `px-3 py-1 rounded-full text-sm ${isActive ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`;
@@ -476,49 +483,60 @@ function filterAndRenderTasks(tasks, filter) {
             
             // 任务完成状态
             const isCompleted = task.status === '已完成';
-            const statusIcon = isCompleted ? 'fa-check-circle' : 'fa-circle-o';
+            const iconClass = isCompleted ? 'fa-check-circle' : 'fa-circle-o';
             const statusClass = isCompleted ? 'text-green-500' : 'text-gray-400';
             const taskStatusClass = isCompleted ? 'line-through text-gray-400' : '';
             
             taskElement.innerHTML = `
                 <div class="flex items-start">
                     <div class="mr-3 mt-1">
-                        <i class="fa ${statusIcon} ${statusClass} text-xl"></i>
+                        <i class="fa ${iconClass} ${statusClass} text-xl"></i>
                     </div>
                     <div class="flex-1">
                         <div class="flex justify-between items-start">
-                            <h4 class="font-medium text-base ${taskStatusClass}">${task.name}</h4>
+                            <div class="flex-1">
+                                <h4 class="font-medium text-base ${taskStatusClass}">${task.name}</h4>
+                                ${task.description ? `<p class="text-sm text-gray-500 mt-1 ${taskStatusClass}">${task.description}</p>` : ''}
+                            </div>
+                            <div class="flex items-center space-x-4 mr-3">
+                                <div class="flex items-center text-sm text-purple-600 font-medium">
+                                    <i class="fa fa-clock-o mr-1"></i>
+                                    <span>${task.planned_time}分钟</span>
+                                </div>
+                                <div class="flex items-center text-sm text-yellow-500 font-bold">
+                                    <i class="fa fa-star mr-1"></i>
+                                    <span>${task.points}分</span>
+                                </div>
+                            </div>
                             <div class="flex space-x-2">
-                                <button class="task-tomato p-1 text-green-600 hover:bg-green-100 rounded-full transition-colors duration-200" title="番茄钟">
-                                    <i class="fa fa-play-circle text-lg"></i>
+                                <button class="task-tomato p-1 hover:bg-green-100 rounded-full transition-colors duration-200" title="番茄钟">
+                                    <img src="static/images/番茄钟.png" alt="番茄钟" class="w-5 h-5">
                                 </button>
                                 <button class="task-menu p-1 text-gray-500 hover:bg-gray-100 rounded-full transition-colors duration-200" title="操作">
                                     <i class="fa fa-ellipsis-v"></i>
                                 </button>
                             </div>
                         </div>
-                        ${task.description ? `<p class="text-sm text-gray-500 mt-1 ${taskStatusClass}">${task.description}</p>` : ''}
-                        <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
-                            <div class="flex items-center text-sm text-purple-600 font-medium">
-                                <i class="fa fa-clock-o mr-1"></i>
-                                <span>${task.planned_time}分钟</span>
-                            </div>
-                            <div class="flex items-center text-sm text-yellow-500 font-bold">
-                                <i class="fa fa-star mr-1"></i>
-                                <span>${task.points}分</span>
-                            </div>
-                        </div>
                     </div>
-                </div>
-            `;
+                </div>`;
             
-            // 任务状态切换
+            // 任务状态切换 - 仅在点击复选框图标时切换状态
+            const statusIcon = taskElement.querySelector('.fa-circle-o, .fa-check-circle');
+            if (statusIcon) {
+                statusIcon.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 阻止事件冒泡
+                    toggleTaskStatus(task.id, task.status);
+                });
+            }
+            
+            // 卡片点击事件 - 不再触发状态切换
             taskElement.addEventListener('click', (e) => {
-                // 避免点击操作按钮时触发任务状态切换
-                if (e.target.closest('.task-tomato') || e.target.closest('.task-menu')) {
+                // 避免在点击番茄钟按钮、菜单按钮或复选框时触发其他操作
+                if (e.target.closest('.task-tomato') || e.target.closest('.task-menu') || 
+                    e.target.closest('.fa-circle-o') || e.target.closest('.fa-check-circle')) {
                     return;
                 }
-                toggleTaskStatus(task.id, task.status);
+                // 这里可以添加其他点击卡片需要执行的操作
             });
             
             // 番茄钟按钮
@@ -545,11 +563,29 @@ async function toggleTaskStatus(taskId, currentStatus) {
     const newStatus = currentStatus === '已完成' ? '未完成' : '已完成';
     
     try {
-        await api.taskAPI.updateTask(taskId, { status: newStatus });
+        // 如果是标记为已完成，且没有使用番茄钟，则使用计划时间作为实际时间
+        if (newStatus === '已完成') {
+            // 先获取任务信息
+            const tasks = await api.taskAPI.getTasks(appState.currentUser.id, appState.currentDate, '');
+            const task = tasks.find(t => t.id === taskId);
+            
+            if (task && !task.used_tomato) {
+                await api.taskAPI.updateTask(taskId, { 
+                    status: newStatus,
+                    actual_time: task.planned_time, // 直接使用计划时间
+                    used_tomato: false // 标记未使用番茄钟
+                });
+            } else {
+                await api.taskAPI.updateTask(taskId, { status: newStatus });
+            }
+        } else {
+            await api.taskAPI.updateTask(taskId, { status: newStatus });
+        }
         
         // 重新加载任务列表和统计数据
         await loadTasks();
         await loadStatistics();
+        await updateUserInfo(); // 确保金币数据一致性
         
         domUtils.showToast('任务状态已更新');
     } catch (error) {
@@ -564,32 +600,41 @@ async function loadCategories() {
         const categoryFilter = document.getElementById('category-filter');
         const taskCategorySelect = document.getElementById('task-category');
         
-        // 清空分类过滤器
-        categoryFilter.innerHTML = `
-            <button class="category-btn px-3 py-1 ${appState.currentCategory === '全部学科' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'} rounded-full text-sm whitespace-nowrap">全部学科</button>
-        `;
+        // 只在元素存在时才操作
+        if (categoryFilter) {
+            // 清空分类过滤器
+            categoryFilter.innerHTML = `
+                <button class="category-btn px-3 py-1 ${appState.currentCategory === '全部学科' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'} rounded-full text-sm whitespace-nowrap">全部学科</button>
+            `;
+        }
         
         // 清空任务分类选择器
-        taskCategorySelect.innerHTML = '';
+        if (taskCategorySelect) {
+            taskCategorySelect.innerHTML = '';
+        }
         
         // 添加分类到过滤器和选择器
         categories.forEach(category => {
             // 添加到过滤器
-            const filterBtn = document.createElement('button');
-            filterBtn.className = `category-btn px-3 py-1 ${appState.currentCategory === category.name ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'} rounded-full text-sm whitespace-nowrap`;
-            filterBtn.textContent = category.name;
-            filterBtn.addEventListener('click', () => {
-                appState.currentCategory = category.name;
-                loadTasks();
-                loadCategories(); // 重新加载以更新选中状态
-            });
-            categoryFilter.appendChild(filterBtn);
+            if (categoryFilter) {
+                const filterBtn = document.createElement('button');
+                filterBtn.className = `category-btn px-3 py-1 ${appState.currentCategory === category.name ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'} rounded-full text-sm whitespace-nowrap`;
+                filterBtn.textContent = category.name;
+                filterBtn.addEventListener('click', () => {
+                    appState.currentCategory = category.name;
+                    loadTasks();
+                    loadCategories(); // 重新加载以更新选中状态
+                });
+                categoryFilter.appendChild(filterBtn);
+            }
             
             // 添加到选择器
-            const option = document.createElement('option');
-            option.value = category.name;
-            option.textContent = category.name;
-            taskCategorySelect.appendChild(option);
+            if (taskCategorySelect) {
+                const option = document.createElement('option');
+                option.value = category.name;
+                option.textContent = category.name;
+                taskCategorySelect.appendChild(option);
+            }
         });
     } catch (error) {
         console.error('加载分类列表失败:', error);
@@ -675,11 +720,62 @@ function showAddTaskModal() {
     document.getElementById('task-points').value = 1;
     
     document.getElementById('add-task-modal').classList.remove('hidden');
+    
+    // 添加键盘事件监听，处理输入法弹出
+    setTimeout(() => {
+        adjustModalPosition();
+    }, 100);
 }
 
 // 隐藏添加任务弹窗
 function hideAddTaskModal() {
     document.getElementById('add-task-modal').classList.add('hidden');
+}
+
+// 调整弹窗位置，处理输入法弹出
+function adjustModalPosition() {
+    const modal = document.getElementById('add-task-modal');
+    const modalContent = modal?.querySelector('.bg-white');
+    
+    if (!modal || !modalContent) return;
+    
+    // 监听窗口大小变化和滚动事件
+    const handleResizeOrScroll = () => {
+        // 在移动设备上，动态调整弹窗位置
+        if (window.innerWidth <= 768) {
+            // 获取当前活跃的输入元素
+            const activeElement = document.activeElement;
+            
+            if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+                // 延迟一点时间，确保输入法已经弹出
+                setTimeout(() => {
+                    const activeElementRect = activeElement.getBoundingClientRect();
+                    const modalContentRect = modalContent.getBoundingClientRect();
+                    
+                    // 检查输入元素是否被遮挡
+                    if (activeElementRect.bottom > modalContentRect.bottom - 50) {
+                        // 计算需要滚动的距离
+                        const scrollDistance = activeElementRect.bottom - modalContentRect.bottom + 50;
+                        modalContent.scrollTop += scrollDistance;
+                    }
+                }, 300);
+            }
+        }
+    };
+    
+    // 添加事件监听器
+    window.addEventListener('resize', handleResizeOrScroll);
+    window.addEventListener('scroll', handleResizeOrScroll);
+    
+    // 在弹窗关闭时移除事件监听器
+    const cleanup = () => {
+        window.removeEventListener('resize', handleResizeOrScroll);
+        window.removeEventListener('scroll', handleResizeOrScroll);
+        modal.removeEventListener('hidden', cleanup);
+    };
+    
+    // 监听弹窗隐藏事件
+    modal.addEventListener('hidden', cleanup);
 }
 
 // 处理添加任务
@@ -728,7 +824,7 @@ function showTaskMenu(task) {
             <span>编辑</span>
         </button>
         <button class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded">
-            <i class="fa fa-tomato text-green-600 mr-3"></i>
+            <i class="fa fa-clock-o text-yellow-500 mr-3"></i>
             <span>番茄钟</span>
         </button>
         <button class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded text-red-600">
@@ -785,8 +881,105 @@ function showTaskMenu(task) {
 
 // 编辑任务
 function editTask(task) {
-    // 这里简化处理，实际可以实现编辑功能
-    domUtils.showToast('编辑功能开发中...');
+    if (!task) {
+        domUtils.showToast('未找到任务', 'error');
+        return;
+    }
+    
+    // 显示添加任务弹窗（复用现有弹窗）
+    const addTaskModal = document.getElementById('add-task-modal');
+    const taskForm = document.getElementById('task-form');
+    const taskName = document.getElementById('task-name');
+    const taskDescription = document.getElementById('task-description');
+    const taskCategory = document.getElementById('task-category');
+    const taskTime = document.getElementById('task-time');
+    const taskPoints = document.getElementById('task-points');
+    const taskRepeat = document.getElementById('task-repeat');
+    const taskDate = document.getElementById('task-date');
+    
+    // 设置表单标题
+    const modalTitle = addTaskModal?.querySelector('h3');
+    if (modalTitle) {
+        modalTitle.textContent = '编辑任务';
+    }
+    
+    // 填充表单数据
+    if (taskName) taskName.value = task.name || '';
+    if (taskDescription) taskDescription.value = task.description || '';
+    if (taskCategory) {
+        // 等待分类加载完成后设置
+        setTimeout(() => {
+            taskCategory.value = task.category || '';
+        }, 100);
+    }
+    if (taskTime) taskTime.value = task.planned_time || 10;
+    if (taskPoints) taskPoints.value = task.points || 1;
+    if (taskRepeat) taskRepeat.value = task.repeat || '无';
+    if (taskDate) taskDate.value = task.date || dateUtils.getCurrentDate();
+    
+    // 保存原始提交事件
+    const originalSubmitHandler = taskForm ? taskForm.onsubmit : null;
+    
+    // 添加编辑模式标志
+    taskForm.dataset.editMode = 'true';
+    taskForm.dataset.taskId = task.id;
+    
+    // 重写提交事件
+    if (taskForm) {
+        taskForm.onsubmit = async (e) => {
+            e.preventDefault();
+            
+            try {
+                // 收集表单数据
+                const updatedTask = {
+                    name: taskName.value,
+                    description: taskDescription.value,
+                    category: taskCategory.value,
+                    planned_time: parseInt(taskTime.value),
+                    points: parseInt(taskPoints.value),
+                    repeat: taskRepeat.value,
+                    date: taskDate.value
+                };
+                
+                // 调用API更新任务
+                await api.taskAPI.updateTask(task.id, updatedTask);
+                
+                // 恢复原始表单状态
+                taskForm.dataset.editMode = 'false';
+                taskForm.dataset.taskId = '';
+                if (originalSubmitHandler) {
+                    taskForm.onsubmit = originalSubmitHandler;
+                }
+                
+                // 重置表单
+                taskForm.reset();
+                
+                // 关闭弹窗
+                if (typeof hideAddTaskModal === 'function') {
+                    hideAddTaskModal();
+                }
+                
+                // 重新加载任务和统计数据
+                await loadTasks();
+                await loadStatistics();
+                
+                domUtils.showToast('任务已更新');
+            } catch (error) {
+                console.error('更新任务失败:', error);
+                domUtils.showToast('编辑任务失败，请重试', 'error');
+            }
+        };
+    }
+    
+    // 显示弹窗
+    if (addTaskModal) {
+        addTaskModal.classList.remove('hidden');
+        
+        // 添加键盘事件监听，处理输入法弹出
+        setTimeout(() => {
+            adjustModalPosition();
+        }, 100);
+    }
 }
 
 // 删除任务
@@ -807,17 +1000,79 @@ async function deleteTask(taskId) {
     );
 }
 
-// 开始番茄钟
+// 开始番茄钟 - 显示番茄钟弹窗
 function startTomatoTimer(task) {
+    appState.currentTask = task;
     appState.tomatoTaskId = task.id;
     appState.tomatoTimeLeft = task.planned_time * 60; // 转换为秒
     
+    // 显示番茄钟弹窗
+    const tomatoModal = document.getElementById('tomato-modal');
+    if (tomatoModal) {
+        tomatoModal.classList.remove('hidden');
+    }
+    
     // 更新番茄钟显示
     const tomatoTimerElement = document.getElementById('tomato-timer');
-    const bubbleTimerElement = document.getElementById('bubble-timer');
     const tomatoTaskNameElement = document.getElementById('tomato-task-name');
     
-    tomatoTaskNameElement.textContent = `番茄钟 - ${task.name}`;
+    if (tomatoTaskNameElement) {
+        tomatoTaskNameElement.textContent = `番茄钟 - ${task.name}`;
+    }
+    
+    // 设置计时器显示为计划时长
+    if (tomatoTimerElement) {
+        tomatoTimerElement.textContent = `00:${task.planned_time}`;
+    }
+    
+    // 添加事件监听器 - 只添加一次
+    if (!appState.tomatoEventListenersAdded) {
+        // 关闭番茄钟
+        const tomatoClose = document.getElementById('tomato-close');
+        if (tomatoClose) {
+            tomatoClose.addEventListener('click', () => {
+                if (tomatoModal) {
+                    tomatoModal.classList.add('hidden');
+                }
+            });
+        }
+        
+        // 重置番茄钟
+        const tomatoReset = document.getElementById('tomato-reset');
+        if (tomatoReset) {
+            tomatoReset.addEventListener('click', () => {
+                if (tomatoTimerElement) {
+                    tomatoTimerElement.textContent = `00:${task.planned_time}`;
+                }
+                appState.tomatoTimeLeft = task.planned_time * 60;
+            });
+        }
+        
+        // 完成番茄钟
+        const tomatoFinish = document.getElementById('tomato-finish');
+        if (tomatoFinish) {
+            tomatoFinish.addEventListener('click', async () => {
+                // 更新任务实际时间
+                try {
+                    await api.updateTask(task.id, { actual_time: task.planned_time });
+                    // 更新任务状态为已完成
+                    await toggleTaskStatus(task.id, '进行中');
+                    // 关闭番茄钟
+                    if (tomatoModal) {
+                        tomatoModal.classList.add('hidden');
+                    }
+                    // 重新加载任务和统计数据
+                    loadTasks();
+                    loadStatistics();
+                } catch (error) {
+                    console.error('更新任务时间失败:', error);
+                    alert('完成番茄钟失败，请重试');
+                }
+            });
+        }
+        
+        appState.tomatoEventListenersAdded = true;
+    }
     
     // 格式化时间显示
     function formatTime(seconds) {
@@ -861,9 +1116,20 @@ function handleTomatoStart() {
         document.getElementById('bubble-timer').textContent = timeStr;
     }, 1000);
     
-    // 隐藏弹窗，显示悬浮球
+    // 保持弹窗显示，不再切换到悬浮球
+    // hideTomatoModal();
+}
+
+// 处理番茄钟关闭
+function handleTomatoClose() {
+    // 无论是否正在倒计时，都直接关闭弹窗
     document.getElementById('tomato-modal').classList.add('hidden');
-    document.getElementById('tomato-bubble').classList.remove('hidden');
+}
+
+// 隐藏番茄钟弹窗（不再显示悬浮球）
+function hideTomatoModal() {
+    document.getElementById('tomato-modal').classList.add('hidden');
+    // 移除显示悬浮球的代码，确保悬浮球永远隐藏
 }
 
 // 处理番茄钟重置
@@ -889,29 +1155,33 @@ async function handleTomatoFinish() {
         appState.tomatoTimer = null;
     }
     
-    // 隐藏悬浮球
+    // 隐藏悬浮球和弹窗
     document.getElementById('tomato-bubble').classList.add('hidden');
+    document.getElementById('tomato-modal').classList.add('hidden');
     
     // 更新任务状态为已完成
     if (appState.tomatoTaskId) {
         try {
+            // 计算实际完成时间（剩余时间转换为已用时间）
+            const plannedMinutes = appState.currentTask?.planned_time || 10;
+            const actualMinutes = plannedMinutes - Math.floor(appState.tomatoTimeLeft / 60);
+            
             await api.taskAPI.updateTask(appState.tomatoTaskId, {
                 status: '已完成',
-                actual_time: Math.floor((appState.tomatoTimeLeft + 60) / 60) // 转换为分钟
+                actual_time: actualMinutes,
+                used_tomato: true // 标记使用了番茄钟
             });
             
             // 重新加载数据
             await loadTasks();
             await loadStatistics();
+            await updateUserInfo(); // 确保金币数据一致性
             
             domUtils.showToast('任务完成！获得金币奖励');
         } catch (error) {
             domUtils.showToast('更新任务失败，请重试', 'error');
         }
     }
-    
-    // 隐藏弹窗
-    document.getElementById('tomato-modal').classList.add('hidden');
 }
 
 // 显示番茄钟弹窗
@@ -1042,8 +1312,11 @@ async function updateUserInfo() {
         // 更新小心愿页面标题
         if(document.getElementById('wish-page-title')) document.getElementById('wish-page-title').textContent = `「${user.username}」的心愿收集`;
         
-        // 更新金币显示
-        if(document.getElementById('total-gold')) document.getElementById('total-gold').textContent = user.total_gold || 0;
+        // 更新金币显示 - 确保所有位置金币数一致
+        const goldValue = user.total_gold || 0;
+        if(document.getElementById('total-gold')) document.getElementById('total-gold').textContent = goldValue;
+        if(document.getElementById('total-gold-stats')) document.getElementById('total-gold-stats').textContent = goldValue;
+        if(document.getElementById('wish-gold')) document.getElementById('wish-gold').textContent = goldValue;
         
     } catch (error) {
         console.error('更新用户信息失败:', error);

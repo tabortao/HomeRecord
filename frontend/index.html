@@ -12,9 +12,6 @@
             background-color: #f8fafc;            
             font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;        
         }
-        #task-page { background-color: #f0fdf4; } /* 作业打卡 - 浅绿色背景 */
-        #wish-page { background-color: #fef3c7; } /* 小心愿 - 浅黄色背景 */
-        #profile-page { background-color: #eff6ff; } /* 我的 - 浅蓝色背景 */
         .nav-item-active {
             color: #22c55e;
             border-bottom: 2px solid #22c55e;
@@ -24,8 +21,8 @@
         }
         .floating-btn {
             position: fixed;
-            bottom: 80px;
-            right: 20px;
+            bottom: 70px;
+            right: 80px;
             width: 56px;
             height: 56px;
             border-radius: 50%;
@@ -119,14 +116,14 @@
                     <h1 id="task-page-title" class="text-xl font-bold text-green-600">作业打卡</h1>
                 </div>
                 <div id="user-gold-display" class="flex items-center text-yellow-500">
-                    <i class="fa fa-coins mr-1"></i>
+                    <i class="fa fa-star mr-1"></i>
                     <span id="total-gold" class="font-bold">0</span>
                 </div>
             </div>
             
             <!-- 小心愿页面标题 -->
             <div id="wish-page-header" class="hidden">
-                <h1 id="wish-page-title" class="text-xl font-bold text-green-600 text-center">「用户昵称」的心愿收集</h1>
+                <h1 id="wish-page-title" class="text-xl font-bold text-green-600 text-center">用户昵称的心愿收集</h1>
             </div>
             
             <!-- 我的页面标题 -->
@@ -141,7 +138,7 @@
         
         <!-- 顶部统计栏 -->
         <div id="statistics-bar" class="bg-gradient-to-r from-green-50 to-blue-50 p-4 border-b border-green-100">
-            <div class="grid grid-cols-5 gap-2 text-center">
+            <div class="grid grid-cols-4 gap-2 text-center">
                 <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
                     <div class="text-purple-500 mb-1 text-xl"><i class="fa fa-clock-o"></i></div>
                     <div class="text-gray-500 text-xs">日时长</div>
@@ -153,7 +150,7 @@
                     <div id="task-count" class="text-blue-600 font-bold">0个</div>
                 </div>
                 <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
-                    <div class="text-yellow-500 mb-1 text-xl"><i class="fa fa-star"></i></div>
+                    <div class="text-yellow-500 mb-1 text-xl"><i class="fa fa-money"></i></div>
                     <div class="text-gray-500 text-xs">日金币</div>
                     <div id="day-gold" class="text-yellow-600 font-bold">0</div>
                 </div>
@@ -161,11 +158,6 @@
                     <div class="text-green-500 mb-1 text-xl"><i class="fa fa-check-circle"></i></div>
                     <div class="text-gray-500 text-xs">完成率</div>
                     <div id="completion-rate" class="text-green-600 font-bold">0%</div>
-                </div>
-                <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
-                    <div class="text-yellow-500 mb-1 text-xl"><i class="fa fa-coins"></i></div>
-                    <div class="text-gray-500 text-xs">总金币</div>
-                    <div id="total-gold-stats" class="text-yellow-600 font-bold">0</div>
                 </div>
             </div>
         </div>
@@ -200,7 +192,7 @@
                         <span class="text-xs text-gray-500">周六</span>
                         <span class="text-xs text-gray-500">周日</span>
                     </div>
-                    <div id="week-days" class="flex justify-between mt-1">
+                    <div id="week-days" class="flex justify-between mt-1 mb-6">
                         <!-- 日期将通过JS动态生成 -->
                     </div>
                 </div>
@@ -224,9 +216,9 @@
             <div id="wish-page" class="hidden">
                 <div class="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 mb-4 rounded-xl">
                     <div class="flex flex-col items-center justify-center text-center">
-                        <h2 class="text-xl font-bold text-orange-600 mb-2">我的小心愿</h2>
+                        <!-- 我的小心愿标题已移除 -->
                         <div class="flex items-center bg-white px-4 py-2 rounded-full shadow-sm">
-                            <i class="fa fa-coins text-yellow-500 mr-2 text-xl"></i>
+                            <i class="fa fa-star text-yellow-500 mr-2 text-xl"></i>
                             <span class="text-gray-600 mr-2">可用金币：</span>
                             <span id="wish-gold" class="text-yellow-500 font-bold text-lg">0</span>
                             <button id="exchange-history" class="ml-4 text-sm bg-orange-100 text-orange-600 px-3 py-1 rounded-full">领取记录</button>
@@ -254,7 +246,7 @@
                             </div>
                         </div>
                         <div class="bg-white bg-opacity-20 rounded-full px-4 py-2 backdrop-filter backdrop-blur-sm">
-                            <span><i class="fa fa-coins mr-1"></i> 总金币：</span>
+                            <span><i class="fa fa-star mr-1"></i> 总金币：</span>
                             <span id="profile-gold" class="font-bold">0</span>
                         </div>
                     </div>
@@ -336,24 +328,24 @@
         </div>
 
         <!-- 底部导航栏 -->
-        <div id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-green-100 flex justify-around p-2 shadow-lg">
-            <button class="nav-item flex flex-col items-center nav-item-active p-2 rounded-xl transition-all duration-300" data-page="task">
-                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-green-100 text-green-600 text-xl">
+        <div id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-green-100 flex justify-around p-1 shadow-lg">
+            <button class="nav-item flex flex-col items-center nav-item-active p-1 rounded-xl transition-all duration-300" data-page="task">
+                <div class="w-8 h-8 flex items-center justify-center rounded-full bg-green-100 text-green-600 text-lg">
                     <i class="fa fa-check-circle"></i>
                 </div>
-                <span class="text-xs mt-1 font-medium">作业打卡</span>
+                <span class="text-xs mt-0.5 font-medium">作业打卡</span>
             </button>
-            <button class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300" data-page="wish">
-                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-600 text-xl">
+            <button class="nav-item flex flex-col items-center p-1 rounded-xl transition-all duration-300" data-page="wish">
+                <div class="w-8 h-8 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-600 text-lg">
                     <i class="fa fa-gift"></i>
                 </div>
-                <span class="text-xs mt-1 font-medium">小心愿</span>
+                <span class="text-xs mt-0.5 font-medium">小心愿</span>
             </button>
-            <button class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300" data-page="profile">
-                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 text-xl">
+            <button class="nav-item flex flex-col items-center p-1 rounded-xl transition-all duration-300" data-page="profile">
+                <div class="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 text-lg">
                     <i class="fa fa-user"></i>
                 </div>
-                <span class="text-xs mt-1 font-medium">我的</span>
+                <span class="text-xs mt-0.5 font-medium">我的</span>
             </button>
         </div>
 
@@ -429,8 +421,8 @@
     </div>
 
     <!-- 添加任务弹窗 -->
-    <div id="add-task-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg w-full max-w-md p-6">
+    <div id="add-task-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 hidden overflow-y-auto">
+        <div class="bg-white rounded-lg w-full max-w-md p-6 mt-8 max-h-[80vh] overflow-y-auto">
             <h3 class="text-lg font-bold text-gray-800 mb-4">添加任务</h3>
             <form id="task-form">
                 <div class="mb-4">
@@ -553,11 +545,7 @@
         </div>
     </div>
 
-    <!-- 番茄钟悬浮球 -->
-    <div id="tomato-bubble" class="tomato-bubble hidden" style="background-color: rgba(34, 197, 94, 0.8);">
-        <div id="bubble-timer" class="text-lg font-bold">00:10</div>
-        <div class="text-xs">点击返回</div>
-    </div>
+    <!-- 番茄钟悬浮球已移除 -->
 
     <script type="module" src="js/api.js"></script>
     <script type="module" src="js/utils.js"></script>

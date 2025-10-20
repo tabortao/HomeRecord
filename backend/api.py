@@ -13,12 +13,33 @@ def register_routes(app):
         if not task:
             return jsonify({'success': False, 'message': '任务不存在'})
         
+        # 检查任务状态是否从非已完成变为已完成
+        was_completed = task.status == '已完成'
+        
         # 更新任务信息
         for key, value in data.items():
             if hasattr(task, key) and key != 'id' and key != 'user_id':
                 setattr(task, key, value)
         
         task.updated_at = datetime.now()
+        
+        # 如果任务状态从非已完成变为已完成，增加用户金币
+        if not was_completed and task.status == '已完成':
+            user = User.query.get(task.user_id)
+            if user:
+                # 增加金币，任务积分即为金币数量
+                user.total_gold += task.points
+                
+                # 记录金币增加日志
+                gold_log = OperationLog(
+                    user_id=task.user_id,
+                    operation_type='任务完成',
+                    operation_content=f'完成任务：{task.name}，获得{task.points}金币',
+                    operation_time=datetime.now(),
+                    operation_result='成功'
+                )
+                db.session.add(gold_log)
+        
         db.session.commit()
         
         # 记录操作日志
@@ -385,19 +406,23 @@ def register_routes(app):
         # 计算日统计数据
         day_tasks = Task.query.filter_by(user_id=user_id, start_date=date).all()
         
-        total_time = sum(task.actual_time for task in day_tasks if task.status == '已完成')
-        completed_count = sum(1 for task in day_tasks if task.status == '已完成')
+        # 今日总任务个数（所有状态的任务）
         total_count = len(day_tasks)
+        # 已完成任务数
+        completed_count = sum(1 for task in day_tasks if task.status == '已完成')
+        # 今日总时长（所有任务的时间总和）
+        total_time = sum(task.actual_time for task in day_tasks if task.actual_time is not None)
+        # 完成率
         completion_rate = (completed_count / total_count * 100) if total_count > 0 else 0
         
-        # 计算日金币
+        # 计算日金币（已完成任务的积分总和）
         day_gold = sum(task.points for task in day_tasks if task.status == '已完成')
         
         user = User.query.get(user_id)
         
         return jsonify({
             'day_time': total_time,
-            'task_count': completed_count,
+            'task_count': total_count,  # 返回今日总任务个数
             'day_gold': day_gold,
             'completion_rate': round(completion_rate, 1),
             'total_gold': user.total_gold
