@@ -8,10 +8,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
     <link rel="icon" href="static/images/favicon/favicon.ico" type="image/x-icon">
     <style>
-        body {
-            background-color: #f8fafc;
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        body {            
+            background-color: #f8fafc;            
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;        
         }
+        #task-page { background-color: #f0fdf4; } /* 作业打卡 - 浅绿色背景 */
+        #wish-page { background-color: #fef3c7; } /* 小心愿 - 浅黄色背景 */
+        #profile-page { background-color: #eff6ff; } /* 我的 - 浅蓝色背景 */
         .nav-item-active {
             color: #22c55e;
             border-bottom: 2px solid #22c55e;
@@ -107,28 +110,62 @@
 
     <!-- 主应用页面 -->
     <div id="app" class="hidden">
+        <!-- 页面标题区域 -->
+        <div id="page-header" class="py-4 px-6 bg-white border-b border-green-100">
+            <!-- 作业打卡页面标题 -->
+            <div id="task-page-header" class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <img id="task-page-avatar" src="static/images/avatars/default.png" alt="用户头像" class="w-10 h-10 rounded-full mr-3 border-2 border-green-500">
+                    <h1 id="task-page-title" class="text-xl font-bold text-green-600">作业打卡</h1>
+                </div>
+                <div id="user-gold-display" class="flex items-center text-yellow-500">
+                    <i class="fa fa-coins mr-1"></i>
+                    <span id="total-gold" class="font-bold">0</span>
+                </div>
+            </div>
+            
+            <!-- 小心愿页面标题 -->
+            <div id="wish-page-header" class="hidden">
+                <h1 id="wish-page-title" class="text-xl font-bold text-green-600 text-center">「用户昵称」的心愿收集</h1>
+            </div>
+            
+            <!-- 我的页面标题 -->
+            <div id="profile-page-header" class="hidden text-center">
+                <div class="flex flex-col items-center">
+                    <img id="profile-avatar" src="static/images/avatars/default.png" alt="用户头像" class="w-16 h-16 rounded-full mb-2 border-2 border-green-500">
+                    <h1 id="profile-title" class="text-xl font-bold text-green-600">个人中心</h1>
+                    <p id="profile-id" class="text-sm text-gray-500">ID: 000000</p>
+                </div>
+            </div>
+        </div>
+        
         <!-- 顶部统计栏 -->
-        <div id="statistics-bar" class="bg-white p-4 border-b border-gray-200">
-            <div class="grid grid-cols-5 text-center">
-                <div>
+        <div id="statistics-bar" class="bg-gradient-to-r from-green-50 to-blue-50 p-4 border-b border-green-100">
+            <div class="grid grid-cols-5 gap-2 text-center">
+                <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
+                    <div class="text-purple-500 mb-1 text-xl"><i class="fa fa-clock-o"></i></div>
                     <div class="text-gray-500 text-xs">日时长</div>
-                    <div id="day-time" class="text-green-600 font-bold">0分钟</div>
+                    <div id="day-time" class="text-purple-600 font-bold">0分钟</div>
                 </div>
-                <div>
+                <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
+                    <div class="text-blue-500 mb-1 text-xl"><i class="fa fa-tasks"></i></div>
                     <div class="text-gray-500 text-xs">任务数</div>
-                    <div id="task-count" class="text-green-600 font-bold">0个</div>
+                    <div id="task-count" class="text-blue-600 font-bold">0个</div>
                 </div>
-                <div>
+                <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
+                    <div class="text-yellow-500 mb-1 text-xl"><i class="fa fa-star"></i></div>
                     <div class="text-gray-500 text-xs">日金币</div>
-                    <div id="day-gold" class="text-green-600 font-bold">0</div>
+                    <div id="day-gold" class="text-yellow-600 font-bold">0</div>
                 </div>
-                <div>
+                <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
+                    <div class="text-green-500 mb-1 text-xl"><i class="fa fa-check-circle"></i></div>
                     <div class="text-gray-500 text-xs">完成率</div>
                     <div id="completion-rate" class="text-green-600 font-bold">0%</div>
                 </div>
-                <div>
+                <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
+                    <div class="text-yellow-500 mb-1 text-xl"><i class="fa fa-coins"></i></div>
                     <div class="text-gray-500 text-xs">总金币</div>
-                    <div id="total-gold" class="text-green-600 font-bold">0</div>
+                    <div id="total-gold-stats" class="text-yellow-600 font-bold">0</div>
                 </div>
             </div>
         </div>
@@ -138,36 +175,41 @@
             <!-- 作业打卡页面 -->
             <div id="task-page">
                 <!-- 日期选择器 -->
-                <div class="flex justify-between items-center mb-4">
-                    <button id="prev-week" class="text-green-600">
-                        <i class="fa fa-chevron-left"></i>
-                    </button>
-                    <div>
-                        <h2 id="current-week" class="text-lg font-bold text-gray-800">2025年10月第41周</h2>
-                        <div class="flex justify-between mt-2">
-                            <span class="text-xs text-gray-500">周一</span>
-                            <span class="text-xs text-gray-500">周二</span>
-                            <span class="text-xs text-gray-500">周三</span>
-                            <span class="text-xs text-gray-500">周四</span>
-                            <span class="text-xs text-gray-500">周五</span>
-                            <span class="text-xs text-gray-500">周六</span>
-                            <span class="text-xs text-gray-500">周日</span>
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                    <div class="mb-2 md:mb-0"></div>
+                    <div class="flex items-center flex-wrap gap-2 justify-center w-full md:w-auto">
+                        <button id="prev-week" class="text-green-600 flex-none">
+                            <i class="fa fa-chevron-left"></i>
+                        </button>
+                        <div class="flex-none">
+                            <h2 id="current-week" class="text-lg text-gray-800">2025年10月第41周</h2>
                         </div>
-                        <div id="week-days" class="flex justify-between mt-1">
-                            <!-- 日期将通过JS动态生成 -->
-                        </div>
+                        <button id="next-week" class="text-green-600 flex-none">
+                            <i class="fa fa-chevron-right"></i>
+                        </button>
                     </div>
-                    <button id="next-week" class="text-green-600">
-                        <i class="fa fa-chevron-right"></i>
-                    </button>
+                    <div class="mb-2 md:mb-0"></div>
                 </div>
-                <button id="current-date-btn" class="w-full bg-green-100 text-green-700 py-2 rounded-lg text-sm mb-4">返回今天</button>
+                <div>
+                    <div class="flex justify-between mt-2">
+                        <span class="text-xs text-gray-500">周一</span>
+                        <span class="text-xs text-gray-500">周二</span>
+                        <span class="text-xs text-gray-500">周三</span>
+                        <span class="text-xs text-gray-500">周四</span>
+                        <span class="text-xs text-gray-500">周五</span>
+                        <span class="text-xs text-gray-500">周六</span>
+                        <span class="text-xs text-gray-500">周日</span>
+                    </div>
+                    <div id="week-days" class="flex justify-between mt-1">
+                        <!-- 日期将通过JS动态生成 -->
+                    </div>
+                </div>
 
                 <!-- 分类筛选 -->
-                <div class="flex overflow-x-auto space-x-2 mb-4 pb-2" id="category-filter">
-                    <button class="category-btn px-3 py-1 bg-green-600 text-white rounded-full text-sm whitespace-nowrap">全部学科</button>
+                <!-- <div class="flex overflow-x-auto space-x-2 mb-4 pb-2" id="category-filter"> -->
+                    <!-- <button class="category-btn px-3 py-1 bg-green-600 text-white rounded-full text-sm whitespace-nowrap">全部学科</button> -->
                     <!-- 分类将通过JS动态生成 -->
-                </div>
+                <!-- </div> -->
 
                 <!-- 任务列表 -->
                 <div id="task-list">
@@ -180,12 +222,15 @@
 
             <!-- 小心愿页面 -->
             <div id="wish-page" class="hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold text-gray-800">小心愿</h2>
-                    <div class="flex items-center">
-                        <span class="text-gray-500 mr-2">可用金币：</span>
-                        <span id="wish-gold" class="text-yellow-500 font-bold">0</span>
-                        <button id="exchange-history" class="ml-4 text-green-600 text-sm">领取记录</button>
+                <div class="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 mb-4 rounded-xl">
+                    <div class="flex flex-col items-center justify-center text-center">
+                        <h2 class="text-xl font-bold text-orange-600 mb-2">我的小心愿</h2>
+                        <div class="flex items-center bg-white px-4 py-2 rounded-full shadow-sm">
+                            <i class="fa fa-coins text-yellow-500 mr-2 text-xl"></i>
+                            <span class="text-gray-600 mr-2">可用金币：</span>
+                            <span id="wish-gold" class="text-yellow-500 font-bold text-lg">0</span>
+                            <button id="exchange-history" class="ml-4 text-sm bg-orange-100 text-orange-600 px-3 py-1 rounded-full">领取记录</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -196,45 +241,94 @@
 
             <!-- 我的页面 -->
             <div id="profile-page" class="hidden">
-                <div class="bg-green-600 text-white rounded-lg p-4 mb-4">
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl p-5 mb-6 shadow-lg">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <h2 id="profile-username" class="text-xl font-bold">用户名</h2>
-                            <div class="flex items-center mt-1">
-                                <span><i class="fa fa-trophy mr-1"></i> 总番茄：</span>
-                                <span id="profile-tomato" class="ml-1">0</span>
+                        <div class="flex items-center">
+                            <img id="profile-avatar" src="static/images/avatars/default.png" alt="用户头像" class="w-16 h-16 rounded-full mr-4 border-4 border-white">
+                            <div>
+                                <h2 id="profile-username" class="text-2xl font-bold">用户名</h2>
+                                <div class="flex items-center mt-1 space-x-4">
+                                    <span><i class="fa fa-trophy mr-1"></i> 总番茄：</span>
+                                    <span id="profile-tomato" class="ml-1">0</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="bg-white bg-opacity-20 rounded-full px-3 py-1">
+                        <div class="bg-white bg-opacity-20 rounded-full px-4 py-2 backdrop-filter backdrop-blur-sm">
                             <span><i class="fa fa-coins mr-1"></i> 总金币：</span>
                             <span id="profile-gold" class="font-bold">0</span>
                         </div>
                     </div>
                 </div>
+                
+                <!-- 用户信息编辑和退出按钮 -->
+                <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+                    <h3 class="font-bold text-gray-800 mb-4 text-lg flex items-center">
+                        <i class="fa fa-user-circle text-blue-500 mr-2"></i>账户管理
+                    </h3>
+                    <div class="space-y-3">
+                        <button id="edit-profile" class="w-full flex justify-between items-center p-4 rounded-xl hover:bg-blue-50 transition-colors duration-200">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                                    <i class="fa fa-edit text-blue-600"></i>
+                                </div>
+                                <span class="font-medium">编辑个人信息</span>
+                            </div>
+                            <i class="fa fa-chevron-right text-gray-400"></i>
+                        </button>
+                        <button id="logout" class="w-full flex justify-between items-center p-4 rounded-xl hover:bg-red-50 transition-colors duration-200">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mr-3">
+                                    <i class="fa fa-sign-out text-red-600"></i>
+                                </div>
+                                <span class="font-medium">退出登录</span>
+                            </div>
+                            <i class="fa fa-chevron-right text-gray-400"></i>
+                        </button>
+                    </div>
+                </div>
 
                 <!-- 荣誉系统 -->
-                <div class="bg-white rounded-lg shadow p-4 mb-4">
-                    <h3 class="font-bold text-gray-800 mb-3">我的荣誉</h3>
-                    <div id="honor-list" class="grid grid-cols-4 gap-2">
+                <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+                    <h3 class="font-bold text-gray-800 mb-4 text-lg flex items-center">
+                        <i class="fa fa-star text-yellow-500 mr-2"></i>我的荣誉
+                    </h3>
+                    <div id="honor-list" class="grid grid-cols-4 gap-3">
                         <!-- 荣誉将通过JS动态生成 -->
                     </div>
                 </div>
 
                 <!-- 数据管理 -->
-                <div class="bg-white rounded-lg shadow p-4 mb-4">
-                    <h3 class="font-bold text-gray-800 mb-3">数据管理</h3>
+                <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
+                    <h3 class="font-bold text-gray-800 mb-4 text-lg flex items-center">
+                        <i class="fa fa-database text-green-500 mr-2"></i>数据管理
+                    </h3>
                     <div class="space-y-3">
-                        <button id="export-data" class="w-full flex justify-between items-center p-3 border border-gray-200 rounded-lg">
-                            <span>导出数据</span>
-                            <i class="fa fa-download text-green-600"></i>
+                        <button id="export-data" class="w-full flex justify-between items-center p-4 rounded-xl hover:bg-green-50 transition-colors duration-200">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                                    <i class="fa fa-download text-green-600"></i>
+                                </div>
+                                <span class="font-medium">导出数据</span>
+                            </div>
+                            <i class="fa fa-chevron-right text-gray-400"></i>
                         </button>
-                        <button id="clear-data" class="w-full flex justify-between items-center p-3 border border-gray-200 rounded-lg">
-                            <span>清除数据</span>
-                            <i class="fa fa-trash text-red-500"></i>
+                        <button id="clear-data" class="w-full flex justify-between items-center p-4 rounded-xl hover:bg-orange-50 transition-colors duration-200">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center mr-3">
+                                    <i class="fa fa-trash text-orange-600"></i>
+                                </div>
+                                <span class="font-medium">清除数据</span>
+                            </div>
+                            <i class="fa fa-chevron-right text-gray-400"></i>
                         </button>
-                        <button id="operation-logs" class="w-full flex justify-between items-center p-3 border border-gray-200 rounded-lg">
-                            <span>操作记录</span>
-                            <i class="fa fa-history text-blue-500"></i>
+                        <button id="operation-logs" class="w-full flex justify-between items-center p-4 rounded-xl hover:bg-purple-50 transition-colors duration-200">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-3">
+                                    <i class="fa fa-history text-purple-600"></i>
+                                </div>
+                                <span class="font-medium">操作记录</span>
+                            </div>
+                            <i class="fa fa-chevron-right text-gray-400"></i>
                         </button>
                     </div>
                 </div>
@@ -242,18 +336,24 @@
         </div>
 
         <!-- 底部导航栏 -->
-        <div id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-2">
-            <button class="nav-item flex flex-col items-center nav-item-active" data-page="task">
-                <i class="fa fa-check-circle text-xl"></i>
-                <span class="text-xs mt-1">作业打卡</span>
+        <div id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-green-100 flex justify-around p-2 shadow-lg">
+            <button class="nav-item flex flex-col items-center nav-item-active p-2 rounded-xl transition-all duration-300" data-page="task">
+                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-green-100 text-green-600 text-xl">
+                    <i class="fa fa-check-circle"></i>
+                </div>
+                <span class="text-xs mt-1 font-medium">作业打卡</span>
             </button>
-            <button class="nav-item flex flex-col items-center" data-page="wish">
-                <i class="fa fa-gift text-xl"></i>
-                <span class="text-xs mt-1">小心愿</span>
+            <button class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300" data-page="wish">
+                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-600 text-xl">
+                    <i class="fa fa-gift"></i>
+                </div>
+                <span class="text-xs mt-1 font-medium">小心愿</span>
             </button>
-            <button class="nav-item flex flex-col items-center" data-page="profile">
-                <i class="fa fa-user text-xl"></i>
-                <span class="text-xs mt-1">我的</span>
+            <button class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300" data-page="profile">
+                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 text-xl">
+                    <i class="fa fa-user"></i>
+                </div>
+                <span class="text-xs mt-1 font-medium">我的</span>
             </button>
         </div>
 
@@ -261,6 +361,71 @@
         <div class="floating-btn" id="add-task-btn">
             <i class="fa fa-plus"></i>
         </div>
+    
+    <style>
+        /* 自定义儿童友好样式 */
+        .nav-item-active {
+            color: #22c55e;
+        }
+        .nav-item-active div {
+            background-color: #22c55e;
+            color: white;
+        }
+        .task-card {
+            border-radius: 12px;
+            background: linear-gradient(145deg, #ffffff, #f0f0f0);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.05);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .task-card:hover, .task-card:active {
+            transform: translateY(-2px);
+            border-color: #22c55e;
+        }
+        .task-page-header, .wish-page-header, .profile-page-header {
+            background: linear-gradient(135deg, #22c55e, #10b981);
+            color: white;
+            padding: 1.5rem !important;
+        }
+        .task-page-header h1, .wish-page-header h1, .profile-page-header h1 {
+            color: white;
+        }
+        .card-shadow {
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+        .card-shadow:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+        }
+        .floating-btn {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: 4px solid white;
+        }
+        .stat-item {
+            animation: bounceIn 0.6s ease-out;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        /* 周视图样式 */
+        #week-days button {
+            transition: all 0.3s ease;
+        }
+        #week-days button:hover {
+            transform: scale(1.1);
+        }
+        /* 按钮通用样式 */
+        button {
+            transition: all 0.2s ease;
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+    </style>
     </div>
 
     <!-- 添加任务弹窗 -->
@@ -321,9 +486,14 @@
     </div>
 
     <!-- 番茄钟弹窗 -->
-    <div id="tomato-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg w-full max-w-md p-6">
-            <h3 id="tomato-task-name" class="text-lg font-bold text-gray-800 mb-4">番茄钟 - 任务名称</h3>
+    <div id="tomato-modal" class="fixed inset-0 bg-blue-50 bg-opacity-90 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg w-full max-w-md p-6 relative">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="tomato-task-name" class="text-lg font-bold text-gray-800">番茄钟 - 任务名称</h3>
+                <button id="tomato-close" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
             <div class="text-center py-6">
                 <div id="tomato-timer" class="text-4xl font-bold text-green-600">00:10</div>
                 <div class="flex justify-center space-x-6 mt-8">
@@ -334,9 +504,57 @@
             </div>
         </div>
     </div>
+    
+    <!-- 编辑个人信息弹窗 -->
+    <div id="edit-profile-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
+            <h3 class="text-lg font-bold mb-4">编辑个人信息</h3>
+            <form id="edit-profile-form">
+                <!-- 头像选择 -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">头像</label>
+                    <div class="flex items-center mb-2">
+                        <img id="current-avatar" src="static/images/avatars/default.png" alt="当前头像" class="w-16 h-16 rounded-full mr-4 border-2 border-green-500">
+                        <button type="button" id="change-avatar-btn" class="px-3 py-1 bg-green-600 text-white rounded-lg text-sm">更换头像</button>
+                    </div>
+                    <!-- 头像选择器 (隐藏) -->
+                    <div id="avatar-selector" class="hidden grid grid-cols-5 gap-2 mt-2">
+                        <!-- 头像选项将由JavaScript动态生成 -->
+                    </div>
+                    <input type="hidden" id="avatar" value="default.png">
+                </div>
+                
+                <!-- 昵称 -->
+                <div class="mb-4">
+                    <label for="nickname" class="block text-gray-700 mb-2">昵称</label>
+                    <input type="text" id="nickname" name="nickname" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                
+                <!-- 手机号 -->
+                <div class="mb-4">
+                    <label for="phone" class="block text-gray-700 mb-2">手机号</label>
+                    <input type="tel" id="phone" name="phone" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                
+                <!-- 修改密码 -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">修改密码（选填）</label>
+                    <input type="password" id="current-password" name="current-password" placeholder="当前密码" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-2">
+                    <input type="password" id="new-password" name="new-password" placeholder="新密码" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-2">
+                    <input type="password" id="confirm-password" name="confirm-password" placeholder="确认新密码" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                
+                <!-- 按钮 -->
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="cancel-edit-profile" class="px-4 py-2 border border-gray-300 rounded-lg">取消</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- 番茄钟悬浮球 -->
-    <div id="tomato-bubble" class="tomato-bubble hidden">
+    <div id="tomato-bubble" class="tomato-bubble hidden" style="background-color: rgba(34, 197, 94, 0.8);">
         <div id="bubble-timer" class="text-lg font-bold">00:10</div>
         <div class="text-xs">点击返回</div>
     </div>

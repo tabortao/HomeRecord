@@ -2,7 +2,7 @@
 
 本小程序是一个面向小学生的作业与积分管理工具，旨在通过简洁有趣的界面和激励机制，帮助学生培养良好的学习习惯和时间管理能力。系统采用前后端分离架构，前端使用 HTML、JavaScript 和 Tailwind CSS 构建，后端使用 Python Flask 框架和 SQLite 数据库。
 
-- 项目开发、调试时，均需要先阅读理解`docs\PRD\完整需求文档.md`。
+- 项目开发、调试、修改、新增功能时，均需要先阅读理解`docs\PRD\完整需求文档.md`。
 - 网页图标采用`frontend\static\images\favicon`。
 - 其他静态文件（如图片、字体等）均存储在`frontend\static`目录下。
 

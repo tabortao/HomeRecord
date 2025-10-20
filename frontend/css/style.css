@@ -1,0 +1,31 @@
+/* 基本样式 */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 任务卡片样式 */
+.task-card {
+    transition: transform 0.2s;
+}
+
+.task-card:hover {
+    transform: translateY(-2px);
+}
+
+/* 任务菜单样式 */
+.task-menu-dropdown {
+    min-width: 120px;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 周视图标题居中 */
+#current-week {
+    text-align: center;
+    display: inline-block;
+    margin: 0 auto;
+}
