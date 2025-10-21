@@ -337,6 +337,53 @@
             <i class="fa fa-plus"></i>
         </div>
     
+        <!-- 番茄钟弹窗 -->
+        <div id="tomato-modal" class="hidden fixed inset-0 bg-blue-50 flex items-center justify-center z-50">
+            <div class="relative w-11/12 max-w-md">
+                <div class="bg-white rounded-2xl p-5 relative shadow-2xl border-2 border-pink-50" style="background: linear-gradient(180deg,#fff6f6,#fffdf8);">
+                    <button id="tomato-close" class="absolute top-3 right-3 text-gray-600 bg-white/80 rounded-full p-2" style="box-shadow:0 4px 12px rgba(0,0,0,0.08);">✕</button>
+                    <h3 id="tomato-task-name" class="text-2xl font-extrabold text-pink-600 mb-2" style="font-family: 'Comic Sans MS', 'Microsoft YaHei', cursive;">让我们开始吧！</h3>
+                    <div id="tomato-timer" class="text-5xl font-mono text-center mb-3" style="color:#ff4d6d; text-shadow:0 4px 10px rgba(255,77,109,0.15);">20:00</div>
+
+                    <div class="flex justify-center gap-2 mb-3">
+                        <button class="tomato-time-option px-3 py-1 rounded bg-gray-100" data-minutes="15">15</button>
+                        <button class="tomato-time-option px-3 py-1 rounded bg-gray-100" data-minutes="20">20</button>
+                        <button class="tomato-time-option px-3 py-1 rounded bg-gray-100" data-minutes="25">25</button>
+                        <input id="tomato-custom-minutes" type="number" min="1" class="w-20 px-2 py-1 border rounded" value="20">
+                    </div>
+
+                    <div class="relative h-40 bg-white/30 rounded overflow-hidden border flex items-center justify-center">
+                        <!-- 文本说明已移除，视觉改为可爱卡通插图占位 -->
+                        <div class="text-center text-sm text-gray-500"> 
+                            <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <ellipse cx="60" cy="60" rx="40" ry="12" fill="#e6f9ff" />
+                                <circle cx="36" cy="40" r="18" fill="#fff" stroke="#93e3ff" stroke-width="2" />
+                                <circle cx="84" cy="40" r="18" fill="#fff" stroke="#93e3ff" stroke-width="2" />
+                                <circle cx="36" cy="40" r="6" fill="#10b981" />
+                                <circle cx="84" cy="40" r="6" fill="#10b981" />
+                                <path d="M40 58 C55 68, 75 68, 90 58" stroke="#ff7a7a" stroke-width="3" stroke-linecap="round" fill="none" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between mt-3">
+                        <button id="tomato-start" class="px-6 py-3 bg-pink-500 text-white rounded-full" style="font-weight:800; box-shadow:0 8px 20px rgba(255,105,135,0.25);">开始</button>
+                        <div class="flex gap-2">
+                            <button id="tomato-reset" class="px-4 py-2 bg-gray-100 rounded-full" style="box-shadow:inset 0 -3px 0 rgba(0,0,0,0.03);">重置</button>
+                            <button id="tomato-finish" class="px-4 py-2 bg-yellow-400 text-white rounded-full" style="font-weight:700;">完成</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 悬浮番茄球（默认隐藏，开始后显示） -->
+          <div id="tomato-bubble" class="hidden" style="position:fixed;bottom:70px;left:50%;transform:translateX(-50%);width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#ff6b6b,#ff9a8b);color:white;z-index:60;box-shadow:0 10px 30px rgba(255,107,107,0.28);border:4px solid rgba(255,255,255,0.6);">
+                 <div id="bubble-fill" style="position:absolute;bottom:0;left:0;right:0;height:0%;background:linear-gradient(180deg,#fde68a,#fca5a5);opacity:0.95;transition:height 0.4s; border-radius:50%; filter: blur(2px);"></div>
+                 <div style="position:relative;z-index:10;text-align:center;display:flex;align-items:center;justify-content:center;height:100%;">
+                     <div id="bubble-timer" style="font-size:16px;font-weight:800;line-height:1;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,0.25);">20:00</div>
+                 </div>
+        </div>
     <style>
         /* 自定义儿童友好样式 */
         .nav-item-active {
@@ -460,40 +507,6 @@
         </div>
     </div>
 
-    <!-- 番茄钟弹窗 -->
-    <div id="tomato-modal" class="fixed inset-0 bg-blue-50 bg-opacity-90 flex items-center justify-center z-50 hidden">
-        <div class="tomato-modal-wrapper bg-white rounded-lg w-full max-w-md p-6 relative overflow-hidden">
-            <button id="tomato-close" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-30">
-                <i class="fa fa-times text-xl"></i>
-            </button>
-
-            <!-- water container: 背景浅蓝、容器随时间慢慢变满 -->
-            <div class="water-container relative w-full h-56 rounded-lg overflow-hidden mb-4">
-                <div id="tomato-fill" class="water-fill absolute bottom-0 left-0 right-0 h-0"></div>
-
-                <div class="tomato-content-inner relative z-20 flex flex-col items-center justify-center h-full p-4">
-                    <h3 id="tomato-task-name" class="text-lg font-bold text-gray-800 mb-2">番茄钟 - 任务名称</h3>
-                    <div id="tomato-timer" class="text-4xl font-bold text-green-600">00:10</div>
-                </div>
-            </div>
-
-            <!-- 时间选择器 -->
-            <div class="flex justify-center space-x-3 mb-4" id="tomato-time-options">
-                <button class="tomato-time-option px-3 py-1 rounded-full border border-gray-200" data-minutes="10">10 分钟</button>
-                <button class="tomato-time-option px-3 py-1 rounded-full border border-gray-200" data-minutes="15">15 分钟</button>
-                <button class="tomato-time-option px-3 py-1 rounded-full border border-gray-200" data-minutes="20">20 分钟</button>
-                <button class="tomato-time-option px-3 py-1 rounded-full border border-gray-200" data-minutes="30">30 分钟</button>
-            </div>
-
-            <div class="text-center">
-                <div class="flex justify-center space-x-6 mt-2">
-                    <button id="tomato-start" class="px-6 py-2 bg-green-600 text-white rounded-lg">开始</button>
-                    <button id="tomato-reset" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700">重置</button>
-                    <button id="tomato-finish" class="px-6 py-2 bg-blue-600 text-white rounded-lg">完成</button>
-                </div>
-            </div>
-        </div>
-    </div>
     
     <!-- 编辑个人信息弹窗 -->
     <div id="edit-profile-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
@@ -543,10 +556,7 @@
         </div>
     </div>
 
-    <!-- 番茄钟悬浮球 -->
-    <div id="tomato-bubble" class="tomato-bubble hidden" aria-label="悬浮番茄钟">
-        <div id="bubble-timer" class="font-bold">00:10</div>
-    </div>
+    
 
     <script type="module" src="js/api.js"></script>
     <script type="module" src="js/utils.js"></script>
