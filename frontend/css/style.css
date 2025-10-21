@@ -33,24 +33,26 @@ body {
 /* 番茄钟悬浮球样式 */
 .tomato-bubble {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 80px;
-    height: 80px;
+    /* 默认位于底部导航栏正中间位置上方；可通过 JS 拖拽改变 left/top */
+    bottom: 64px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
-    background-color: rgba(16, 185, 129, 0.7); /* 浅绿色透明背景 */
+    background-color: rgba(16, 185, 129, 0.9);
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    cursor: grab;
+    box-shadow: 0 6px 18px rgba(16,145,100,0.18);
     z-index: 1000;
-    transition: all 0.3s ease;
+    transition: transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
+    touch-action: none; /* 允许 pointer 事件接管触摸拖拽 */
 }
 
 .tomato-bubble:hover {
-    background-color: rgba(16, 185, 129, 0.9); /* 鼠标悬停时稍微不透明 */
-    transform: scale(1.05);
+    transform: scale(1.03);
 }
 
 .tomato-bubble.hidden {
@@ -75,14 +77,38 @@ body {
     display: none;
 }
 
-#tomato-modal .tomato-content {
-    background-color: #e6f7ff; /* 浅蓝色背景 */
-    border-radius: 12px;
-    padding: 24px;
-    width: 90%;
-    max-width: 400px;
+/* (已重构) 番茄钟内部样式由新的结构控制 */
+
+/* 水位容器样式 */
+.water-container {
+    background: linear-gradient(180deg, rgba(230,245,255,0.9) 0%, rgba(230,245,255,0.6) 100%);
+    border: 2px solid rgba(16,145,220,0.08);
+}
+
+.water-fill {
+    background: linear-gradient(180deg, rgba(173,216,230,0.95), rgba(173,216,230,0.65));
+    transition: height 0.5s cubic-bezier(.22,.9,.39,1);
+    z-index: 10;
+    opacity: 0.7;
+}
+
+/* 番茄钟模态中的内容在水位之上 */
+.tomato-content-inner {
     position: relative;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 20;
+}
+
+/* 时间选择器样式 */
+.tomato-time-option.active {
+    background-color: #22c55e;
+    color: white;
+    border-color: #22c55e;
+}
+
+.tomato-bubble.dragging {
+    cursor: grabbing;
+    transform: scale(1.07);
+    box-shadow: 0 10px 30px rgba(16,145,100,0.22);
 }
 
 /* 番茄钟关闭按钮样式 */

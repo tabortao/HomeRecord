@@ -462,16 +462,31 @@
 
     <!-- 番茄钟弹窗 -->
     <div id="tomato-modal" class="fixed inset-0 bg-blue-50 bg-opacity-90 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg w-full max-w-md p-6 relative">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="tomato-task-name" class="text-lg font-bold text-gray-800">番茄钟 - 任务名称</h3>
-                <button id="tomato-close" class="text-gray-500 hover:text-gray-700">
-                    <i class="fa fa-times text-xl"></i>
-                </button>
+        <div class="tomato-modal-wrapper bg-white rounded-lg w-full max-w-md p-6 relative overflow-hidden">
+            <button id="tomato-close" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-30">
+                <i class="fa fa-times text-xl"></i>
+            </button>
+
+            <!-- water container: 背景浅蓝、容器随时间慢慢变满 -->
+            <div class="water-container relative w-full h-56 rounded-lg overflow-hidden mb-4">
+                <div id="tomato-fill" class="water-fill absolute bottom-0 left-0 right-0 h-0"></div>
+
+                <div class="tomato-content-inner relative z-20 flex flex-col items-center justify-center h-full p-4">
+                    <h3 id="tomato-task-name" class="text-lg font-bold text-gray-800 mb-2">番茄钟 - 任务名称</h3>
+                    <div id="tomato-timer" class="text-4xl font-bold text-green-600">00:10</div>
+                </div>
             </div>
-            <div class="text-center py-6">
-                <div id="tomato-timer" class="text-4xl font-bold text-green-600">00:10</div>
-                <div class="flex justify-center space-x-6 mt-8">
+
+            <!-- 时间选择器 -->
+            <div class="flex justify-center space-x-3 mb-4" id="tomato-time-options">
+                <button class="tomato-time-option px-3 py-1 rounded-full border border-gray-200" data-minutes="10">10 分钟</button>
+                <button class="tomato-time-option px-3 py-1 rounded-full border border-gray-200" data-minutes="15">15 分钟</button>
+                <button class="tomato-time-option px-3 py-1 rounded-full border border-gray-200" data-minutes="20">20 分钟</button>
+                <button class="tomato-time-option px-3 py-1 rounded-full border border-gray-200" data-minutes="30">30 分钟</button>
+            </div>
+
+            <div class="text-center">
+                <div class="flex justify-center space-x-6 mt-2">
                     <button id="tomato-start" class="px-6 py-2 bg-green-600 text-white rounded-lg">开始</button>
                     <button id="tomato-reset" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700">重置</button>
                     <button id="tomato-finish" class="px-6 py-2 bg-blue-600 text-white rounded-lg">完成</button>
@@ -529,7 +544,7 @@
     </div>
 
     <!-- 番茄钟悬浮球 -->
-    <div id="tomato-bubble" class="tomato-bubble hidden">
+    <div id="tomato-bubble" class="tomato-bubble hidden" aria-label="悬浮番茄钟">
         <div id="bubble-timer" class="font-bold">00:10</div>
     </div>
 
