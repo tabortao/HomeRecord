@@ -269,8 +269,18 @@ function switchPage(page) {
     // 根据页面显示或隐藏添加按钮
     if (page === 'task') {
         document.getElementById('add-task-btn').style.display = 'flex';
+        // 隐藏小心愿添加按钮
+        const addWishBtn = document.getElementById('add-wish-btn');
+        if (addWishBtn) addWishBtn.style.display = 'none';
+    } else if (page === 'wish') {
+        document.getElementById('add-task-btn').style.display = 'none';
+        // 初始化小心愿页面并显示添加按钮
+        initWishPage();
     } else {
         document.getElementById('add-task-btn').style.display = 'none';
+        // 隐藏小心愿添加按钮
+        const addWishBtn = document.getElementById('add-wish-btn');
+        if (addWishBtn) addWishBtn.style.display = 'none';
     }
 
     // 更新番茄钟悬浮球显示状态（在页面切换时）
@@ -1544,41 +1554,78 @@ async function loadWishes() {
         wishes.forEach(wish => {
             const wishElement = document.createElement('div');
             
-            // 为不同类型的心愿选择不同的图标和背景色
-            let iconClass = 'fa-gift';
-            let bgColor = 'bg-pink-100';
+            // 为不同类型的心愿选择对应的图标
+            let iconSrc = '/static/images/玩游戏.png'; // 默认图标，使用绝对路径
+            let bgColor = 'bg-blue-100';
+            let borderColor = 'border-blue-200';
             
-            if (wish.name.includes('学习')) {
-                iconClass = 'fa-book';
-                bgColor = 'bg-blue-100';
-            } else if (wish.name.includes('玩具')) {
-                iconClass = 'fa-gamepad';
-                bgColor = 'bg-green-100';
-            } else if (wish.name.includes('零食')) {
-                iconClass = 'fa-ice-cream';
-                bgColor = 'bg-yellow-100';
+            // 优先使用自定义图标
+            const useCustomIcon = wish.icon && wish.icon.trim() !== '' && wish.icon.startsWith('data:image');
+            
+            if (!useCustomIcon) {
+                // 根据心愿名称选择对应图标
+                const normalizedName = wish.name ? wish.name.toLowerCase() : '';
+                if (normalizedName.includes('电视') || normalizedName.includes('看电视')) {
+                    iconSrc = '/static/images/看电视.png';
+                    bgColor = 'bg-blue-100';
+                    borderColor = 'border-blue-200';
+                } else if (normalizedName.includes('零花钱') || normalizedName.includes('钱')) {
+                    iconSrc = '/static/images/零花钱.png';
+                    bgColor = 'bg-yellow-100';
+                    borderColor = 'border-yellow-200';
+                } else if (normalizedName.includes('手机') || normalizedName.includes('玩手机')) {
+                    iconSrc = '/static/images/玩手机.png';
+                    bgColor = 'bg-gray-100';
+                    borderColor = 'border-gray-200';
+                } else if (normalizedName.includes('游戏') || normalizedName.includes('玩游戏')) {
+                    iconSrc = '/static/images/玩游戏.png';
+                    bgColor = 'bg-green-100';
+                    borderColor = 'border-green-200';
+                } else if (normalizedName.includes('平板') || normalizedName.includes('玩平板')) {
+                    iconSrc = '/static/images/玩平板.png';
+                    bgColor = 'bg-purple-100';
+                    borderColor = 'border-purple-200';
+                } else if (normalizedName.includes('自由') || normalizedName.includes('自由活动')) {
+                    iconSrc = '/static/images/自由活动.png';
+                    bgColor = 'bg-orange-100';
+                    borderColor = 'border-orange-200';
+                }
+            } else {
+                // 使用自定义图标，设置更通用的背景色
+                iconSrc = wish.icon;
+                bgColor = 'bg-indigo-100';
+                borderColor = 'border-indigo-200';
             }
             
-            wishElement.className = 'bg-white rounded-xl shadow-md p-4 border border-gray-100 transform hover:scale-105 transition-transform duration-200 mb-4';
+            wishElement.className = `bg-white rounded-2xl shadow-lg border ${borderColor} p-4 transform hover:scale-105 transition-all duration-300 mb-4 overflow-hidden relative`;
             wishElement.innerHTML = `
-                <div class="flex justify-between items-start">
+                <div class="absolute -right-4 -top-4 w-16 h-16 ${bgColor} rounded-full opacity-30"></div>
+                <div class="flex justify-between items-start relative">
                     <div class="flex items-center">
-                        <div class="w-10 h-10 ${bgColor} rounded-full flex items-center justify-center mr-3">
-                            <i class="fa ${iconClass} text-gray-700"></i>
+                        <div class="w-12 h-12 ${bgColor} rounded-full flex items-center justify-center mr-3 shadow-md">
+                            <img src="${iconSrc}" alt="心愿图标" class="w-7 h-7 object-contain">
                         </div>
-                        <h4 class="font-bold text-lg text-gray-800">${wish.name}</h4>
+                        <div>
+                            <h4 class="font-bold text-lg text-gray-800">${wish.name}</h4>
+                            <p class="text-xs text-gray-500">${wish.unit || '个'}</p>
+                        </div>
                     </div>
-                    <div class="flex items-center text-yellow-500">
+                    <div class="flex items-center text-yellow-500 bg-yellow-50 px-3 py-1 rounded-full">
                         <i class="fa fa-coins mr-1 text-xl"></i>
                         <span class="font-bold">${wish.cost}</span>
                     </div>
                 </div>
-                <p class="text-gray-600 mt-2 text-sm">${wish.content || wish.description}</p>
-                <div class="flex justify-between items-center mt-3">
+                <p class="text-gray-600 mt-3 text-sm line-clamp-2">${wish.content || wish.description || '暂无描述'}</p>
+                <div class="flex justify-between items-center mt-4">
                     <span class="text-xs text-gray-400">已兑换 ${wish.exchange_count || 0} 次</span>
-                    <button class="wish-exchange bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 px-4 rounded-lg hover:opacity-90 transition-opacity duration-200 shadow-sm">
-                        <i class="fa fa-exchange-alt mr-1"></i> 立即兑换
-                    </button>
+                    <div class="flex gap-2 flex-wrap">
+                        <button class="wish-edit bg-blue-500 text-white py-1.5 px-3 rounded-lg hover:shadow-md transition-all duration-200 text-sm font-medium">
+                            <i class="fa fa-edit mr-1"></i> 编辑
+                        </button>
+                        <button class="wish-exchange bg-blue-600 text-white py-1.5 px-3 rounded-lg hover:shadow-md transition-all duration-200 text-sm font-medium">
+                            <i class="fa fa-gift mr-1"></i> 兑换
+                        </button>
+                    </div>
                 </div>
             `;
             
@@ -1586,6 +1633,14 @@ async function loadWishes() {
             wishElement.querySelector('.wish-exchange').addEventListener('click', () => {
                 handleExchangeWish(wish.id, wish.name, wish.cost);
             });
+            
+            // 编辑按钮事件
+            const editBtn = wishElement.querySelector('.wish-edit');
+            if (editBtn) {
+                editBtn.addEventListener('click', () => {
+                    showEditWishModal(wish);
+                });
+            }
             
             wishList.appendChild(wishElement);
         });
@@ -1893,6 +1948,306 @@ async function handleEditProfile(e) {
     } catch (error) {
         console.error('更新个人信息失败:', error);
         domUtils.showToast('更新失败，请重试', 'error');
+    }
+}
+
+// 显示编辑心愿弹窗
+function showEditWishModal(wish) {
+    // 检查弹窗是否存在，不存在则创建
+    let modal = document.getElementById('edit-wish-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'edit-wish-modal';
+        modal.className = 'hidden fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto';
+        modal.style.maxHeight = '100vh';
+        modal.innerHTML = `
+            <div class="bg-white rounded-3xl p-6 w-11/12 max-w-md shadow-2xl border-2 border-yellow-100 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-end">
+                    <button id="close-edit-wish" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <h3 id="edit-wish-title" class="text-2xl font-bold text-center text-gray-800 mb-6">编辑心愿</h3>
+                
+                <input type="hidden" id="edit-wish-id">
+                <input type="hidden" id="edit-wish-icon" value="">
+                
+                <!-- 图标上传区域 -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">心愿图标</label>
+                    <div class="flex flex-col items-center space-y-4">
+                        <div id="wish-icon-preview" class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300">
+                            <i class="fa fa-image text-gray-400 text-4xl"></i>
+                        </div>
+                        <div class="w-full">
+                            <label for="wish-icon-upload" class="inline-block px-4 py-2 bg-blue-500 text-white rounded-xl cursor-pointer hover:opacity-90 transition-opacity w-full text-center">
+                                <i class="fa fa-upload mr-1"></i> 上传图标
+                            </label>
+                            <input type="file" id="wish-icon-upload" accept="image/*" class="hidden">
+                            <p class="text-xs text-gray-500 mt-1 text-center">支持 PNG、JPG、GIF 格式，最大 2MB</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">心愿名称</label>
+                    <input type="text" id="edit-wish-name" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">心愿描述</label>
+                    <textarea id="edit-wish-description" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none h-20"></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">所需金币</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500">
+                            <i class="fa fa-coins"></i>
+                        </span>
+                        <input type="number" id="edit-wish-cost" min="1" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none">
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">单位（如：个、次、小时等）</label>
+                    <input type="text" id="edit-wish-unit" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none">
+                </div>
+                
+                <div class="flex justify-center gap-4">
+                    <button id="delete-wish-btn" class="bg-red-50 text-red-600 py-3 px-4 rounded-xl hover:bg-red-100 transition-colors duration-200 font-bold flex-1 max-w-[120px]">
+                        <i class="fa fa-trash mr-1"></i> 删除
+                    </button>
+                    <button id="cancel-wish-btn" class="bg-gray-100 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-200 transition-colors duration-200 font-bold flex-1 max-w-[120px]">
+                        <i class="fa fa-times mr-1"></i> 取消
+                    </button>
+                    <button id="save-wish-btn" class="bg-yellow-500 text-white py-3 px-4 rounded-xl hover:opacity-90 transition-opacity duration-200 font-bold flex-1 max-w-[120px]">
+                        <i class="fa fa-save mr-1"></i> 保存
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // 绑定关闭事件
+        document.getElementById('close-edit-wish').addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        
+        // 点击弹窗外部关闭
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+        
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                modal.classList.add('hidden');
+            }
+        });
+        
+        // 绑定保存按钮事件
+        document.getElementById('save-wish-btn').addEventListener('click', handleSaveWish);
+        
+        // 绑定删除按钮事件
+        document.getElementById('delete-wish-btn').addEventListener('click', () => {
+            const wishId = document.getElementById('edit-wish-id').value;
+            const wishName = document.getElementById('edit-wish-name').value;
+            handleDeleteWish(wishId, wishName);
+        });
+        
+        // 绑定取消按钮事件
+        document.getElementById('cancel-wish-btn').addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        
+        // 绑定图标上传事件
+        document.getElementById('wish-icon-upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                // 检查文件类型
+                const validTypes = ['image/png', 'image/jpeg', 'image/gif'];
+                if (!validTypes.includes(file.type)) {
+                    domUtils.showToast('请上传PNG、JPG或GIF格式的图片', 'error');
+                    return;
+                }
+                
+                // 检查文件大小（限制为2MB）
+                if (file.size > 2 * 1024 * 1024) {
+                    domUtils.showToast('图片大小不能超过2MB', 'error');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const preview = document.getElementById('wish-icon-preview');
+                    preview.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-contain">`;
+                    document.getElementById('edit-wish-icon').value = event.target.result; // 保存为base64
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    // 填充表单数据
+    if (wish) {
+        document.getElementById('edit-wish-id').value = wish.id;
+        document.getElementById('edit-wish-name').value = wish.name;
+        document.getElementById('edit-wish-description').value = wish.content || wish.description || '';
+        document.getElementById('edit-wish-cost').value = wish.cost;
+        document.getElementById('edit-wish-unit').value = wish.unit || '';
+        document.getElementById('edit-wish-title').textContent = '编辑心愿';
+        document.getElementById('delete-wish-btn').classList.remove('hidden');
+        
+        // 如果有心形图标，显示在预览区域
+        const iconPreview = document.getElementById('wish-icon-preview');
+        const iconInput = document.getElementById('edit-wish-icon');
+        
+        if (wish.icon && wish.icon.trim() !== '') {
+            iconPreview.innerHTML = `<img src="${wish.icon}" class="w-full h-full object-contain">`;
+            iconInput.value = wish.icon;
+        } else {
+            // 重置为默认状态
+            iconPreview.innerHTML = '<i class="fa fa-image text-gray-400 text-3xl"></i>';
+            iconInput.value = '';
+        }
+    } else {
+        // 新建心愿时清空表单
+        document.getElementById('edit-wish-id').value = '';
+        document.getElementById('edit-wish-name').value = '';
+        document.getElementById('edit-wish-description').value = '';
+        document.getElementById('edit-wish-cost').value = '';
+        document.getElementById('edit-wish-unit').value = '';
+        document.getElementById('edit-wish-title').textContent = '新建心愿';
+        document.getElementById('delete-wish-btn').classList.add('hidden');
+        
+        // 重置图标预览
+        const iconPreview = document.getElementById('wish-icon-preview');
+        const iconInput = document.getElementById('edit-wish-icon');
+        iconPreview.innerHTML = '<i class="fa fa-image text-gray-400 text-3xl"></i>';
+        iconInput.value = '';
+    }
+    
+    // 显示弹窗
+    modal.classList.remove('hidden');
+}
+
+// 保存心愿
+async function handleSaveWish() {
+    const wishId = document.getElementById('edit-wish-id').value;
+    const name = document.getElementById('edit-wish-name').value.trim();
+    const description = document.getElementById('edit-wish-description').value.trim();
+    const cost = parseInt(document.getElementById('edit-wish-cost').value, 10);
+    const unit = document.getElementById('edit-wish-unit').value.trim();
+    
+    // 验证输入
+    if (!name) {
+        domUtils.showToast('请输入心愿名称', 'error');
+        return;
+    }
+    
+    if (!cost || cost <= 0) {
+        domUtils.showToast('请输入有效的所需金币数', 'error');
+        return;
+    }
+    
+    try {
+        // 获取上传的图标数据
+        const iconData = document.getElementById('edit-wish-icon').value;
+        
+        const wishData = {
+            name,
+            content: description,
+            cost,
+            unit,
+            user_id: appState.currentUser.id
+        };
+        
+        // 如果有上传的图标，添加到数据中
+        if (iconData) {
+            wishData.icon = iconData;
+        }
+        
+        let result;
+        if (wishId) {
+            // 更新心愿
+            result = await api.wishAPI.updateWish(wishId, wishData);
+        } else {
+            // 新建心愿
+            result = await api.wishAPI.addWish(wishData);
+        }
+        
+        if (result.success) {
+            await loadWishes();
+            document.getElementById('edit-wish-modal').classList.add('hidden');
+            domUtils.showToast(wishId ? '心愿更新成功' : '心愿添加成功');
+        } else {
+            domUtils.showToast(result.message || '操作失败，请重试', 'error');
+        }
+    } catch (error) {
+        console.error('保存心愿失败:', error);
+        domUtils.showToast('保存失败，请重试', 'error');
+    }
+}
+
+// 删除心愿
+async function handleDeleteWish(wishId, wishName) {
+    domUtils.showConfirm(
+        '确认删除',
+        `确定要删除心愿「${wishName}」吗？`,
+        async () => {
+            try {
+                const result = await api.wishAPI.deleteWish(wishId);
+                if (result.success) {
+                    await loadWishes();
+                    document.getElementById('edit-wish-modal').classList.add('hidden');
+                    domUtils.showToast('心愿删除成功');
+                } else {
+                    domUtils.showToast(result.message || '删除失败，请重试', 'error');
+                }
+            } catch (error) {
+                console.error('删除心愿失败:', error);
+                domUtils.showToast('删除失败，请重试', 'error');
+            }
+        }
+    );
+}
+
+// 初始化小心愿页面
+function initWishPage() {
+    // 添加新建心愿按钮 - 在领取记录下方靠右
+    const wishPage = document.getElementById('wish-page');
+    if (wishPage) {
+        // 移除旧的悬浮按钮
+        const oldAddWishBtn = document.getElementById('add-wish-btn');
+        if (oldAddWishBtn && oldAddWishBtn.classList.contains('fixed')) {
+            oldAddWishBtn.remove();
+        }
+        
+        // 在领取记录按钮下方添加新按钮
+        let addWishBtn = document.getElementById('add-wish-btn');
+        if (!addWishBtn) {
+            const goldSection = document.querySelector('#wish-page .bg-gradient-to-r');
+            if (goldSection) {
+                // 创建一个容器来放置按钮
+                const btnContainer = document.createElement('div');
+                btnContainer.className = 'flex justify-end mt-2 px-4';
+                
+                addWishBtn = document.createElement('button');
+                addWishBtn.id = 'add-wish-btn';
+                addWishBtn.className = 'bg-blue-500 text-white py-2 px-6 rounded-full shadow-md transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1';
+                addWishBtn.innerHTML = '<i class="fa fa-plus mr-2"></i> 创建心愿';
+                addWishBtn.addEventListener('click', () => showEditWishModal(null));
+                
+                btnContainer.appendChild(addWishBtn);
+                goldSection.parentNode.insertBefore(btnContainer, goldSection.nextSibling);
+            }
+        } else {
+            // 确保按钮可见
+            addWishBtn.style.display = 'inline-flex';
+        }
     }
 }
 
