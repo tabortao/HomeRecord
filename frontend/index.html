@@ -340,16 +340,20 @@
         <!-- 番茄钟弹窗 -->
         <div id="tomato-modal" class="hidden fixed inset-0 bg-blue-50 flex items-center justify-center z-50">
             <div class="relative w-11/12 max-w-md">
-                <div class="bg-white rounded-2xl p-5 relative shadow-2xl border-2 border-pink-50" style="background: linear-gradient(180deg,#fff6f6,#fffdf8);">
+                <div class="bg-white rounded-2xl p-5 relative shadow-2xl border-2 border-pink-50" style="background: linear-gradient(180deg,#fff6f6,#fffdf8); position:relative; z-index:70; overflow:visible; padding-bottom:18px;">
                     <button id="tomato-close" class="absolute top-3 right-3 text-gray-600 bg-white/80 rounded-full p-2" style="box-shadow:0 4px 12px rgba(0,0,0,0.08);">✕</button>
-                    <h3 id="tomato-task-name" class="text-2xl font-extrabold text-pink-600 mb-2" style="font-family: 'Comic Sans MS', 'Microsoft YaHei', cursive;">让我们开始吧！</h3>
+                    <!-- 左上角番茄图标 -->
+                    <div style="position:absolute;left:14px;top:14px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 12px rgba(0,0,0,0.06);">
+                        <img src="static/images/番茄钟.png" alt="番茄" style="width:28px;height:28px;object-fit:contain;" />
+                    </div>
+                    <h3 id="tomato-task-name" class="text-2xl font-extrabold text-pink-600 mb-2" style="font-family: 'Comic Sans MS', 'Microsoft YaHei', cursive; padding-left:44px;">让我们开始吧！</h3>
                     <div id="tomato-timer" class="text-5xl font-mono text-center mb-3" style="color:#ff4d6d; text-shadow:0 4px 10px rgba(255,77,109,0.15);">20:00</div>
 
-                    <div class="flex justify-center gap-2 mb-3">
-                        <button class="tomato-time-option px-3 py-1 rounded bg-gray-100" data-minutes="15">15</button>
-                        <button class="tomato-time-option px-3 py-1 rounded bg-gray-100" data-minutes="20">20</button>
-                        <button class="tomato-time-option px-3 py-1 rounded bg-gray-100" data-minutes="25">25</button>
-                        <input id="tomato-custom-minutes" type="number" min="1" class="w-20 px-2 py-1 border rounded" value="20">
+                    <div class="flex justify-center gap-3 mb-3">
+                        <button class="tomato-time-option px-4 py-2 rounded-full bg-pink-50 text-pink-600 font-semibold shadow-sm" data-minutes="15">15</button>
+                        <button class="tomato-time-option px-4 py-2 rounded-full bg-pink-100 text-pink-700 font-semibold shadow-sm" data-minutes="20">20</button>
+                        <button class="tomato-time-option px-4 py-2 rounded-full bg-pink-50 text-pink-600 font-semibold shadow-sm" data-minutes="25">25</button>
+                        <input id="tomato-custom-minutes" type="number" min="1" class="w-24 px-3 py-2 border rounded-full text-center" value="20" style="border-color:rgba(255,105,135,0.25);">
                     </div>
 
                     <div class="relative h-40 bg-white/30 rounded overflow-hidden border flex items-center justify-center">
@@ -366,12 +370,10 @@
                         </div>
                     </div>
 
-                    <div class="flex justify-between mt-3">
-                        <button id="tomato-start" class="px-6 py-3 bg-pink-500 text-white rounded-full" style="font-weight:800; box-shadow:0 8px 20px rgba(255,105,135,0.25);">开始</button>
-                        <div class="flex gap-2">
-                            <button id="tomato-reset" class="px-4 py-2 bg-gray-100 rounded-full" style="box-shadow:inset 0 -3px 0 rgba(0,0,0,0.03);">重置</button>
-                            <button id="tomato-finish" class="px-4 py-2 bg-yellow-400 text-white rounded-full" style="font-weight:700;">完成</button>
-                        </div>
+                    <div class="w-full flex justify-center items-center gap-4 mt-4">
+                        <button id="tomato-start" class="tomato-btn unified px-5 py-3" style="background:linear-gradient(135deg,#ff6b6b,#ff9a8b);color:#fff;">开始</button>
+                        <button id="tomato-reset" class="tomato-btn unified px-5 py-3" style="background:#fff;border:2px solid rgba(255,105,135,0.2);color:#ff6b6b;">重置</button>
+                        <button id="tomato-finish" class="tomato-btn unified px-5 py-3" style="background:linear-gradient(135deg,#ff8a65,#ff4957);color:#fff;">结束</button>
                     </div>
                 </div>
             </div>
@@ -399,6 +401,23 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.05);
             border: 2px solid transparent;
             transition: all 0.3s ease;
+        }
+
+        /* 番茄钟按钮统一样式 */
+        .tomato-btn {
+            border-radius: 9999px;
+            font-weight: 800;
+            min-width: 100px;
+            padding-left: 18px;
+            padding-right: 18px;
+            box-shadow: 0 8px 24px rgba(255,99,120,0.12);
+            border: none;
+            font-size: 14px;
+        }
+        .tomato-btn.unified { 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center;
         }
         .task-card:hover, .task-card:active {
             transform: translateY(-2px);
