@@ -470,40 +470,48 @@
     </div>
 
     <!-- 添加任务弹窗 -->
-    <div id="add-task-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 hidden overflow-y-auto">
-        <div class="bg-white rounded-lg w-full max-w-md p-6 mt-8 max-h-[80vh] overflow-y-auto">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">添加任务</h3>
-            <form id="task-form">
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">任务名称</label>
-                    <input type="text" id="task-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="请输入任务名称">
+    <div id="add-task-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden overflow-y-auto">
+        <div class="bg-white rounded-xl w-full max-w-md p-6 shadow-xl max-h-[80vh] overflow-y-auto transform transition-all duration-300">
+            <div class="flex items-center justify-between mb-6">
+                <h3 id="modal-title" class="text-xl font-bold text-indigo-600">添加任务</h3>
+                <button type="button" id="close-modal" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="task-form" class="space-y-5">
+                <div>
+                    <label for="task-name" class="block text-sm font-medium text-gray-700 mb-1">任务名称</label>
+                    <input type="text" id="task-name" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" placeholder="请输入任务名称">
                 </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">任务描述</label>
-                    <textarea id="task-description" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="请输入任务描述" rows="3"></textarea>
+                <div>
+                    <label for="task-description" class="block text-sm font-medium text-gray-700 mb-1">任务描述</label>
+                    <textarea id="task-description" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" placeholder="请输入任务描述" rows="3"></textarea>
                 </div>
-                <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-gray-700 mb-2">学科分类</label>
-                        <select id="task-category" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <label for="task-category" class="block text-sm font-medium text-gray-700 mb-1">学科分类</label>
+                        <select id="task-category" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
                             <!-- 分类选项将通过JS动态生成 -->
                         </select>
                     </div>
                     <div>
-                        <label class="block text-gray-700 mb-2">计划时长（分钟）</label>
-                        <input type="number" id="task-time" class="w-full px-4 py-2 border border-gray-300 rounded-lg" value="10" min="1">
+                        <label for="task-time" class="block text-sm font-medium text-gray-700 mb-1">计划时长（分钟）</label>
+                        <input type="number" id="task-time" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" value="10" min="1">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-gray-700 mb-2">奖励金币</label>
-                        <input type="number" id="task-points" class="w-full px-4 py-2 border border-gray-300 rounded-lg" value="1" min="-99" max="99">
+                        <label for="task-points" class="block text-sm font-medium text-gray-700 mb-1">奖励金币</label>
+                        <input type="number" id="task-points" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" value="1" min="-99" max="99">
                     </div>
                     <div>
-                        <label class="block text-gray-700 mb-2">重复设置</label>
-                        <select id="task-repeat" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <label for="task-repeat" class="block text-sm font-medium text-gray-700 mb-1">重复设置</label>
+                        <select id="task-repeat" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
                             <option value="无">无</option>
                             <option value="每天">每天</option>
+                            <option value="每个工作日">每个工作日</option>
                             <option value="每周一">每周一</option>
                             <option value="每周二">每周二</option>
                             <option value="每周三">每周三</option>
@@ -514,13 +522,19 @@
                         </select>
                     </div>
                 </div>
-                <div class="mb-6">
-                    <label class="block text-gray-700 mb-2">开始日期</label>
-                    <input type="date" id="task-date" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                <div class="space-y-4">
+                    <div>
+                        <label for="task-date" class="block text-sm font-medium text-gray-700 mb-1">开始日期</label>
+                        <input type="date" id="task-date" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                    </div>
+                    <div>
+                        <label for="task-end-date" class="block text-sm font-medium text-gray-700 mb-1">结束日期（可选）</label>
+                        <input type="date" id="task-end-date" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                    </div>
                 </div>
-                <div class="flex space-x-4">
-                    <button type="button" id="cancel-task" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700">取消</button>
-                    <button type="submit" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg">保存</button>
+                <div class="flex space-x-4 pt-3">
+                    <button type="button" id="cancel-task" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">取消</button>
+                    <button type="submit" class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">保存</button>
                 </div>
             </form>
         </div>

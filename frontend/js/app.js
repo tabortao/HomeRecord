@@ -809,13 +809,25 @@ async function handleCurrentDate() {
 
 // 显示添加任务弹窗
 function showAddTaskModal() {
-    // 设置默认日期为当前选中的日期
-    document.getElementById('task-date').value = appState.currentDate;
+    // 设置弹窗标题为添加任务
+    document.getElementById('modal-title').textContent = '添加任务';
+    
+    // 设置默认日期为当天
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('task-date').value = today;
+    
     // 清空表单
     document.getElementById('task-form').reset();
-    document.getElementById('task-date').value = appState.currentDate;
+    
+    // 重新设置默认值
+    document.getElementById('task-date').value = today;
     document.getElementById('task-time').value = 10;
     document.getElementById('task-points').value = 1;
+    document.getElementById('task-end-date').value = '';
+    
+    // 重置表单状态
+    document.getElementById('task-form').dataset.editMode = 'false';
+    document.getElementById('task-form').dataset.taskId = '';
     
     document.getElementById('add-task-modal').classList.remove('hidden');
     
@@ -829,6 +841,9 @@ function showAddTaskModal() {
 function hideAddTaskModal() {
     document.getElementById('add-task-modal').classList.add('hidden');
 }
+
+// 为关闭按钮添加事件监听
+document.getElementById('close-modal')?.addEventListener('click', hideAddTaskModal);
 
 // 调整弹窗位置，处理输入法弹出
 function adjustModalPosition() {
@@ -893,6 +908,7 @@ async function handleAddTask(e) {
         points: parseInt(document.getElementById('task-points').value),
         repeat_setting: document.getElementById('task-repeat').value,
         start_date: document.getElementById('task-date').value,
+        end_date: document.getElementById('task-end-date').value || null,
         status: '未完成'
     };
     
@@ -1014,12 +1030,10 @@ function editTask(task) {
     const taskPoints = document.getElementById('task-points');
     const taskRepeat = document.getElementById('task-repeat');
     const taskDate = document.getElementById('task-date');
+    const taskEndDate = document.getElementById('task-end-date');
     
     // 设置表单标题
-    const modalTitle = addTaskModal?.querySelector('h3');
-    if (modalTitle) {
-        modalTitle.textContent = '编辑任务';
-    }
+    document.getElementById('modal-title').textContent = '编辑任务';
     
     // 填充表单数据
     if (taskName) taskName.value = task.name || '';
@@ -1032,8 +1046,9 @@ function editTask(task) {
     }
     if (taskTime) taskTime.value = task.planned_time || 10;
     if (taskPoints) taskPoints.value = task.points || 1;
-    if (taskRepeat) taskRepeat.value = task.repeat || '无';
-    if (taskDate) taskDate.value = task.date || dateUtils.getCurrentDate();
+    if (taskRepeat) taskRepeat.value = task.repeat_setting || task.repeat || '无';
+    if (taskDate) taskDate.value = task.start_date || task.date || new Date().toISOString().split('T')[0];
+    if (taskEndDate) taskEndDate.value = task.end_date || '';
     
     // 设置编辑模式标志
     if (taskForm) {
