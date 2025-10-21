@@ -637,12 +637,12 @@ async function toggleTaskStatus(taskId, currentStatus) {
     const newStatus = currentStatus === '已完成' ? '未完成' : '已完成';
     
     try {
+        // 先获取任务信息（用于金币与时间处理）
+        const tasks = await api.taskAPI.getTasks(appState.currentUser.id, appState.currentDate, '');
+        const task = tasks.find(t => t.id === taskId);
+
         // 如果是标记为已完成，且没有使用番茄钟，则使用计划时间作为实际时间
         if (newStatus === '已完成') {
-            // 先获取任务信息
-            const tasks = await api.taskAPI.getTasks(appState.currentUser.id, appState.currentDate, '');
-            const task = tasks.find(t => t.id === taskId);
-            
             if (task && !task.used_tomato) {
                 await api.taskAPI.updateTask(taskId, { 
                     status: newStatus,
@@ -653,6 +653,30 @@ async function toggleTaskStatus(taskId, currentStatus) {
                 await api.taskAPI.updateTask(taskId, { status: newStatus });
             }
         } else {
+            // 从 已完成 -> 未完成：需要撤销已发放的金币（如果有）
+            if (currentStatus === '已完成' && task) {
+                const deduct = -(task.points || 0);
+                if (deduct !== 0) {
+                    // 在UI上先显示临时扣除，提升响应感
+                    try {
+                        const dayEl = document.getElementById('day-gold');
+                        const totalEl = document.getElementById('total-gold');
+                        if (dayEl) dayEl.textContent = Math.max(0, (parseInt(dayEl.textContent || '0', 10) + deduct)).toString();
+                        if (totalEl) totalEl.textContent = Math.max(0, (parseInt(totalEl.textContent || '0', 10) + deduct)).toString();
+                    } catch (e) {
+                        // ignore formatting errors
+                    }
+
+                    // 调用后端接口撤销金币
+                    try {
+                        await api.goldAPI.updateGold(appState.currentUser.id, deduct, 'revoke_task');
+                    } catch (err) {
+                        console.error('撤销金币请求失败', err);
+                        // 失败则继续，但后续的 loadStatistics/updateUserInfo 会修正显示
+                    }
+                }
+            }
+            // 最后更新任务状态
             await api.taskAPI.updateTask(taskId, { status: newStatus });
         }
         
