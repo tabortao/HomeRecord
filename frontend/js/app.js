@@ -825,6 +825,12 @@ function showAddTaskModal() {
     document.getElementById('task-points').value = 1;
     document.getElementById('task-end-date').value = '';
     
+    // 重置重复设置复选框并更新样式
+    document.querySelectorAll('input[name="task-repeat"]').forEach(checkbox => {
+        checkbox.checked = false;
+        updateCheckboxStyle(checkbox);
+    });
+    
     // 重置表单状态
     document.getElementById('task-form').dataset.editMode = 'false';
     document.getElementById('task-form').dataset.taskId = '';
@@ -844,6 +850,52 @@ function hideAddTaskModal() {
 
 // 为关闭按钮添加事件监听
 document.getElementById('close-modal')?.addEventListener('click', hideAddTaskModal);
+
+// 更新复选框样式
+function updateCheckboxStyle(checkbox) {
+    const label = checkbox.closest('label');
+    if (checkbox.checked) {
+        label.classList.add('bg-indigo-600', 'text-white');
+        label.classList.remove('bg-gray-100');
+    } else {
+        label.classList.remove('bg-indigo-600', 'text-white');
+        label.classList.add('bg-gray-100');
+    }
+}
+
+// 添加重复设置复选框互斥逻辑和样式更新
+document.addEventListener('DOMContentLoaded', () => {
+    // 获取所有重复设置复选框
+    const repeatCheckboxes = document.querySelectorAll('input[name="task-repeat"]');
+    
+    repeatCheckboxes.forEach(checkbox => {
+        // 初始化样式
+        updateCheckboxStyle(checkbox);
+        
+        checkbox.addEventListener('change', function() {
+            // 更新当前复选框样式
+            updateCheckboxStyle(this);
+            
+            // 处理"无"选项的互斥
+            if (this.id === 'repeat-none' && this.checked) {
+                // 如果选中"无"，取消选中其他所有选项
+                repeatCheckboxes.forEach(cb => {
+                    if (cb.id !== 'repeat-none') {
+                        cb.checked = false;
+                        updateCheckboxStyle(cb);
+                    }
+                });
+            } else if (this.checked) {
+                // 如果选中其他选项，取消选中"无"
+                const noneCheckbox = document.getElementById('repeat-none');
+                if (noneCheckbox) {
+                    noneCheckbox.checked = false;
+                    updateCheckboxStyle(noneCheckbox);
+                }
+            }
+        });
+    });
+})
 
 // 调整弹窗位置，处理输入法弹出
 function adjustModalPosition() {
@@ -899,6 +951,20 @@ async function handleAddTask(e) {
     const isEditMode = taskForm?.dataset.editMode === 'true';
     const taskId = taskForm?.dataset.taskId;
     
+    // 获取选中的重复设置
+    const selectedRepeats = Array.from(document.querySelectorAll('input[name="task-repeat"]:checked')).map(input => input.value);
+    
+    // 处理互斥逻辑：如果选择了"无"，则忽略其他选项
+    let repeat_setting = '无';
+    if (selectedRepeats.length > 0) {
+        if (selectedRepeats.includes('无')) {
+            repeat_setting = '无';
+        } else {
+            // 将选中的选项用逗号连接
+            repeat_setting = selectedRepeats.join(',');
+        }
+    }
+    
     const taskData = {
         user_id: appState.currentUser.id,
         name: document.getElementById('task-name').value,
@@ -906,7 +972,7 @@ async function handleAddTask(e) {
         category: document.getElementById('task-category').value,
         planned_time: parseInt(document.getElementById('task-time').value),
         points: parseInt(document.getElementById('task-points').value),
-        repeat_setting: document.getElementById('task-repeat').value,
+        repeat_setting: repeat_setting,
         start_date: document.getElementById('task-date').value,
         end_date: document.getElementById('task-end-date').value || null,
         status: '未完成'
@@ -1028,7 +1094,7 @@ function editTask(task) {
     const taskCategory = document.getElementById('task-category');
     const taskTime = document.getElementById('task-time');
     const taskPoints = document.getElementById('task-points');
-    const taskRepeat = document.getElementById('task-repeat');
+    // 移除旧的taskRepeat引用，改为使用复选框组
     const taskDate = document.getElementById('task-date');
     const taskEndDate = document.getElementById('task-end-date');
     
@@ -1046,7 +1112,32 @@ function editTask(task) {
     }
     if (taskTime) taskTime.value = task.planned_time || 10;
     if (taskPoints) taskPoints.value = task.points || 1;
-    if (taskRepeat) taskRepeat.value = task.repeat_setting || task.repeat || '无';
+    // 重置所有重复设置复选框
+    document.querySelectorAll('input[name="task-repeat"]').forEach(checkbox => {
+        checkbox.checked = false;
+        updateCheckboxStyle(checkbox);
+    });
+    
+    // 设置重复设置复选框
+    const repeatSetting = task.repeat_setting || task.repeat || '无';
+    const repeats = repeatSetting.split(',');
+    
+    repeats.forEach(repeat => {
+        const checkbox = document.getElementById(`repeat-${repeat === '无' ? 'none' : 
+            repeat === '每天' ? 'daily' : 
+            repeat === '每个工作日' ? 'weekday' : 
+            repeat === '每周一' ? 'mon' : 
+            repeat === '每周二' ? 'tue' : 
+            repeat === '每周三' ? 'wed' : 
+            repeat === '每周四' ? 'thu' : 
+            repeat === '每周五' ? 'fri' : 
+            repeat === '每周六' ? 'sat' : 
+            repeat === '每周日' ? 'sun' : ''}`);
+        if (checkbox) {
+            checkbox.checked = true;
+            updateCheckboxStyle(checkbox);
+        }
+    });
     if (taskDate) taskDate.value = task.start_date || task.date || new Date().toISOString().split('T')[0];
     if (taskEndDate) taskEndDate.value = task.end_date || '';
     

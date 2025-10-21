@@ -188,41 +188,32 @@ def add_task():
             start = datetime.strptime(start_date, '%Y-%m-%d')
             end = datetime.strptime(end_date, '%Y-%m-%d')
             
-            # 根据不同的重复类型创建任务
-            if repeat_setting == '每天':
-                # 为每一天创建任务
-                current_date = start
-                while current_date <= end:
-                    # 跳过已经创建的第一个任务
-                    if current_date.strftime('%Y-%m-%d') != start_date:
-                        daily_task = Task(
-                            user_id=user_id,
-                            name=data.get('name'),
-                            description=data.get('description'),
-                            icon=data.get('icon') or 'default.png',
-                            category=data.get('category'),
-                            planned_time=data.get('planned_time', 10),
-                            actual_time=0,
-                            points=data.get('points', 1),
-                            repeat_setting=repeat_setting,
-                            start_date=current_date.strftime('%Y-%m-%d'),
-                            end_date=end_date,
-                            status='未完成',
-                            series_id=task.series_id
-                        )
-                        db.session.add(daily_task)
-                    # 前进到下一天
-                    current_date += timedelta(days=1)
+            # 分割多选的重复设置
+            repeat_settings = repeat_setting.split(',')
             
-            elif repeat_setting == '每个工作日':
-                # 为每个工作日创建任务
-                current_date = start
-                while current_date <= end:
-                    # 0-4代表周一至周五
-                    if current_date.weekday() < 5:
+            # 星期映射表
+            weekday_map = {
+                '每周一': 0,
+                '每周二': 1,
+                '每周三': 2,
+                '每周四': 3,
+                '每周五': 4,
+                '每周六': 5,
+                '每周日': 6
+            }
+            
+            # 处理每个重复设置
+            for setting in repeat_settings:
+                setting = setting.strip()  # 去除空白字符
+                
+                # 根据不同的重复类型创建任务
+                if setting == '每天':
+                    # 为每一天创建任务
+                    current_date = start
+                    while current_date <= end:
                         # 跳过已经创建的第一个任务
                         if current_date.strftime('%Y-%m-%d') != start_date:
-                            weekday_task = Task(
+                            daily_task = Task(
                                 user_id=user_id,
                                 name=data.get('name'),
                                 description=data.get('description'),
@@ -231,60 +222,77 @@ def add_task():
                                 planned_time=data.get('planned_time', 10),
                                 actual_time=0,
                                 points=data.get('points', 1),
-                                repeat_setting=repeat_setting,
+                                repeat_setting=repeat_setting,  # 保存完整的重复设置
                                 start_date=current_date.strftime('%Y-%m-%d'),
                                 end_date=end_date,
                                 status='未完成',
                                 series_id=task.series_id
                             )
-                            db.session.add(weekday_task)
-                    # 前进到下一天
-                    current_date += timedelta(days=1)
-            
-            elif repeat_setting.startswith('每周'):
-                # 提取星期几
-                weekday_map = {
-                    '每周一': 0,
-                    '每周二': 1,
-                    '每周三': 2,
-                    '每周四': 3,
-                    '每周五': 4,
-                    '每周六': 5,
-                    '每周日': 6
-                }
+                            db.session.add(daily_task)
+                        # 前进到下一天
+                        current_date += timedelta(days=1)
                 
-                target_weekday = weekday_map.get(repeat_setting)
-                if target_weekday is not None:
-                    # 为每个指定的星期几创建任务
+                elif setting == '每个工作日':
+                    # 为每个工作日创建任务
                     current_date = start
-                    
-                    # 找到第一个目标星期几
-                    days_ahead = target_weekday - current_date.weekday()
-                    if days_ahead <= 0:  # 如果当天或已过去
-                        days_ahead += 7
-                    current_date += timedelta(days=days_ahead)
-                    
-                    # 创建所有符合条件的日期的任务
                     while current_date <= end:
-                        weekly_task = Task(
-                            user_id=user_id,
-                            name=data.get('name'),
-                            description=data.get('description'),
-                            icon=data.get('icon') or 'default.png',
-                            category=data.get('category'),
-                            planned_time=data.get('planned_time', 10),
-                            actual_time=0,
-                            points=data.get('points', 1),
-                            repeat_setting=repeat_setting,
-                            start_date=current_date.strftime('%Y-%m-%d'),
-                            end_date=end_date,
-                            status='未完成',
-                            series_id=task.series_id
-                        )
-                        db.session.add(weekly_task)
+                        # 0-4代表周一至周五
+                        if current_date.weekday() < 5:
+                            # 跳过已经创建的第一个任务
+                            if current_date.strftime('%Y-%m-%d') != start_date:
+                                weekday_task = Task(
+                                    user_id=user_id,
+                                    name=data.get('name'),
+                                    description=data.get('description'),
+                                    icon=data.get('icon') or 'default.png',
+                                    category=data.get('category'),
+                                    planned_time=data.get('planned_time', 10),
+                                    actual_time=0,
+                                    points=data.get('points', 1),
+                                    repeat_setting=repeat_setting,  # 保存完整的重复设置
+                                    start_date=current_date.strftime('%Y-%m-%d'),
+                                    end_date=end_date,
+                                    status='未完成',
+                                    series_id=task.series_id
+                                )
+                                db.session.add(weekday_task)
+                        # 前进到下一天
+                        current_date += timedelta(days=1)
+                
+                elif setting.startswith('每周'):
+                    # 提取星期几
+                    target_weekday = weekday_map.get(setting)
+                    if target_weekday is not None:
+                        # 为每个指定的星期几创建任务
+                        current_date = start  # datetime对象是不可变的，直接赋值即可
                         
-                        # 前进到下一周的同一天
-                        current_date += timedelta(days=7)
+                        # 找到第一个目标星期几
+                        days_ahead = target_weekday - current_date.weekday()
+                        if days_ahead <= 0:  # 如果当天或已过去
+                            days_ahead += 7
+                        current_date += timedelta(days=days_ahead)
+                        
+                        # 创建所有符合条件的日期的任务
+                        while current_date <= end:
+                            weekly_task = Task(
+                                user_id=user_id,
+                                name=data.get('name'),
+                                description=data.get('description'),
+                                icon=data.get('icon') or 'default.png',
+                                category=data.get('category'),
+                                planned_time=data.get('planned_time', 10),
+                                actual_time=0,
+                                points=data.get('points', 1),
+                                repeat_setting=repeat_setting,  # 保存完整的重复设置
+                                start_date=current_date.strftime('%Y-%m-%d'),
+                                end_date=end_date,
+                                status='未完成',
+                                series_id=task.series_id
+                            )
+                            db.session.add(weekly_task)
+                            
+                            # 前进到下一周的同一天
+                            current_date += timedelta(days=7)
         except ValueError:
             # 日期格式不正确时忽略重复创建
             pass

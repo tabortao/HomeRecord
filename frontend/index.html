@@ -501,25 +501,64 @@
                         <input type="number" id="task-time" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" value="10" min="1">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="task-points" class="block text-sm font-medium text-gray-700 mb-1">奖励金币</label>
-                        <input type="number" id="task-points" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" value="1" min="-99" max="99">
+                <div>
+                    <label for="task-points" class="block text-sm font-medium text-gray-700 mb-1">奖励金币</label>
+                    <input type="number" id="task-points" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" value="1" min="-99" max="99">
+                </div>
+                
+                <!-- 重复设置 - 单独一行，优化移动端显示 -->
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-gray-700">重复设置</label>
+                    
+                    <!-- 基础重复选项 -->
+                    <div class="flex flex-wrap gap-3">
+                        <label class="inline-flex items-center px-3 py-1.5 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition-colors cursor-pointer">
+                            <input type="checkbox" id="repeat-none" name="task-repeat" value="无" class="mr-2 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-full">
+                            <span>无</span>
+                        </label>
+                        <label class="inline-flex items-center px-3 py-1.5 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition-colors cursor-pointer">
+                            <input type="checkbox" id="repeat-daily" name="task-repeat" value="每天" class="mr-2 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-full">
+                            <span>每天</span>
+                        </label>
+                        <label class="inline-flex items-center px-3 py-1.5 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition-colors cursor-pointer">
+                            <input type="checkbox" id="repeat-weekday" name="task-repeat" value="每个工作日" class="mr-2 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-full">
+                            <span>每个工作日</span>
+                        </label>
                     </div>
+                    
+                    <!-- 每周选择 - 按要求格式显示 -->
                     <div>
-                        <label for="task-repeat" class="block text-sm font-medium text-gray-700 mb-1">重复设置</label>
-                        <select id="task-repeat" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
-                            <option value="无">无</option>
-                            <option value="每天">每天</option>
-                            <option value="每个工作日">每个工作日</option>
-                            <option value="每周一">每周一</option>
-                            <option value="每周二">每周二</option>
-                            <option value="每周三">每周三</option>
-                            <option value="每周四">每周四</option>
-                            <option value="每周五">每周五</option>
-                            <option value="每周六">每周六</option>
-                            <option value="每周日">每周日</option>
-                        </select>
+                        <div class="inline-flex items-center text-sm text-gray-700 mr-2 mb-1">每周：</div>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors cursor-pointer">
+                                <input type="checkbox" id="repeat-mon" name="task-repeat" value="每周一" class="sr-only">
+                                <span class="text-sm">一</span>
+                            </label>
+                            <label class="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors cursor-pointer">
+                                <input type="checkbox" id="repeat-tue" name="task-repeat" value="每周二" class="sr-only">
+                                <span class="text-sm">二</span>
+                            </label>
+                            <label class="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors cursor-pointer">
+                                <input type="checkbox" id="repeat-wed" name="task-repeat" value="每周三" class="sr-only">
+                                <span class="text-sm">三</span>
+                            </label>
+                            <label class="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors cursor-pointer">
+                                <input type="checkbox" id="repeat-thu" name="task-repeat" value="每周四" class="sr-only">
+                                <span class="text-sm">四</span>
+                            </label>
+                            <label class="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors cursor-pointer">
+                                <input type="checkbox" id="repeat-fri" name="task-repeat" value="每周五" class="sr-only">
+                                <span class="text-sm">五</span>
+                            </label>
+                            <label class="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors cursor-pointer">
+                                <input type="checkbox" id="repeat-sat" name="task-repeat" value="每周六" class="sr-only">
+                                <span class="text-sm">六</span>
+                            </label>
+                            <label class="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors cursor-pointer">
+                                <input type="checkbox" id="repeat-sun" name="task-repeat" value="每周日" class="sr-only">
+                                <span class="text-sm">日</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="space-y-4">
@@ -532,9 +571,9 @@
                         <input type="date" id="task-end-date" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
                     </div>
                 </div>
-                <div class="flex space-x-4 pt-3">
-                    <button type="button" id="cancel-task" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">取消</button>
-                    <button type="submit" class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">保存</button>
+                <div class="flex space-x-4 pt-4">
+                    <button type="button" id="cancel-task" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium">取消</button>
+                    <button type="submit" class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-md hover:shadow-lg">保存任务</button>
                 </div>
             </form>
         </div>
