@@ -1,10 +1,134 @@
-from flask import request, jsonify
+from flask import request, jsonify, send_from_directory
 from models import db, User, Task, TaskCategory, Wish, OperationLog, Honor, UserHonor
 from datetime import datetime, timedelta
 import json
 import random
+import os
+import uuid
+from werkzeug.utils import secure_filename
 
 def register_routes(app):
+    # 确保头像上传目录存在
+    UPLOAD_FOLDER = 'uploads/avatars'
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    
+    # 允许的文件扩展名
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
+    
+    def allowed_file(filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    
+    # 获取用户信息路由
+    @app.route('/api/users/<int:user_id>', methods=['GET'])
+    def get_user_info(user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': '用户不存在'})
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'nickname': user.nickname,
+                'phone': user.phone,
+                'avatar': user.avatar,
+                'total_gold': user.total_gold
+            }
+        })
+    
+    # 更新用户信息路由
+    @app.route('/api/users/<int:user_id>', methods=['PUT'])
+    def update_user_info(user_id):
+        data = request.json
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': '用户不存在'})
+        
+        # 更新用户信息
+        if 'username' in data:
+            user.username = data['username']
+        if 'nickname' in data:
+            user.nickname = data['nickname']
+        if 'phone' in data:
+            user.phone = data['phone']
+        if 'avatar' in data:
+            user.avatar = data['avatar']
+        
+        # 处理密码更新
+        if 'current_password' in data and 'new_password' in data:
+            # 这里需要实现密码验证逻辑
+            # 假设User模型有check_password方法
+            if hasattr(user, 'check_password'):
+                if not user.check_password(data['current_password']):
+                    return jsonify({'success': False, 'message': '当前密码错误'})
+            user.password = data['new_password']
+        
+        db.session.commit()
+        
+        # 记录操作日志
+        log = OperationLog(
+            user_id=user_id,
+            operation_type='更新个人信息',
+            operation_content='更新用户个人信息',
+            operation_time=datetime.now(),
+            operation_result='成功'
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '个人信息更新成功'})
+    
+    # 上传头像路由
+    @app.route('/api/users/<int:user_id>/avatar', methods=['POST'])
+    def upload_avatar(user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': '用户不存在'})
+        
+        # 检查是否有文件
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': '没有选择文件'})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': '没有选择文件'})
+        
+        if file and allowed_file(file.filename):
+            # 生成唯一文件名
+            ext = file.filename.rsplit('.', 1)[1].lower()
+            filename = f"{uuid.uuid4()}.{ext}"
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            
+            # 保存文件
+            file.save(file_path)
+            
+            # 更新用户头像信息
+            user.avatar = filename
+            db.session.commit()
+            
+            # 记录操作日志
+            log = OperationLog(
+                user_id=user_id,
+                operation_type='上传头像',
+                operation_content=f'上传新头像：{filename}',
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
+            db.session.add(log)
+            db.session.commit()
+            
+            return jsonify({'success': True, 'filename': filename, 'message': '头像上传成功'})
+        
+        return jsonify({'success': False, 'message': '不支持的文件类型'})
+    
+    # 获取头像路由
+    @app.route('/api/avatars/<filename>', methods=['GET'])
+    def get_avatar(filename):
+        return send_from_directory(UPLOAD_FOLDER, filename)
+    
+    # 任务相关路由
     # 任务相关路由
     @app.route('/api/tasks/<int:task_id>', methods=['PUT'])
     def update_task(task_id):
@@ -324,23 +448,7 @@ def register_routes(app):
         
         return jsonify({'success': True, 'total_gold': user.total_gold})
     
-    # 用户信息路由
-    @app.route('/api/users/<int:user_id>', methods=['GET'])
-    def get_user_info(user_id):
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'success': False, 'message': '用户不存在'})
-        
-        return jsonify({
-            'success': True,
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'role': user.role,
-                'total_gold': user.total_gold,
-                'total_tomato': user.total_tomato
-            }
-        })
+    # 用户信息路由已在文件开头定义，包含完整用户信息
     
     # 操作记录路由
     @app.route('/api/logs', methods=['GET'])

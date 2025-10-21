@@ -1530,9 +1530,9 @@ function showTomatoModal() {
 
 // 加载心愿列表
 async function loadWishes() {
+    const wishList = document.getElementById('wish-list');
     try {
         const wishes = await api.wishAPI.getWishes(appState.currentUser.id);
-        const wishList = document.getElementById('wish-list');
         
         wishList.innerHTML = '';
         
@@ -1633,18 +1633,40 @@ async function updateUserInfo() {
     if (!appState.currentUser) return;
     
     try {
-        // 从API获取最新的用户信息
-        const userInfo = await api.userAPI.getUserInfo(appState.currentUser.id);
-        const user = userInfo.user || appState.currentUser;
+        // 优先使用本地存储的最新用户信息，因为API可能不再支持更新这些字段
+        // 只在需要时才从API获取信息作为补充
+        let user = appState.currentUser;
+        
+        try {
+            const userInfo = await api.userAPI.getUserInfo(appState.currentUser.id);
+            // 只使用API返回的用户ID、金币和头像等需要后端维护的字段，其他使用本地更新的值
+            if (userInfo.user) {
+                user = { ...user, id: userInfo.user.id, total_gold: userInfo.user.total_gold, avatar: userInfo.user.avatar };
+                // 同步更新appState和本地存储中的头像信息
+                appState.currentUser.avatar = userInfo.user.avatar;
+                storageUtils.saveUser(appState.currentUser);
+            }
+        } catch (apiError) {
+            // API调用失败不影响本地信息的更新显示
+            console.log('API调用失败，使用本地用户信息');
+        }
         
         // 更新我的页面信息
         if(document.getElementById('profile-username')) document.getElementById('profile-username').textContent = user.username;
         if(document.getElementById('profile-id')) document.getElementById('profile-id').textContent = `ID: ${user.id.toString().padStart(6, '0')}`;
         
-        // 更新头像 - 使用SVG格式
-        const avatarUrl = user.avatar ? 
-            (user.avatar.endsWith('.svg') ? `static/images/avatars/${user.avatar}` : `static/images/avatars/${user.avatar.replace('.png', '.svg')}`) : 
-            'static/images/avatars/default.svg';
+        // 更新头像 - 区分默认头像和自定义上传头像
+        let avatarUrl;
+        if (!user.avatar || user.avatar === 'default.svg') {
+            // 默认头像使用本地资源
+            avatarUrl = 'static/images/avatars/default.svg';
+        } else if (user.avatar.endsWith('.svg') && user.avatar.startsWith('avatar')) {
+            // 预设头像使用本地资源
+            avatarUrl = `static/images/avatars/${user.avatar}`;
+        } else {
+            // 自定义上传的头像使用API路径
+            avatarUrl = `http://localhost:5000/api/avatars/${user.avatar}`;
+        }
         if(document.getElementById('profile-avatar')) document.getElementById('profile-avatar').src = avatarUrl;
         if(document.getElementById('task-page-avatar')) document.getElementById('task-page-avatar').src = avatarUrl;
         
@@ -1673,6 +1695,72 @@ function initAvatarSelector() {
     ];
     
     avatarSelector.innerHTML = '';
+    
+    // 添加自定义上传按钮
+    const uploadButton = document.createElement('div');
+    uploadButton.className = 'avatar-option cursor-pointer border-2 border-dashed border-gray-400 hover:border-green-500 flex flex-col items-center justify-center p-2';
+    uploadButton.innerHTML = `
+        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mb-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+        </div>
+        <span class="text-xs text-gray-500">上传头像</span>
+    `;
+    
+    // 创建隐藏的文件输入
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.className = 'hidden';
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            try {
+                // 显示加载提示
+                domUtils.showToast('正在上传头像...');
+                
+                // 调用上传API
+                const result = await api.userAPI.uploadAvatar(appState.currentUser.id, file);
+                
+                if (result.success) {
+                    // 更新隐藏字段和预览
+                    const customAvatarUrl = `http://localhost:5000/api/avatars/${result.filename}`;
+                    if(document.getElementById('avatar')) document.getElementById('avatar').value = result.filename;
+                    if(document.getElementById('current-avatar')) document.getElementById('current-avatar').src = customAvatarUrl;
+                    
+                    // 更新appState中的用户头像信息
+                    if (appState.currentUser) {
+                        appState.currentUser.avatar = result.filename;
+                        // 保存到本地存储
+                        localStorage.setItem('currentUser', JSON.stringify(appState.currentUser));
+                    }
+                    
+                    // 更新选中状态
+                    document.querySelectorAll('.avatar-option').forEach(el => {
+                        el.classList.remove('border-green-500');
+                    });
+                    uploadButton.classList.add('border-green-500');
+                    
+                    domUtils.showToast('头像上传成功');
+                } else {
+                    domUtils.showToast(result.message || '上传失败，请重试', 'error');
+                }
+            } catch (error) {
+                console.error('上传头像失败:', error);
+                domUtils.showToast('上传失败，请重试', 'error');
+            }
+        }
+    });
+    
+    uploadButton.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    avatarSelector.appendChild(uploadButton);
+    avatarSelector.appendChild(fileInput);
+    
+    // 添加预设头像选项
     avatars.forEach(avatar => {
         const avatarElement = document.createElement('div');
         avatarElement.className = 'avatar-option cursor-pointer border-2 border-transparent hover:border-green-500';
@@ -1698,13 +1786,22 @@ function showEditProfileModal() {
     initAvatarSelector();
     
     // 填充表单数据
-    if (appState.currentUser) {
-        if(document.getElementById('nickname')) document.getElementById('nickname').value = appState.currentUser.username || '';
-        if(document.getElementById('phone')) document.getElementById('phone').value = appState.currentUser.phone || '';
-        const avatar = appState.currentUser.avatar || 'default.svg';
-        if(document.getElementById('avatar')) document.getElementById('avatar').value = avatar;
-        if(document.getElementById('current-avatar')) document.getElementById('current-avatar').src = `static/images/avatars/${avatar}`;
-    }
+        if (appState.currentUser) {
+            if(document.getElementById('nickname')) document.getElementById('nickname').value = appState.currentUser.nickname || appState.currentUser.username || '';
+            if(document.getElementById('phone')) document.getElementById('phone').value = appState.currentUser.phone || '';
+            const avatar = appState.currentUser.avatar || 'default.svg';
+            if(document.getElementById('avatar')) document.getElementById('avatar').value = avatar;
+            // 根据头像类型选择正确的加载路径
+            let avatarUrl;
+            if (avatar.includes('avatar_')) {
+                // 自定义上传的头像
+                avatarUrl = `http://localhost:5000/api/avatars/${avatar}`;
+            } else {
+                // 预设头像
+                avatarUrl = `static/images/avatars/${avatar}`;
+            }
+            if(document.getElementById('current-avatar')) document.getElementById('current-avatar').src = avatarUrl;
+        }
     
     // 清空密码字段
     if(document.getElementById('current-password')) document.getElementById('current-password').value = '';
@@ -1773,8 +1870,13 @@ async function handleEditProfile(e) {
             updateData.new_password = newPassword;
         }
         
-        // 调用API更新用户信息
-        await api.userAPI.updateUserInfo(appState.currentUser.id, updateData);
+        // 调用API更新用户信息到服务器
+        const result = await api.userAPI.updateUserInfo(appState.currentUser.id, updateData);
+        if (!result.success) {
+            // 显示API返回的错误信息
+            domUtils.showToast(result.message || '更新失败，请重试', 'error');
+            return;
+        }
         
         // 更新本地存储的用户信息
         appState.currentUser.username = nickname;

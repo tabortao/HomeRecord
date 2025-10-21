@@ -10,11 +10,12 @@
 
 - 创建虚拟环境，然后在虚拟环境中安装依赖。`cd backend; .\venv\Scripts\activate; pip install -r requirements.txt `。
 - 启动后端服务，运行`cd backend; .\venv\Scripts\activate; python app.py`。
-- 后端采用 Python Flask 框架，数据库采用 SQLite。
+- 后端采用 Python Flask 框架，数据库采用 SQLite，数据库文件位于`backend\instance\homerecord.db`。
 - 所有 API 路由均存储在`backend\api.py`文件中。
 - 测试账号：
   - 用户名：testuser
   - 密码：Testuser123
+- 数据库发生改变时，创建脚本，并在脚本中添加必要的迁移代码，`.\venv\Scripts\activate; python run_migration.py `。
 
 ## 前端设计要求
 

@@ -2,7 +2,7 @@
 const API_BASE_URL = 'http://localhost:5000/api';
 
 // 用户相关API
-export const userAPI = {
+const userAPI = {
     // 用户登录
     login: async (username, password) => {
         const response = await fetch(`${API_BASE_URL}/login`, {
@@ -31,11 +31,35 @@ export const userAPI = {
     getUserInfo: async (userId) => {
         const response = await fetch(`${API_BASE_URL}/users/${userId}`);
         return await response.json();
+    },
+    
+    // 更新用户信息
+    updateUserInfo: async (userId, userData) => {
+        const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userData)
+        });
+        return await response.json();
+    },
+    
+    // 上传头像
+    uploadAvatar: async (userId, file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE_URL}/users/${userId}/avatar`, {
+            method: 'POST',
+            body: formData
+        });
+        return await response.json();
     }
 };
 
 // 任务相关API
-export const taskAPI = {
+const taskAPI = {
     // 获取任务列表
     getTasks: async (userId, date, category) => {
         let url = `${API_BASE_URL}/tasks?user_id=${userId}`;
@@ -76,19 +100,11 @@ export const taskAPI = {
             method: 'DELETE'
         });
         return await response.json();
-    },
-
-    // 删除任务系列
-    deleteTaskSeries: async (seriesId) => {
-        const response = await fetch(`${API_BASE_URL}/tasks/series/${seriesId}`, {
-            method: 'DELETE'
-        });
-        return await response.json();
     }
 };
 
 // 分类相关API
-export const categoryAPI = {
+const categoryAPI = {
     // 获取分类列表
     getCategories: async (userId) => {
         const response = await fetch(`${API_BASE_URL}/categories?user_id=${userId}`);
@@ -117,7 +133,7 @@ export const categoryAPI = {
 };
 
 // 心愿相关API
-export const wishAPI = {
+const wishAPI = {
     // 获取心愿列表
     getWishes: async (userId) => {
         const response = await fetch(`${API_BASE_URL}/wishes?user_id=${userId}`);
@@ -170,7 +186,7 @@ export const wishAPI = {
 };
 
 // 金币相关API
-export const goldAPI = {
+const goldAPI = {
     // 更新金币
     updateGold: async (userId, amount, reason) => {
         const response = await fetch(`${API_BASE_URL}/gold/update`, {
@@ -185,7 +201,7 @@ export const goldAPI = {
 };
 
 // 统计相关API
-export const statisticsAPI = {
+const statisticsAPI = {
     // 获取统计数据
     getStatistics: async (userId, date) => {
         const response = await fetch(`${API_BASE_URL}/statistics?user_id=${userId}&date=${date}`);
@@ -194,7 +210,7 @@ export const statisticsAPI = {
 };
 
 // 操作记录API
-export const logAPI = {
+const logAPI = {
     // 获取操作记录
     getLogs: async (userId) => {
         const response = await fetch(`${API_BASE_URL}/logs?user_id=${userId}`);
@@ -203,7 +219,7 @@ export const logAPI = {
 };
 
 // 荣誉相关API
-export const honorAPI = {
+const honorAPI = {
     // 获取用户荣誉
     getUserHonors: async (userId) => {
         const response = await fetch(`${API_BASE_URL}/honors/user/${userId}`);
@@ -216,3 +232,19 @@ export const honorAPI = {
         return await response.json();
     }
 };
+
+// 导出API
+const api = {
+    userAPI,
+    taskAPI,
+    categoryAPI,
+    wishAPI,
+    goldAPI,
+    statisticsAPI,
+    logAPI,
+    honorAPI
+};
+
+// 支持默认导出和命名导出
+export default api;
+export { userAPI, taskAPI, categoryAPI, wishAPI, goldAPI, statisticsAPI, logAPI, honorAPI };
