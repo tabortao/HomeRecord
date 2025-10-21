@@ -410,8 +410,8 @@ def register_routes(app):
         total_count = len(day_tasks)
         # 已完成任务数
         completed_count = sum(1 for task in day_tasks if task.status == '已完成')
-        # 今日总时长（所有任务的时间总和）
-        total_time = sum(task.actual_time for task in day_tasks if task.actual_time is not None)
+        # 今日总时长（仅已完成任务的实际时间总和）
+        total_time = sum(task.actual_time for task in day_tasks if task.status == '已完成' and task.actual_time is not None)
         # 完成率
         completion_rate = (completed_count / total_count * 100) if total_count > 0 else 0
         
