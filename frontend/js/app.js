@@ -825,11 +825,17 @@ function showAddTaskModal() {
     document.getElementById('task-points').value = 1;
     document.getElementById('task-end-date').value = '';
     
-    // 重置重复设置复选框并更新样式
+    // 重置重复设置复选框 - 默认选中"无"
     document.querySelectorAll('input[name="task-repeat"]').forEach(checkbox => {
         checkbox.checked = false;
         updateCheckboxStyle(checkbox);
     });
+    // 默认选中"无"
+    const noneCheckbox = document.getElementById('repeat-none');
+    if (noneCheckbox) {
+        noneCheckbox.checked = true;
+        updateCheckboxStyle(noneCheckbox);
+    }
     
     // 重置表单状态
     document.getElementById('task-form').dataset.editMode = 'false';
@@ -867,6 +873,10 @@ function updateCheckboxStyle(checkbox) {
 document.addEventListener('DOMContentLoaded', () => {
     // 获取所有重复设置复选框
     const repeatCheckboxes = document.querySelectorAll('input[name="task-repeat"]');
+    // 基础重复选项（无、每天、每个工作日）
+    const basicRepeatOptions = ['repeat-none', 'repeat-daily', 'repeat-weekday'];
+    // 星期重复选项
+    const weekdayRepeatOptions = ['repeat-mon', 'repeat-tue', 'repeat-wed', 'repeat-thu', 'repeat-fri', 'repeat-sat', 'repeat-sun'];
     
     repeatCheckboxes.forEach(checkbox => {
         // 初始化样式
@@ -876,26 +886,69 @@ document.addEventListener('DOMContentLoaded', () => {
             // 更新当前复选框样式
             updateCheckboxStyle(this);
             
-            // 处理"无"选项的互斥
-            if (this.id === 'repeat-none' && this.checked) {
-                // 如果选中"无"，取消选中其他所有选项
-                repeatCheckboxes.forEach(cb => {
-                    if (cb.id !== 'repeat-none') {
-                        cb.checked = false;
-                        updateCheckboxStyle(cb);
+            // 互斥逻辑：如果选中任何一个基础选项或星期选项
+            if (this.checked) {
+                // 1. 如果选中"无"，取消选中所有其他选项
+                if (this.id === 'repeat-none') {
+                    repeatCheckboxes.forEach(cb => {
+                        if (cb.id !== 'repeat-none') {
+                            cb.checked = false;
+                            updateCheckboxStyle(cb);
+                        }
+                    });
+                }
+                // 2. 如果选中"每天"或"每个工作日"，取消选中"无"和其他基础选项
+                else if (basicRepeatOptions.includes(this.id) && this.id !== 'repeat-none') {
+                    // 取消选中"无"
+                    const noneCheckbox = document.getElementById('repeat-none');
+                    if (noneCheckbox) {
+                        noneCheckbox.checked = false;
+                        updateCheckboxStyle(noneCheckbox);
                     }
-                });
-            } else if (this.checked) {
-                // 如果选中其他选项，取消选中"无"
-                const noneCheckbox = document.getElementById('repeat-none');
-                if (noneCheckbox) {
-                    noneCheckbox.checked = false;
-                    updateCheckboxStyle(noneCheckbox);
+                    // 取消选中其他基础选项
+                    basicRepeatOptions.forEach(id => {
+                        if (id !== this.id && id !== 'repeat-none') {
+                            const cb = document.getElementById(id);
+                            if (cb) {
+                                cb.checked = false;
+                                updateCheckboxStyle(cb);
+                            }
+                        }
+                    });
+                    // 取消选中所有星期选项
+                    weekdayRepeatOptions.forEach(id => {
+                        const cb = document.getElementById(id);
+                        if (cb) {
+                            cb.checked = false;
+                            updateCheckboxStyle(cb);
+                        }
+                    });
+                }
+                // 3. 如果选中任何星期选项，取消选中"无"、"每天"和"每个工作日"
+                else if (weekdayRepeatOptions.includes(this.id)) {
+                    // 取消选中所有基础选项
+                    basicRepeatOptions.forEach(id => {
+                        const cb = document.getElementById(id);
+                        if (cb) {
+                            cb.checked = false;
+                            updateCheckboxStyle(cb);
+                        }
+                    });
+                }
+            } else {
+                // 如果取消选中某个选项，检查是否需要自动选中"无"
+                const hasAnyChecked = Array.from(repeatCheckboxes).some(cb => cb.checked);
+                if (!hasAnyChecked) {
+                    const noneCheckbox = document.getElementById('repeat-none');
+                    if (noneCheckbox) {
+                        noneCheckbox.checked = true;
+                        updateCheckboxStyle(noneCheckbox);
+                    }
                 }
             }
         });
     });
-})
+});
 
 // 调整弹窗位置，处理输入法弹出
 function adjustModalPosition() {
@@ -1121,6 +1174,7 @@ function editTask(task) {
     // 设置重复设置复选框
     const repeatSetting = task.repeat_setting || task.repeat || '无';
     const repeats = repeatSetting.split(',');
+    let hasChecked = false;
     
     repeats.forEach(repeat => {
         const checkbox = document.getElementById(`repeat-${repeat === '无' ? 'none' : 
@@ -1136,8 +1190,18 @@ function editTask(task) {
         if (checkbox) {
             checkbox.checked = true;
             updateCheckboxStyle(checkbox);
+            hasChecked = true;
         }
     });
+    
+    // 如果没有选中任何选项，默认选中"无"
+    if (!hasChecked) {
+        const noneCheckbox = document.getElementById('repeat-none');
+        if (noneCheckbox) {
+            noneCheckbox.checked = true;
+            updateCheckboxStyle(noneCheckbox);
+        }
+    }
     if (taskDate) taskDate.value = task.start_date || task.date || new Date().toISOString().split('T')[0];
     if (taskEndDate) taskEndDate.value = task.end_date || '';
     
