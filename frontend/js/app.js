@@ -1947,7 +1947,6 @@ async function loadExchangeHistory(page) {
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-gray-600">${formattedTime}：使用${record.cost}金币可兑换了${record.exchange_info}</p>
-                                <p class="font-medium mt-1">${record.wish_name}</p>
                             </div>
                             <span class="text-green-500">${record.operation_result}</span>
                         </div>
