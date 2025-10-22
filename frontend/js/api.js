@@ -236,15 +236,27 @@ const logAPI = {
 
 // 荣誉相关API
 const honorAPI = {
+    // 获取所有荣誉（包含用户状态）
+    getAllHonors: async (userId) => {
+        const response = await fetch(`${API_BASE_URL}/honors/all?user_id=${userId}`);
+        return await response.json();
+    },
+    
     // 获取用户荣誉
     getUserHonors: async (userId) => {
         const response = await fetch(`${API_BASE_URL}/honors/user/${userId}`);
         return await response.json();
     },
-
-    // 获取所有荣誉
-    getAllHonors: async () => {
-        const response = await fetch(`${API_BASE_URL}/honors/all`);
+    
+    // 检查并授予新荣誉
+    checkAndGrantHonors: async (userId) => {
+        const response = await fetch(`${API_BASE_URL}/honors/check`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user_id: userId })
+        });
         return await response.json();
     }
 };

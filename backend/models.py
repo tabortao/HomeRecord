@@ -84,6 +84,7 @@ class Honor(db.Model):
     name = db.Column(db.String(100), unique=True, nullable=False)
     description = db.Column(db.Text)
     condition = db.Column(db.Text)
+    icon = db.Column(db.String(100), nullable=False, default='default.png')
     
     # 关系定义
     user_honors = db.relationship('UserHonor', backref='honor', lazy=True)

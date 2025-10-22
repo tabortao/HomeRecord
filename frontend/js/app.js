@@ -53,6 +53,15 @@ function showMainApp() {
     
     // 更新用户信息显示
     updateUserInfo();
+    
+    // 检查是否有新的荣誉可以获取
+    setTimeout(async () => {
+        try {
+            await checkNewHonors();
+        } catch (error) {
+            console.error('检查荣誉失败:', error);
+        }
+    }, 1000);
     // 确保悬浮球根据页面与计时状态显示或隐藏
         // 确保悬浮球在页面底部中间
         const bubble = document.getElementById('tomato-bubble');
@@ -96,6 +105,80 @@ async function initData() {
     
     // 加载荣誉列表
     await loadHonors();
+    
+    // 绑定荣誉墙点击事件
+    const honorTitles = document.querySelectorAll('h3');
+    let honorTitle = null;
+    for (const h3 of honorTitles) {
+        if (h3.textContent.includes('我的荣誉')) {
+            honorTitle = h3;
+            break;
+        }
+    }
+    if (honorTitle) {
+        honorTitle.addEventListener('click', showHonorWall);
+        honorTitle.style.cursor = 'pointer';
+        honorTitle.classList.add('hover:bg-gray-50', 'p-2', '-mx-2', 'rounded-lg', 'transition-colors');
+    }
+    
+    // 绑定关闭荣誉墙事件
+    const closeHonorWallBtn = document.getElementById('close-honor-wall');
+    const honorWallModal = document.getElementById('honor-wall-modal');
+    
+    if (closeHonorWallBtn) {
+        closeHonorWallBtn.addEventListener('click', hideHonorWall);
+    }
+    
+    // 为弹窗外层添加点击事件，实现点击外侧区域关闭
+    if (honorWallModal) {
+        honorWallModal.addEventListener('click', (event) => {
+            // 检查点击目标是否是弹窗的外层容器本身（不是内容区域）
+            if (event.target === honorWallModal) {
+                hideHonorWall();
+            }
+        });
+        
+        // 优化弹窗的高度自适应
+        function updateModalHeight() {
+            const viewportHeight = window.innerHeight;
+            const modalContent = honorWallModal.querySelector('div.bg-white');
+            
+            if (modalContent) {
+                // 设置最大高度为视口高度的90%
+                modalContent.style.maxHeight = `${viewportHeight * 0.9}px`;
+                // 确保内容区域可以滚动
+                const contentArea = modalContent.querySelector('.overflow-y-auto');
+                if (contentArea) {
+                    contentArea.style.maxHeight = `${viewportHeight * 0.65}px`;
+                }
+            }
+        }
+        
+        // 初始调用一次
+        updateModalHeight();
+        // 监听窗口大小变化
+        window.addEventListener('resize', updateModalHeight);
+    }
+    
+    // 绑定荣誉筛选按钮事件
+    const filterBtns = document.querySelectorAll('.honor-filter-btn');
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // 移除所有按钮的active状态
+            filterBtns.forEach(b => {
+                b.classList.remove('active', 'bg-yellow-100', 'text-yellow-800');
+                b.classList.add('bg-gray-100', 'text-gray-600');
+            });
+            
+            // 为当前按钮添加active状态
+            btn.classList.remove('bg-gray-100', 'text-gray-600');
+            btn.classList.add('active', 'bg-yellow-100', 'text-yellow-800');
+            
+            // 筛选荣誉
+            const filter = btn.dataset.filter;
+            filterHonors(filter);
+        });
+    });
 }
 
 // 绑定事件
@@ -169,6 +252,38 @@ function bindEvents() {
     document.getElementById('export-data').addEventListener('click', handleExportData);
     document.getElementById('clear-data').addEventListener('click', handleClearData);
     document.getElementById('operation-logs').addEventListener('click', showOperationLogs);
+    
+    // 荣誉墙相关事件
+    const honorListSection = document.getElementById('honor-list');
+    if (honorListSection) {
+        honorListSection.addEventListener('click', showHonorWall);
+    }
+    
+    if (document.getElementById('close-honor-wall')) {
+        document.getElementById('close-honor-wall').addEventListener('click', hideHonorWall);
+    }
+    
+    if (document.getElementById('close-celebration')) {
+        document.getElementById('close-celebration').addEventListener('click', hideCelebration);
+    }
+    
+    // 荣誉筛选按钮事件
+    const filterBtns = document.querySelectorAll('.honor-filter-btn');
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // 更新按钮状态
+            filterBtns.forEach(b => {
+                b.classList.remove('bg-yellow-100', 'text-yellow-800');
+                b.classList.add('bg-gray-100', 'text-gray-600');
+            });
+            btn.classList.remove('bg-gray-100', 'text-gray-600');
+            btn.classList.add('bg-yellow-100', 'text-yellow-800');
+            
+            // 执行筛选
+            const filter = btn.dataset.filter;
+            filterHonors(filter);
+        });
+    });
 }
 
 // 处理登录
@@ -1519,6 +1634,11 @@ async function handleTomatoFinish() {
         await loadTasks();
         await loadStatistics();
         await updateUserInfo();
+        await loadHonors();
+        
+        // 检查是否有新的荣誉可以获取
+        await checkNewHonors();
+        
         domUtils.showToast('番茄钟完成，任务已标记为完成');
     } catch (err) {
         console.error('番茄钟完成时更新失败', err);
@@ -2489,62 +2609,235 @@ function handleLogout() {
     );
 }
 
-// 加载荣誉列表
+// 加载荣誉列表 - 不显示任何内容，让荣誉区域不占用空间
 async function loadHonors() {
     try {
-        const userHonors = await api.honorAPI.getUserHonors(appState.currentUser.id);
-        const allHonors = await api.honorAPI.getAllHonors();
+        console.log('初始化荣誉区域');
         
+        // 确保honor-list元素存在
         const honorList = document.getElementById('honor-list');
-        honorList.innerHTML = '';
-        
-        if (allHonors.length === 0) {
-            honorList.innerHTML = '<div class="col-span-4 text-center text-gray-500 py-5">暂无荣誉，继续努力！</div>';
+        if (!honorList) {
+            console.error('honor-list元素不存在');
             return;
         }
         
-        // 创建用户荣誉的映射
-        const userHonorMap = {};
-        userHonors.forEach(honor => {
-            userHonorMap[honor.id] = honor;
-        });
+        // 清空内容并设置不占用空间
+        honorList.innerHTML = '';
+        honorList.style.minHeight = '0';
+        honorList.style.padding = '0';
         
-        // 显示所有荣誉
-        allHonors.forEach(honor => {
-            const isObtained = userHonorMap[honor.id] !== undefined;
-            
-            // 为不同类型的荣誉选择不同的背景色
-            let bgColor = 'bg-yellow-100';
-            let iconColor = 'text-yellow-500';
-            
-            if (honor.name.includes('连续')) {
-                bgColor = 'bg-blue-100';
-                iconColor = 'text-blue-500';
-            } else if (honor.name.includes('第一个')) {
-                bgColor = 'bg-pink-100';
-                iconColor = 'text-pink-500';
-            } else if (honor.name.includes('学习')) {
-                bgColor = 'bg-green-100';
-                iconColor = 'text-green-500';
-            }
-            
-            const honorElement = document.createElement('div');
-            honorElement.className = 'flex flex-col items-center p-2 transform hover:scale-110 transition-all duration-300';
-            honorElement.innerHTML = `
-                <div class="w-16 h-16 ${isObtained ? bgColor : 'bg-gray-100'} rounded-full flex items-center justify-center mb-2 shadow-md relative overflow-hidden">
-                    <i class="fa ${honor.icon || 'fa-trophy'} ${isObtained ? iconColor : 'text-gray-400'} text-xl"></i>
-                    <div class="absolute inset-0 bg-white opacity-20 rounded-full"></div>
-                </div>
-                <span class="text-sm font-medium text-gray-700">${honor.name}</span>
-                ${isObtained ? `<span class="text-xs ${iconColor}">x${userHonorMap[honor.id].obtained_count}</span>` : ''}
-            `;
-            honorList.appendChild(honorElement);
-        });
+        console.log('荣誉区域初始化完成');
     } catch (error) {
-        console.error('加载荣誉列表失败:', error);
-        honorList.innerHTML = '<div class="col-span-4 text-center text-gray-500 py-5">加载失败，请稍后再试</div>';
+        console.error('初始化荣誉区域失败:', error);
     }
 }
+
+// 检查是否有新的荣誉可以获取
+async function checkNewHonors() {
+    try {
+        const result = await api.honorAPI.checkAndGrantHonors(appState.currentUser.id);
+        
+        if (result && result.new_honors && result.new_honors.length > 0) {
+            // 显示新获得的荣誉
+            for (const honor of result.new_honors) {
+                await showHonorCelebration(honor);
+            }
+            
+            // 重新加载荣誉列表以更新显示
+            await loadHonors();
+        }
+    } catch (error) {
+        console.error('检查荣誉失败:', error);
+    }
+}
+
+// 显示荣誉获得的庆祝效果
+function showHonorCelebration(honor) {
+    return new Promise((resolve) => {
+        // 创建庆祝弹窗元素
+        const celebrationModal = document.createElement('div');
+        celebrationModal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+        celebrationModal.style.opacity = '0';
+        celebrationModal.style.transition = 'opacity 0.3s ease-in-out';
+        
+        // 为不同类型的荣誉选择不同的颜色
+        let bgColor = 'bg-yellow-50';
+        let headerColor = 'bg-yellow-500';
+        let iconBgColor = 'bg-yellow-100';
+        let iconColor = 'text-yellow-500';
+        
+        if (honor.name.includes('连续')) {
+            bgColor = 'bg-blue-50';
+            headerColor = 'bg-blue-500';
+            iconBgColor = 'bg-blue-100';
+            iconColor = 'text-blue-500';
+        } else if (honor.name.includes('第一个')) {
+            bgColor = 'bg-pink-50';
+            headerColor = 'bg-pink-500';
+            iconBgColor = 'bg-pink-100';
+            iconColor = 'text-pink-500';
+        } else if (honor.name.includes('学习')) {
+            bgColor = 'bg-green-50';
+            headerColor = 'bg-green-500';
+            iconBgColor = 'bg-green-100';
+            iconColor = 'text-green-500';
+        }
+        
+        // 使用图标文件
+        const iconPath = honor.icon ? `/static/images/honors/${honor.icon}` : '/static/images/honors/default.png';
+        
+        celebrationModal.innerHTML = `
+            <div class="${bgColor} rounded-xl shadow-2xl overflow-hidden max-w-md w-full mx-4 transform transition-all duration-500 scale-90" id="celebration-content">
+                <div class="${headerColor} text-white text-center py-3">
+                    <h2 class="text-xl font-bold">恭喜获得新荣誉！</h2>
+                </div>
+                <div class="p-6">
+                    <div class="flex flex-col items-center justify-center mb-4">
+                        <div class="w-24 h-24 ${iconBgColor} rounded-full flex items-center justify-center mb-3 shadow-lg relative overflow-hidden">
+                            <img src="${iconPath}" alt="${honor.name}" class="w-16 h-16 object-contain">
+                            <div class="absolute inset-0 bg-white opacity-20 rounded-full"></div>
+                        </div>
+                        <h3 class="text-xl font-bold ${iconColor}">${honor.name}</h3>
+                        <p class="text-gray-600 text-center mt-2">${honor.description || '继续努力，获得更多荣誉！'}</p>
+                    </div>
+                    <div class="text-center">
+                        <button id="celebration-close" class="bg-gray-800 text-white py-2 px-6 rounded-full font-medium hover:bg-gray-700 transition-colors">
+                            太棒了！
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 添加到页面
+        document.body.appendChild(celebrationModal);
+        
+        // 创建五彩纸屑效果
+        createConfetti();
+        
+        // 添加动画效果
+        setTimeout(() => {
+            celebrationModal.style.opacity = '1';
+            document.getElementById('celebration-content').classList.remove('scale-90');
+            document.getElementById('celebration-content').classList.add('scale-100');
+        }, 10);
+        
+        // 关闭按钮事件
+        document.getElementById('celebration-close').addEventListener('click', () => {
+            celebrationModal.style.opacity = '0';
+            document.getElementById('celebration-content').classList.remove('scale-100');
+            document.getElementById('celebration-content').classList.add('scale-90');
+            
+            setTimeout(() => {
+                document.body.removeChild(celebrationModal);
+                clearConfetti();
+                resolve();
+            }, 300);
+        });
+        
+        // 点击外部关闭
+        celebrationModal.addEventListener('click', (e) => {
+            if (e.target === celebrationModal) {
+                document.getElementById('celebration-close').click();
+            }
+        });
+    });
+}
+
+// 创建五彩纸屑效果
+function createConfetti() {
+    const confettiColors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0', '#118AB2', '#073B4C', '#FF9F1C', '#E71D36', '#011627'];
+    const confettiCount = 150;
+    
+    const confettiContainer = document.createElement('div');
+    confettiContainer.id = 'confetti-container';
+    confettiContainer.className = 'fixed inset-0 pointer-events-none z-40';
+    document.body.appendChild(confettiContainer);
+    
+    for (let i = 0; i < confettiCount; i++) {
+        const confetti = document.createElement('div');
+        
+        // 随机形状和大小
+        const size = Math.random() * 10 + 5;
+        const shapeType = Math.floor(Math.random() * 3); // 0: circle, 1: square, 2: triangle
+        
+        if (shapeType === 0) { // 圆形
+            confetti.className = 'absolute';
+            confetti.style.width = `${size}px`;
+            confetti.style.height = `${size}px`;
+            confetti.style.borderRadius = '50%';
+        } else if (shapeType === 1) { // 正方形
+            confetti.className = 'absolute';
+            confetti.style.width = `${size}px`;
+            confetti.style.height = `${size}px`;
+        } else { // 三角形
+            confetti.className = 'absolute';
+            confetti.style.width = '0';
+            confetti.style.height = '0';
+            confetti.style.borderLeft = `${size / 2}px solid transparent`;
+            confetti.style.borderRight = `${size / 2}px solid transparent`;
+            confetti.style.borderBottom = `${size}px solid currentColor`;
+        }
+        
+        // 随机颜色和位置
+        const color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+        confetti.style.backgroundColor = shapeType !== 2 ? color : 'transparent';
+        confetti.style.color = color;
+        confetti.style.left = `${Math.random() * 100}vw`;
+        confetti.style.top = `-20px`;
+        confetti.style.opacity = Math.random() * 0.8 + 0.2;
+        confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+        
+        // 添加动画
+        const animationDuration = Math.random() * 3 + 2;
+        const animationDelay = Math.random() * 2;
+        const horizontalOffset = (Math.random() - 0.5) * 100;
+        
+        confetti.style.animation = `falling ${animationDuration}s linear ${animationDelay}s forwards`;
+        confetti.style.animationName = 'falling';
+        
+        confettiContainer.appendChild(confetti);
+    }
+    
+    // 添加动画样式
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes falling {
+            0% {
+                transform: translateY(0) translateX(0) rotate(0deg);
+                opacity: 0.8;
+            }
+            50% {
+                transform: translateY(50vh) translateX(100px) rotate(180deg);
+                opacity: 0.5;
+            }
+            100% {
+                transform: translateY(100vh) translateX(0) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// 清除五彩纸屑效果
+function clearConfetti() {
+    const container = document.getElementById('confetti-container');
+    if (container) {
+        document.body.removeChild(container);
+    }
+    
+    // 移除动画样式
+    const styleElements = document.head.querySelectorAll('style');
+    for (let i = 0; i < styleElements.length; i++) {
+        if (styleElements[i].textContent.includes('@keyframes falling')) {
+            document.head.removeChild(styleElements[i]);
+            break;
+        }
+    }
+}
+
+// 荣誉墙功能可以后续扩展
 
 // 处理导出数据
 function handleExportData() {
@@ -2565,6 +2858,211 @@ function handleClearData() {
 // 显示操作记录
 function showOperationLogs() {
     domUtils.showToast('操作记录功能开发中...');
+}
+
+// 显示荣誉墙弹窗
+async function showHonorWall() {
+    const honorWallModal = document.getElementById('honor-wall-modal');
+    if (honorWallModal) {
+        honorWallModal.classList.remove('hidden');
+        // 渲染荣誉墙内容
+        await renderHonorWall();
+    }
+}
+
+// 隐藏荣誉墙弹窗
+function hideHonorWall() {
+    const honorWallModal = document.getElementById('honor-wall-modal');
+    if (honorWallModal) {
+        honorWallModal.classList.add('hidden');
+    }
+}
+
+// 渲染荣誉墙内容
+async function renderHonorWall() {
+    try {
+        const userHonors = await api.honorAPI.getUserHonors(appState.currentUser.id);
+        const allHonors = await api.honorAPI.getAllHonors();
+        
+        const honorWallContent = document.getElementById('honor-wall-content');
+        honorWallContent.innerHTML = '';
+        
+        // 保存荣誉数据到全局，用于筛选
+        window.honorData = {
+            userHonors: userHonors,
+            allHonors: allHonors
+        };
+        
+        // 创建用户荣誉的映射
+        const userHonorMap = {};
+        userHonors.forEach(honor => {
+            userHonorMap[honor.id] = honor;
+        });
+        
+        // 显示所有荣誉
+        allHonors.forEach(honor => {
+            renderSingleHonor(honor, userHonorMap[honor.id], honorWallContent);
+        });
+    } catch (error) {
+        console.error('加载荣誉墙失败:', error);
+        document.getElementById('honor-wall-content').innerHTML = 
+            '<div class="col-span-full text-center text-gray-500 py-10">加载失败，请稍后再试</div>';
+    }
+}
+
+// 渲染单个荣誉项
+function renderSingleHonor(honor, userHonor, container) {
+    const isObtained = !!userHonor;
+    
+    // 为不同类型的荣誉选择不同的背景色
+    let bgColor = 'bg-yellow-100';
+    let iconColor = 'text-yellow-500';
+    let cardBg = 'bg-yellow-50';
+    let borderColor = 'border-yellow-200';
+    
+    if (honor.name.includes('连续')) {
+        bgColor = 'bg-blue-100';
+        iconColor = 'text-blue-500';
+        cardBg = 'bg-blue-50';
+        borderColor = 'border-blue-200';
+    } else if (honor.name.includes('第一个')) {
+        bgColor = 'bg-pink-100';
+        iconColor = 'text-pink-500';
+        cardBg = 'bg-pink-50';
+        borderColor = 'border-pink-200';
+    } else if (honor.name.includes('学习')) {
+        bgColor = 'bg-green-100';
+        iconColor = 'text-green-500';
+        cardBg = 'bg-green-50';
+        borderColor = 'border-green-200';
+    }
+    
+    const honorCard = document.createElement('div');
+    honorCard.className = `honor-card rounded-xl border ${borderColor} p-3 transform transition-all duration-300 hover:scale-105 cursor-pointer`;
+    honorCard.dataset.obtained = isObtained;
+    honorCard.innerHTML = `
+        <div class="text-center">
+            <div class="w-20 h-20 mx-auto ${isObtained ? bgColor : 'bg-gray-100'} rounded-full flex items-center justify-center mb-3 shadow-md relative overflow-hidden">
+                ${honor.icon ? `<img src="/static/images/honors/${honor.icon}" alt="${honor.name}" class="w-12 h-12 object-contain ${isObtained ? '' : 'opacity-50'}">` : `<i class="fa fa-trophy ${isObtained ? iconColor : 'text-gray-400'} text-2xl"></i>`}
+                <div class="absolute inset-0 bg-white opacity-20 rounded-full"></div>
+                ${isObtained ? '<div class="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-yellow-200">' +
+                    `<span class="text-xs font-bold ${iconColor}">${userHonor.obtained_count}</span></div>` : ''}
+            </div>
+            <h4 class="font-bold text-gray-800 mb-1">${honor.name}</h4>
+            <p class="text-sm text-gray-500 mb-2">${honor.description}</p>
+            ${isObtained ? `<div class="text-xs text-gray-500">获得于：${userHonor.last_obtained}</div>` : ''}
+        </div>
+    `;
+    
+    // 添加点击效果
+    honorCard.addEventListener('click', () => {
+        if (isObtained) {
+            // 已获得的荣誉可以再次展示详情
+            showHonorDetail(honor, userHonor);
+        } else {
+            // 未获得的荣誉显示获取条件提示
+            domUtils.showToast(`完成以下条件可获得：${honor.condition || '继续努力'}`);
+        }
+    });
+    
+    container.appendChild(honorCard);
+}
+
+// 筛选荣誉
+function filterHonors(filter) {
+    const honorCards = document.querySelectorAll('.honor-card');
+    
+    honorCards.forEach(card => {
+        const isObtained = card.dataset.obtained === 'true';
+        
+        if (filter === 'all') {
+            card.classList.remove('hidden');
+        } else if (filter === 'obtained' && isObtained) {
+            card.classList.remove('hidden');
+        } else if (filter === 'unobtained' && !isObtained) {
+            card.classList.remove('hidden');
+        } else {
+            card.classList.add('hidden');
+        }
+    });
+}
+
+// 显示荣誉详情
+function showHonorDetail(honor, userHonor) {
+    // 可以扩展为显示更详细的荣誉信息弹窗
+    domUtils.showToast(`${honor.name}\n${honor.description}\n获得次数：${userHonor.obtained_count}\n最后获得：${userHonor.last_obtained}`);
+}
+
+// 荣誉庆祝功能已在前面实现
+
+// 隐藏庆祝弹窗
+function hideCelebration() {
+    const celebrationModal = document.getElementById('honor-celebration-modal');
+    const celebrationContent = document.getElementById('celebration-content');
+    
+    if (celebrationModal && celebrationContent) {
+        celebrationContent.classList.remove('scale-100', 'opacity-100');
+        celebrationContent.classList.add('scale-90', 'opacity-0');
+        
+        setTimeout(() => {
+            celebrationModal.classList.add('hidden');
+            // 清理粒子
+            const confetti = document.getElementById('confetti-container');
+            if (confetti) confetti.remove();
+        }, 300);
+    }
+}
+
+// 创建庆祝粒子效果
+function createCelebrationConfetti() {
+    const container = document.createElement('div');
+    container.id = 'confetti-container';
+    container.style.position = 'fixed';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.width = '100%';
+    container.style.height = '100%';
+    container.style.pointerEvents = 'none';
+    container.style.zIndex = '60';
+    document.body.appendChild(container);
+    
+    const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
+    
+    for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement('div');
+        confetti.style.position = 'absolute';
+        confetti.style.width = Math.random() * 10 + 5 + 'px';
+        confetti.style.height = Math.random() * 10 + 5 + 'px';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.left = Math.random() * 100 + 'vw';
+        confetti.style.top = -20 + 'px';
+        confetti.style.borderRadius = '2px';
+        confetti.style.transform = 'rotate(' + Math.random() * 360 + 'deg)';
+        confetti.style.opacity = Math.random() * 0.8 + 0.2;
+        confetti.style.boxShadow = '0 0 10px rgba(0,0,0,0.1)';
+        
+        container.appendChild(confetti);
+        
+        // 动画
+        const duration = Math.random() * 3 + 2;
+        const start = performance.now();
+        
+        function animate(timestamp) {
+            const elapsed = timestamp - start;
+            const progress = elapsed / (duration * 1000);
+            
+            if (progress < 1) {
+                confetti.style.top = progress * 100 + 'vh';
+                confetti.style.left = Math.random() * 20 - 10 + parseInt(confetti.style.left) + 'px';
+                confetti.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
+                requestAnimationFrame(animate);
+            } else {
+                confetti.remove();
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    }
 }
 
 // 启动应用

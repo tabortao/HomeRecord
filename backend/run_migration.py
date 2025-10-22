@@ -76,6 +76,32 @@ try:
     for row in cursor.fetchall():
         print(f"ID: {row[0]}, Name: {row[1]}, Cost: {row[2]}, Unit: {row[3]}, Exchange Amount: {row[4]}")
     
+    # 检查并更新honor表，添加icon字段
+    cursor.execute("PRAGMA table_info(honor)")
+    honor_columns = [column[1] for column in cursor.fetchall()]
+    print(f"\n当前honor表字段: {honor_columns}")
+    
+    if 'icon' not in honor_columns:
+        cursor.execute("ALTER TABLE honor ADD COLUMN icon TEXT DEFAULT 'default.png'")
+        print("添加icon字段到honor表成功")
+    
+    # 为honor表现有记录设置默认图标
+    cursor.execute("UPDATE honor SET icon = 'default.png' WHERE icon IS NULL")
+    print("更新honor表现有记录默认图标成功")
+    
+    # 验证更新后的honor表结构
+    cursor.execute("PRAGMA table_info(honor)")
+    honor_updated_columns = cursor.fetchall()
+    print("\n更新后的honor表结构:")
+    for column in honor_updated_columns:
+        print(f"- {column[1]} ({column[2]})")
+    
+    # 显示一些示例荣誉数据
+    cursor.execute("SELECT id, name, description, icon FROM honor LIMIT 5")
+    print("\n示例荣誉数据:")
+    for row in cursor.fetchall():
+        print(f"ID: {row[0]}, Name: {row[1]}, Description: {row[2]}, Icon: {row[3]}")
+    
     print("\n数据库迁移完成！")
     
 finally:

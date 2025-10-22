@@ -542,6 +542,7 @@ def register_routes(app):
                 'id': uh.honor.id,
                 'name': uh.honor.name,
                 'description': uh.honor.description,
+                'icon': uh.honor.icon,
                 'obtained_count': uh.obtained_count,
                 'last_obtained': uh.obtained_at.strftime('%Y-%m-%d')
             })
@@ -550,17 +551,193 @@ def register_routes(app):
     
     @app.route('/api/honors/all', methods=['GET'])
     def get_all_honors():
+        user_id = request.args.get('user_id', type=int)
         honors = Honor.query.all()
+        user_honors_map = {}
+        
+        # 如果提供了user_id，获取用户的荣誉信息
+        if user_id:
+            user_honors = UserHonor.query.filter_by(user_id=user_id).all()
+            for uh in user_honors:
+                user_honors_map[uh.honor_id] = {
+                    'obtained_count': uh.obtained_count,
+                    'last_obtained': uh.obtained_at.strftime('%Y-%m-%d')
+                }
         
         result = []
         for honor in honors:
-            result.append({
+            honor_data = {
                 'id': honor.id,
                 'name': honor.name,
-                'description': honor.description
-            })
+                'description': honor.description,
+                'icon': honor.icon,
+                'condition': honor.condition,
+                'is_obtained': honor.id in user_honors_map
+            }
+            
+            # 如果用户已获得该荣誉，添加获得次数和日期
+            if honor.id in user_honors_map:
+                honor_data.update(user_honors_map[honor.id])
+            
+            result.append(honor_data)
         
         return jsonify(result)
+    
+    # 荣誉达成检测路由
+    @app.route('/api/honors/check', methods=['POST'])
+    def check_and_grant_honors():
+        from datetime import datetime, timedelta
+        import json
+        
+        data = request.json
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({'success': False, 'message': '用户ID不能为空'}), 400
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': '用户不存在'}), 404
+        
+        # 获取所有荣誉和用户已获得的荣誉
+        all_honors = Honor.query.all()
+        user_honors = UserHonor.query.filter_by(user_id=user_id).all()
+        user_honors_map = {uh.honor_id: uh for uh in user_honors}
+        
+        # 新获得的荣誉列表
+        newly_obtained_honors = []
+        
+        # 检测每个荣誉的达成条件
+        for honor in all_honors:
+            # 如果用户已经获得过该荣誉，跳过（可以根据需要修改为可以重复获得）
+            # 这里我们允许重复获得，比如连续打卡可以多次获得
+            
+            # 根据荣誉名称判断达成条件
+            is_achieved = False
+            
+            if honor.name == '连续打卡 7 天':
+                # 检查连续7天完成任务
+                today = datetime.now().date()
+                consecutive_days = 0
+                
+                for i in range(7):
+                    check_date = today - timedelta(days=i)
+                    check_date_str = check_date.strftime('%Y-%m-%d')
+                    
+                    # 检查该日期是否有完成的任务
+                    tasks = Task.query.filter_by(
+                        user_id=user_id,
+                        start_date=check_date_str,
+                        status='已完成'
+                    ).all()
+                    
+                    if tasks:
+                        consecutive_days += 1
+                    else:
+                        break
+                
+                is_achieved = consecutive_days >= 7
+            
+            elif honor.name == '学习达人':
+                # 检查单日学习时长超过3小时（180分钟）
+                today = datetime.now().date().strftime('%Y-%m-%d')
+                today_tasks = Task.query.filter_by(
+                    user_id=user_id,
+                    start_date=today,
+                    status='已完成'
+                ).all()
+                
+                total_time = sum(task.actual_time for task in today_tasks if task.actual_time)
+                is_achieved = total_time >= 180
+            
+            elif honor.name == '积分富翁':
+                # 检查累计获得积分超过1000
+                is_achieved = user.total_gold >= 1000
+            
+            elif honor.name == '任务高手':
+                # 检查单日完成任务数量超过15个
+                today = datetime.now().date().strftime('%Y-%m-%d')
+                completed_tasks = Task.query.filter_by(
+                    user_id=user_id,
+                    start_date=today,
+                    status='已完成'
+                ).count()
+                is_achieved = completed_tasks >= 15
+            
+            elif honor.name == '勤奋努力':
+                # 检查连续30天有打卡记录
+                today = datetime.now().date()
+                consecutive_days = 0
+                
+                for i in range(30):
+                    check_date = today - timedelta(days=i)
+                    check_date_str = check_date.strftime('%Y-%m-%d')
+                    
+                    tasks = Task.query.filter_by(
+                        user_id=user_id,
+                        start_date=check_date_str
+                    ).all()
+                    
+                    if tasks:
+                        consecutive_days += 1
+                    else:
+                        break
+                
+                is_achieved = consecutive_days >= 30
+            
+            # 如果达成条件
+            if is_achieved:
+                # 检查是否已经获得过该荣誉
+                if honor.id in user_honors_map:
+                    # 增加获得次数
+                    user_honors_map[honor.id].obtained_count += 1
+                    user_honors_map[honor.id].obtained_at = datetime.now()
+                else:
+                    # 创建新的用户荣誉记录
+                    new_user_honor = UserHonor(
+                        user_id=user_id,
+                        honor_id=honor.id,
+                        obtained_count=1,
+                        obtained_at=datetime.now()
+                    )
+                    db.session.add(new_user_honor)
+                    user_honors_map[honor.id] = new_user_honor
+                    
+                    # 添加到新获得的荣誉列表
+                    newly_obtained_honors.append({
+                        'id': honor.id,
+                        'name': honor.name,
+                        'description': honor.description,
+                        'icon': honor.icon
+                    })
+        
+        # 提交数据库更改
+        db.session.commit()
+        
+        # 检查是否达成"成长先锋"荣誉（获得10种不同荣誉）
+        if len(user_honors_map) >= 10:
+            growth_pioneer = Honor.query.filter_by(name='成长先锋').first()
+            if growth_pioneer and growth_pioneer.id not in user_honors_map:
+                new_user_honor = UserHonor(
+                    user_id=user_id,
+                    honor_id=growth_pioneer.id,
+                    obtained_count=1,
+                    obtained_at=datetime.now()
+                )
+                db.session.add(new_user_honor)
+                db.session.commit()
+                
+                newly_obtained_honors.append({
+                    'id': growth_pioneer.id,
+                    'name': growth_pioneer.name,
+                    'description': growth_pioneer.description,
+                    'icon': growth_pioneer.icon
+                })
+        
+        return jsonify({
+            'success': True,
+            'newly_obtained_honors': newly_obtained_honors
+        })
     
     # 统计数据路由
     @app.route('/api/statistics', methods=['GET'])

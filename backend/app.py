@@ -58,26 +58,22 @@ with app.app_context():
     
     # 初始化荣誉系统
     honors = [
-        {'name': '连续打卡 7 天', 'description': '连续7天完成所有任务', 'condition': '连续打卡7天'},
-        {'name': '学习达人', 'description': '单日学习时长超过3小时', 'condition': '单日学习时长>180分钟'},
-        {'name': '阅读之星', 'description': '累计阅读时间超过10小时', 'condition': '累计阅读时间>600分钟'},
-        {'name': '早起鸟', 'description': '连续7天早上完成任务', 'condition': '连续7天早上完成任务'},
-        {'name': '坚持到底', 'description': '连续完成同一任务30天', 'condition': '连续完成同一任务30天'},
-        {'name': '全能选手', 'description': '单日完成所有学科任务', 'condition': '单日完成所有学科任务'},
-        {'name': '进步神速', 'description': '任务完成率提升20%', 'condition': '任务完成率提升20%'},
-        {'name': '专注达人', 'description': '单次学习时长超过1小时', 'condition': '单次学习时长>60分钟'},
-        {'name': '周末战士', 'description': '周末完成任务数量超过10个', 'condition': '周末完成任务数>10'},
-        {'name': '积分富翁', 'description': '累计获得积分超过1000', 'condition': '累计积分>1000'},
-        {'name': '心愿达人', 'description': '兑换心愿次数超过20次', 'condition': '兑换心愿次数>20'},
-        {'name': '计划大师', 'description': '创建循环任务超过10个', 'condition': '创建循环任务数>10'},
-        {'name': '完美主义', 'description': '任务完成率达到100%', 'condition': '任务完成率=100%'},
-        {'name': '持之以恒', 'description': '使用番茄钟超过100次', 'condition': '使用番茄钟次数>100'},
-        {'name': '时间管理', 'description': '任务实际用时与计划用时相差不超过10%', 'condition': '任务时间误差<10%'},
-        {'name': '学科之星', 'description': '某一学科连续完成任务15天', 'condition': '某学科连续完成15天'},
-        {'name': '高效学习', 'description': '单日番茄钟专注时长超过2小时', 'condition': '单日番茄钟时长>120分钟'},
-        {'name': '勤奋努力', 'description': '连续30天有打卡记录', 'condition': '连续30天有打卡'},
-        {'name': '任务高手', 'description': '单日完成任务数量超过15个', 'condition': '单日完成任务数>15'},
-        {'name': '成长先锋', 'description': '累计获得10种不同的荣誉', 'condition': '获得10种不同荣誉'}
+        {'name': '专注达人', 'description': '单次学习时长超过1小时', 'condition': '单次学习时长>60分钟', 'icon': '专注达人.png'},
+        {'name': '任务高手', 'description': '单日完成任务数量超过15个', 'condition': '单日完成任务数>15', 'icon': '任务高手.png'},
+        {'name': '全能选手', 'description': '单日完成所有学科任务', 'condition': '单日完成所有学科任务', 'icon': '全能选手.png'},
+        {'name': '勤奋努力', 'description': '连续30天有打卡记录', 'condition': '连续30天有打卡', 'icon': '勤奋努力.png'},
+        {'name': '周末战士', 'description': '周末连续完成任务', 'condition': '周末连续完成任务', 'icon': '周末战士.png'},
+        {'name': '坚持到底', 'description': '连续完成同一任务30天', 'condition': '连续完成同一任务30天', 'icon': '坚持到底.png'},
+        {'name': '学科之星', 'description': '单科任务完成率100%', 'condition': '单科任务完成率100%', 'icon': '学科之星.png'},
+        {'name': '完美主义', 'description': '连续5天任务完成率100%', 'condition': '连续5天任务完成率100%', 'icon': '完美主义.png'},
+        {'name': '心愿达人', 'description': '累计完成心愿10个', 'condition': '累计完成心愿10个', 'icon': '心愿达人.png'},
+        {'name': '成长先锋', 'description': '累计获得10种不同的荣誉', 'condition': '获得10种不同荣誉', 'icon': '成长先锋.png'},
+        {'name': '持之以恒', 'description': '连续打卡30天', 'condition': '连续打卡30天', 'icon': '持之以恒.png'},
+        {'name': '时间管理', 'description': '提前完成任务规划', 'condition': '提前完成任务规划', 'icon': '时间管理.png'},
+        {'name': '积分富翁', 'description': '累计获得积分超过1000分', 'condition': '累计获得积分>1000', 'icon': '积分富翁.png'},
+        {'name': '计划大师', 'description': '单日规划任务超过20个', 'condition': '单日规划任务>20个', 'icon': '计划大师.png'},
+        {'name': '进步神速', 'description': '任务完成率提升20%', 'condition': '任务完成率提升20%', 'icon': '进步神速.png'},
+        {'name': '高效学习', 'description': '学习效率提升30%', 'condition': '学习效率提升30%', 'icon': '高效学习.png'}
     ]
     for honor in honors:
         if not Honor.query.filter_by(name=honor['name']).first():
