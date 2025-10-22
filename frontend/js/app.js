@@ -249,7 +249,7 @@ function bindEvents() {
     document.getElementById('exchange-history').addEventListener('click', showExchangeHistory);
 
     // 我的页面事件
-    document.getElementById('export-data').addEventListener('click', handleExportData);
+    
     document.getElementById('clear-data').addEventListener('click', handleClearData);
     document.getElementById('operation-logs').addEventListener('click', showOperationLogs);
     
@@ -2838,11 +2838,6 @@ function clearConfetti() {
 }
 
 // 荣誉墙功能可以后续扩展
-
-// 处理导出数据
-function handleExportData() {
-    domUtils.showToast('导出数据功能开发中...');
-}
 
 // 处理清除数据
 function handleClearData() {
