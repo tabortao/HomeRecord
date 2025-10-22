@@ -214,15 +214,16 @@
 
             <!-- 小心愿页面 -->
             <div id="wish-page" class="hidden">
-                <div class="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 mb-4 rounded-xl">
-                    <div class="flex flex-col items-center justify-center text-center">
-                        <!-- 我的小心愿标题已移除 -->
-                        <div class="flex items-center bg-white px-4 py-2 rounded-full shadow-sm">
+                <div class="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 mb-4 rounded-xl shadow-md">
+                    <div class="flex items-center justify-between bg-white px-6 py-3 rounded-xl shadow-sm">
+                        <div class="flex items-center">
                             <i class="fa fa-star text-yellow-500 mr-2 text-xl"></i>
                             <span class="text-gray-600 mr-2">可用金币：</span>
                             <span id="wish-gold" class="text-yellow-500 font-bold text-lg">0</span>
-                            <button id="exchange-history" class="ml-4 text-sm bg-orange-100 text-orange-600 px-3 py-1 rounded-full">领取记录</button>
                         </div>
+                        <button id="exchange-history" class="text-sm bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full hover:bg-orange-200 transition-colors duration-200">
+                            领取记录
+                        </button>
                     </div>
                 </div>
                 

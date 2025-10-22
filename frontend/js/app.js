@@ -1602,30 +1602,30 @@ async function loadWishes() {
                 <div class="absolute -right-4 -top-4 w-16 h-16 ${bgColor} rounded-full opacity-30"></div>
                 <div class="flex justify-between items-start relative">
                     <div class="flex items-center">
-                        <div class="w-12 h-12 ${bgColor} rounded-full flex items-center justify-center mr-3 shadow-md">
-                            <img src="${iconSrc}" alt="心愿图标" class="w-7 h-7 object-contain">
+                        <div class="w-12 h-12 ${bgColor} rounded-full flex items-center justify-center mr-3 shadow-md overflow-hidden">
+                            <img src="${iconSrc}" alt="心愿图标" class="w-full h-full object-cover">
                         </div>
                         <div>
                             <h4 class="font-bold text-lg text-gray-800">${wish.name}</h4>
                             <p class="text-xs text-gray-500">${wish.unit || '个'}</p>
                         </div>
                     </div>
-                    <div class="flex items-center text-yellow-500 bg-yellow-50 px-3 py-1 rounded-full">
-                        <i class="fa fa-coins mr-1 text-xl"></i>
-                        <span class="font-bold">${wish.cost}</span>
+                    <div class="flex items-center">
+                        <div class="flex items-center text-yellow-500 bg-yellow-50 px-3 py-1 rounded-full mr-2">
+                            <i class="fa fa-coins mr-1 text-xl"></i>
+                            <span class="font-bold">${wish.cost}</span>
+                        </div>
+                        <button class="wish-edit w-8 h-8 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-600 hover:bg-yellow-200 transition-colors duration-200">
+                            <i class="fa fa-edit"></i>
+                        </button>
                     </div>
                 </div>
                 <p class="text-gray-600 mt-3 text-sm line-clamp-2">${wish.content || wish.description || '暂无描述'}</p>
                 <div class="flex justify-between items-center mt-4">
                     <span class="text-xs text-gray-400">已兑换 ${wish.exchange_count || 0} 次</span>
-                    <div class="flex gap-2 flex-wrap">
-                        <button class="wish-edit bg-blue-500 text-white py-1.5 px-3 rounded-lg hover:shadow-md transition-all duration-200 text-sm font-medium">
-                            <i class="fa fa-edit mr-1"></i> 编辑
-                        </button>
-                        <button class="wish-exchange bg-blue-600 text-white py-1.5 px-3 rounded-lg hover:shadow-md transition-all duration-200 text-sm font-medium">
-                            <i class="fa fa-gift mr-1"></i> 兑换
-                        </button>
-                    </div>
+                    <button class="wish-exchange bg-yellow-500 text-white py-1.5 px-4 rounded-lg hover:shadow-md transition-all duration-200 text-sm font-medium">
+                        <i class="fa fa-gift mr-1"></i> 兑换
+                    </button>
                 </div>
             `;
             
@@ -2233,11 +2233,11 @@ function initWishPage() {
             if (goldSection) {
                 // 创建一个容器来放置按钮
                 const btnContainer = document.createElement('div');
-                btnContainer.className = 'flex justify-end mt-2 px-4';
+                btnContainer.className = 'flex justify-end mt-4 mb-6 px-4';
                 
                 addWishBtn = document.createElement('button');
                 addWishBtn.id = 'add-wish-btn';
-                addWishBtn.className = 'bg-blue-500 text-white py-2 px-6 rounded-full shadow-md transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1';
+                addWishBtn.className = 'bg-yellow-500 text-white py-2 px-6 rounded-full shadow-md transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1';
                 addWishBtn.innerHTML = '<i class="fa fa-plus mr-2"></i> 创建心愿';
                 addWishBtn.addEventListener('click', () => showEditWishModal(null));
                 
