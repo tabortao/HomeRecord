@@ -1607,7 +1607,7 @@ async function loadWishes() {
                         </div>
                         <div>
                             <h4 class="font-bold text-lg text-gray-800">${wish.name}</h4>
-                            <p class="text-xs text-gray-500">${wish.unit || '个'}</p>
+                            ${wish.exchange_amount && wish.unit ? `<p class="text-xs text-yellow-600">${wish.cost}金币可兑换${wish.exchange_amount}${wish.unit}</p>` : ''}
                         </div>
                     </div>
                     <div class="flex items-center">
@@ -1622,7 +1622,6 @@ async function loadWishes() {
                     </div>
                     <p class="text-gray-600 mt-3 text-sm line-clamp-2">
                         ${wish.content || wish.description || '暂无描述'}
-                        ${wish.exchange_amount && wish.unit ? `（${wish.cost}金币可兑换${wish.exchange_amount}${wish.unit}）` : ''}
                     </p>
                 <div class="flex justify-between items-center mt-4">
                     <span class="text-xs text-gray-400">已兑换 ${wish.exchange_count || 0} 次</span>
@@ -2036,12 +2035,7 @@ function showEditWishModal(wish) {
                 
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-1">兑换数量（如：1金币兑换10分钟，则设置为10）</label>
-                    <div class="relative">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
-                            <i class="fa fa-calculator"></i>
-                        </span>
-                        <input type="number" id="edit-wish-exchange-amount" min="1" value="1" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none">
-                    </div>
+                    <input type="number" id="edit-wish-exchange-amount" min="1" value="1" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none">
                 </div>
                 
                 <div class="flex justify-center gap-4">
