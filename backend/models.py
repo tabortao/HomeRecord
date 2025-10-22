@@ -66,6 +66,7 @@ class Wish(db.Model):
     cost = db.Column(db.Integer, nullable=False)
     unit = db.Column(db.String(20))
     exchange_count = db.Column(db.Integer, default=0)
+    exchange_amount = db.Column(db.Integer, default=1)  # 兑换数量
     is_builtin = db.Column(db.Boolean, default=False)
 
 # 操作记录表

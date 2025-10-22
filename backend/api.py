@@ -316,6 +316,7 @@ def register_routes(app):
                 'cost': wish.cost,
                 'unit': wish.unit,
                 'exchange_count': wish.exchange_count,
+                'exchange_amount': wish.exchange_amount,
                 'is_builtin': wish.is_builtin
             })
         
@@ -333,6 +334,7 @@ def register_routes(app):
             icon=data.get('icon'),
             cost=data.get('cost'),
             unit=data.get('unit'),
+            exchange_amount=data.get('exchange_amount', 1),
             exchange_count=0,
             is_builtin=False
         )
@@ -347,6 +349,7 @@ def register_routes(app):
             'icon': wish.icon,
             'cost': wish.cost,
             'unit': wish.unit,
+            'exchange_amount': wish.exchange_amount,
             'exchange_count': wish.exchange_count,
             'is_builtin': wish.is_builtin
         }})
@@ -358,9 +361,7 @@ def register_routes(app):
         if not wish:
             return jsonify({'success': False, 'message': '心愿不存在'})
         
-        if wish.is_builtin:
-            return jsonify({'success': False, 'message': '内置心愿不能修改'})
-        
+        # 允许编辑内置心愿，但不允许修改is_builtin属性
         # 更新心愿信息
         for key, value in data.items():
             if hasattr(wish, key) and key != 'id' and key != 'user_id' and key != 'is_builtin':

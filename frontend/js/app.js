@@ -1611,16 +1611,19 @@ async function loadWishes() {
                         </div>
                     </div>
                     <div class="flex items-center">
-                        <div class="flex items-center text-yellow-500 bg-yellow-50 px-3 py-1 rounded-full mr-2">
-                            <i class="fa fa-coins mr-1 text-xl"></i>
-                            <span class="font-bold">${wish.cost}</span>
+                            <div class="flex items-center text-yellow-500 bg-yellow-50 px-3 py-1 rounded-full mr-2">
+                                <i class="fa fa-coins mr-1 text-xl"></i>
+                                <span class="font-bold">${wish.cost}</span>
+                            </div>
+                            <button class="wish-edit w-8 h-8 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-600 hover:bg-yellow-200 transition-colors duration-200 hidden">
+                                <i class="fa fa-edit"></i>
+                            </button>
                         </div>
-                        <button class="wish-edit w-8 h-8 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-600 hover:bg-yellow-200 transition-colors duration-200">
-                            <i class="fa fa-edit"></i>
-                        </button>
                     </div>
-                </div>
-                <p class="text-gray-600 mt-3 text-sm line-clamp-2">${wish.content || wish.description || '暂无描述'}</p>
+                    <p class="text-gray-600 mt-3 text-sm line-clamp-2">
+                        ${wish.content || wish.description || '暂无描述'}
+                        ${wish.exchange_amount && wish.unit ? `（${wish.cost}金币可兑换${wish.exchange_amount}${wish.unit}）` : ''}
+                    </p>
                 <div class="flex justify-between items-center mt-4">
                     <span class="text-xs text-gray-400">已兑换 ${wish.exchange_count || 0} 次</span>
                     <button class="wish-exchange bg-yellow-500 text-white py-1.5 px-4 rounded-lg hover:shadow-md transition-all duration-200 text-sm font-medium">
@@ -1637,10 +1640,27 @@ async function loadWishes() {
             // 编辑按钮事件
             const editBtn = wishElement.querySelector('.wish-edit');
             if (editBtn) {
-                editBtn.addEventListener('click', () => {
+                editBtn.addEventListener('click', (e) => {
+                    // 阻止事件冒泡，防止触发心愿卡片的点击事件
+                    e.stopPropagation();
                     showEditWishModal(wish);
                 });
             }
+            
+            // 添加心愿卡片点击事件，显示编辑按钮
+            wishElement.addEventListener('click', () => {
+                // 先隐藏所有其他编辑按钮
+                document.querySelectorAll('.wish-edit').forEach(btn => {
+                    btn.classList.add('hidden');
+                });
+                // 显示当前心愿的编辑按钮
+                editBtn.classList.remove('hidden');
+            });
+            
+            // 为兑换按钮添加阻止冒泡，避免点击兑换时也触发显示编辑按钮
+            wishElement.querySelector('.wish-exchange').addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
             
             wishList.appendChild(wishElement);
         });
@@ -2009,9 +2029,19 @@ function showEditWishModal(wish) {
                     </div>
                 </div>
                 
-                <div class="mb-6">
+                <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">单位（如：个、次、小时等）</label>
                     <input type="text" id="edit-wish-unit" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none">
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">兑换数量（如：1金币兑换10分钟，则设置为10）</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
+                            <i class="fa fa-calculator"></i>
+                        </span>
+                        <input type="number" id="edit-wish-exchange-amount" min="1" value="1" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none">
+                    </div>
                 </div>
                 
                 <div class="flex justify-center gap-4">
@@ -2098,13 +2128,14 @@ function showEditWishModal(wish) {
         document.getElementById('edit-wish-description').value = wish.content || wish.description || '';
         document.getElementById('edit-wish-cost').value = wish.cost;
         document.getElementById('edit-wish-unit').value = wish.unit || '';
+        document.getElementById('edit-wish-exchange-amount').value = wish.exchange_amount || 1;
         document.getElementById('edit-wish-title').textContent = '编辑心愿';
         document.getElementById('delete-wish-btn').classList.remove('hidden');
-        
+    
         // 如果有心形图标，显示在预览区域
         const iconPreview = document.getElementById('wish-icon-preview');
         const iconInput = document.getElementById('edit-wish-icon');
-        
+    
         if (wish.icon && wish.icon.trim() !== '') {
             iconPreview.innerHTML = `<img src="${wish.icon}" class="w-full h-full object-contain">`;
             iconInput.value = wish.icon;
@@ -2120,9 +2151,10 @@ function showEditWishModal(wish) {
         document.getElementById('edit-wish-description').value = '';
         document.getElementById('edit-wish-cost').value = '';
         document.getElementById('edit-wish-unit').value = '';
+        document.getElementById('edit-wish-exchange-amount').value = 1;
         document.getElementById('edit-wish-title').textContent = '新建心愿';
         document.getElementById('delete-wish-btn').classList.add('hidden');
-        
+    
         // 重置图标预览
         const iconPreview = document.getElementById('wish-icon-preview');
         const iconInput = document.getElementById('edit-wish-icon');
@@ -2157,11 +2189,20 @@ async function handleSaveWish() {
         // 获取上传的图标数据
         const iconData = document.getElementById('edit-wish-icon').value;
         
+        const exchangeAmount = parseInt(document.getElementById('edit-wish-exchange-amount').value, 10);
+        
+        // 验证兑换数量
+        if (!exchangeAmount || exchangeAmount <= 0) {
+            domUtils.showToast('请输入有效的兑换数量', 'error');
+            return;
+        }
+        
         const wishData = {
             name,
             content: description,
             cost,
             unit,
+            exchange_amount: exchangeAmount,
             user_id: appState.currentUser.id
         };
         

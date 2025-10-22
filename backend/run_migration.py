@@ -32,23 +32,49 @@ try:
     # 为现有记录设置默认值
     cursor.execute("UPDATE user SET nickname = username WHERE nickname IS NULL")
     cursor.execute("UPDATE user SET avatar = 'default.svg' WHERE avatar IS NULL")
-    print("更新现有记录默认值成功")
+    print("更新用户表现有记录默认值成功")
+    
+    # 检查并更新wish表，添加exchange_amount字段
+    cursor.execute("PRAGMA table_info(wish)")
+    wish_columns = [column[1] for column in cursor.fetchall()]
+    print(f"\n当前wish表字段: {wish_columns}")
+    
+    if 'exchange_amount' not in wish_columns:
+        cursor.execute("ALTER TABLE wish ADD COLUMN exchange_amount INTEGER DEFAULT 1")
+        print("添加exchange_amount字段成功")
+    
+    # 为wish表现有记录设置默认兑换数量
+    cursor.execute("UPDATE wish SET exchange_amount = 1 WHERE exchange_amount IS NULL")
+    print("更新wish表现有记录默认兑换数量成功")
     
     # 提交更改
     conn.commit()
     
-    # 验证更新后的结构
+    # 验证更新后的user表结构
     cursor.execute("PRAGMA table_info(user)")
     updated_columns = cursor.fetchall()
     print("\n更新后的user表结构:")
     for column in updated_columns:
         print(f"- {column[1]} ({column[2]})")
     
-    # 显示一些示例数据
+    # 验证更新后的wish表结构
+    cursor.execute("PRAGMA table_info(wish)")
+    wish_updated_columns = cursor.fetchall()
+    print("\n更新后的wish表结构:")
+    for column in wish_updated_columns:
+        print(f"- {column[1]} ({column[2]})")
+    
+    # 显示一些示例用户数据
     cursor.execute("SELECT id, username, nickname, phone, avatar FROM user LIMIT 2")
     print("\n示例用户数据:")
     for row in cursor.fetchall():
         print(f"ID: {row[0]}, Username: {row[1]}, Nickname: {row[2]}, Phone: {row[3]}, Avatar: {row[4]}")
+    
+    # 显示一些示例心愿数据
+    cursor.execute("SELECT id, name, cost, unit, exchange_amount FROM wish LIMIT 5")
+    print("\n示例心愿数据:")
+    for row in cursor.fetchall():
+        print(f"ID: {row[0]}, Name: {row[1]}, Cost: {row[2]}, Unit: {row[3]}, Exchange Amount: {row[4]}")
     
     print("\n数据库迁移完成！")
     
