@@ -255,7 +255,7 @@ function switchPage(page) {
     // 更新小心愿页面的标题
     if (page === 'wish' && appState.currentUser) {
         const wishPageTitle = document.getElementById('wish-page-title');
-        if(wishPageTitle) wishPageTitle.textContent = `「${appState.currentUser.username}」的心愿收集`;
+        if(wishPageTitle) wishPageTitle.textContent = `${appState.currentUser.nickname || appState.currentUser.username}的心愿收集`;
     }
     
     // 移除所有导航项的激活状态
@@ -1931,7 +1931,7 @@ async function updateUserInfo() {
         if(document.getElementById('task-page-avatar')) document.getElementById('task-page-avatar').src = avatarUrl;
         
         // 更新小心愿页面标题
-        if(document.getElementById('wish-page-title')) document.getElementById('wish-page-title').textContent = `「${user.username}」的心愿收集`;
+        if(document.getElementById('wish-page-title')) document.getElementById('wish-page-title').textContent = `${user.nickname || user.username}的心愿收集`;
         
         // 更新金币显示 - 确保所有位置金币数一致
         const goldValue = user.total_gold || 0;
