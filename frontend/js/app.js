@@ -16,6 +16,12 @@ let appState = {
 // 全局筛选状态
 let currentFilter = 'all';
 
+// 操作记录相关变量
+let currentLogsPage = 1;
+let totalLogsPages = 1;
+let hasMoreLogs = true;
+let isLoadingLogs = false;
+
 // 初始化应用
 function initApp() {
     // 检查用户登录状态
@@ -32,6 +38,12 @@ function initApp() {
     
     // 确保番茄钟悬浮球默认隐藏
     ensureTomatoBubbleHidden();
+    
+    // 确保操作记录弹窗默认隐藏
+    const logsModal = document.getElementById('operation-logs-modal');
+    if (logsModal) {
+        logsModal.classList.add('hidden');
+    }
 }
 
 // 显示登录页面
@@ -284,6 +296,11 @@ function bindEvents() {
             filterHonors(filter);
         });
     });
+    
+    // 操作记录弹窗事件
+    if(document.getElementById('close-operation-logs')) {
+        document.getElementById('close-operation-logs').addEventListener('click', hideOperationLogs);
+    }
 }
 
 // 处理登录
@@ -2838,6 +2855,283 @@ function clearConfetti() {
 
 // 荣誉墙功能可以后续扩展
 
+// 显示操作记录弹窗
+function showOperationLogs() {
+    console.log('showOperationLogs called!');
+    
+    // 检查弹窗是否已存在
+    let modal = document.getElementById('operation-logs-modal');
+    
+    if (!modal) {
+        // 动态创建弹窗DOM结构
+        modal = document.createElement('div');
+        modal.id = 'operation-logs-modal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 transition-opacity duration-300';
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transform transition-all duration-300 mx-auto';
+        modalContent.style.marginLeft = 'auto';
+        modalContent.style.marginRight = 'auto';
+        
+        // 弹窗头部
+        const modalHeader = document.createElement('div');
+        modalHeader.className = 'p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl';
+        
+        const title = document.createElement('h3');
+        title.className = 'text-xl font-bold text-gray-800 flex items-center';
+        title.innerHTML = '<i class="fa fa-history mr-2 text-blue-500"></i>操作记录';
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.id = 'close-operation-logs';
+        closeBtn.className = 'w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400';
+        closeBtn.innerHTML = '<i class="fa fa-times"></i>';
+        // 确保事件监听器正确绑定
+        closeBtn.onclick = function() {
+            console.log('Close button clicked');
+            hideOperationLogs();
+        };
+        
+        modalHeader.appendChild(title);
+        modalHeader.appendChild(closeBtn);
+        
+        // 记录列表区域 - 改进滚动体验
+        const containerDiv = document.createElement('div');
+        containerDiv.id = 'operation-logs-container';
+        containerDiv.className = 'flex-1 overflow-y-auto p-4 bg-white flex justify-center';
+        // 添加自定义滚动条样式
+        containerDiv.style.scrollbarWidth = 'thin';
+        containerDiv.style.scrollbarColor = '#c1c1c1 #f0f0f0';
+        containerDiv.style.webkitOverflowScrolling = 'touch';
+        
+        const logsList = document.createElement('div');
+        logsList.id = 'logs-list';
+        logsList.className = 'space-y-4 w-full max-w-xl mx-auto';
+        // 确保列表始终居中显示
+        logsList.style.marginLeft = 'auto';
+        logsList.style.marginRight = 'auto';
+        
+        containerDiv.appendChild(logsList);
+        
+        // 加载指示器
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'logs-loading';
+        loadingDiv.className = 'py-6 text-center text-gray-500 hidden';
+        loadingDiv.innerHTML = '<i class="fa fa-spinner fa-spin mr-2 text-blue-500"></i>加载中...';
+        
+        // 分页信息
+        const paginationDiv = document.createElement('div');
+        paginationDiv.id = 'logs-pagination';
+        paginationDiv.className = 'p-4 border-t border-gray-100 text-center text-sm bg-gray-50 rounded-b-xl';
+        paginationDiv.textContent = '共 0 条记录，第 1/1 页';
+        
+        // 组装弹窗
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(containerDiv);
+        modalContent.appendChild(loadingDiv);
+        modalContent.appendChild(paginationDiv);
+        modal.appendChild(modalContent);
+        
+        // 添加到文档
+        document.body.appendChild(modal);
+        
+        // 添加点击外部区域关闭功能
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                hideOperationLogs();
+            }
+        });
+        
+        // 添加ESC键关闭功能
+        function handleEscKey(e) {
+            if (e.key === 'Escape') {
+                hideOperationLogs();
+                document.removeEventListener('keydown', handleEscKey);
+            }
+        }
+        document.addEventListener('keydown', handleEscKey);
+    }
+    
+    // 重置分页状态
+    currentLogsPage = 1;
+    totalLogsPages = 1;
+    hasMoreLogs = true;
+    isLoadingLogs = false;
+    
+    // 清空列表
+    const logsList = document.getElementById('logs-list');
+    if (logsList) {
+        logsList.innerHTML = '';
+    }
+    
+    // 显示弹窗
+    modal.style.display = 'flex';
+    // 添加淡入动画
+    setTimeout(() => {
+        modal.style.opacity = '1';
+    }, 10);
+    
+    // 加载第一页数据
+    loadOperationLogs(currentLogsPage);
+    
+    // 添加滚动加载事件
+    const container = document.getElementById('operation-logs-container');
+    if (container) {
+        // 先移除可能存在的事件监听
+        container.removeEventListener('scroll', handleLogsScroll);
+        // 添加新的事件监听
+        container.addEventListener('scroll', handleLogsScroll);
+    }
+    
+    // 确保弹窗在窗口大小改变时自适应
+    function handleResize() {
+        const modalContent = modal.querySelector('div');
+        if (modalContent) {
+            // 根据窗口大小调整最大高度
+            const windowHeight = window.innerHeight;
+            modalContent.style.maxHeight = `${windowHeight * 0.9}px`;
+        }
+    }
+    
+    // 初始调整
+    handleResize();
+    // 监听窗口大小变化
+    window.addEventListener('resize', handleResize);
+    
+    // 保存resize事件监听器引用，以便在隐藏弹窗时移除
+    modal._resizeListener = handleResize;
+}
+
+// 隐藏操作记录弹窗
+function hideOperationLogs() {
+    const modal = document.getElementById('operation-logs-modal');
+    if (modal) {
+        console.log('Hiding operation logs modal');
+        
+        // 添加淡出动画
+        modal.style.opacity = '0';
+        
+        // 移除滚动事件监听
+        const container = document.getElementById('operation-logs-container');
+        if (container) {
+            container.removeEventListener('scroll', handleLogsScroll);
+        }
+        
+        // 移除窗口大小变化事件监听
+        if (modal._resizeListener) {
+            window.removeEventListener('resize', modal._resizeListener);
+            modal._resizeListener = null;
+        }
+        
+        // 动画结束后完全隐藏
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+}
+
+// 处理操作记录容器滚动事件
+function handleLogsScroll() {
+    const container = document.getElementById('operation-logs-container');
+    if (container && !isLoadingLogs && hasMoreLogs) {
+        // 当滚动到底部附近时，加载下一页
+        if (container.scrollTop + container.clientHeight >= container.scrollHeight - 100) {
+            loadNextLogsPage();
+        }
+    }
+}
+
+// 加载下一页操作记录
+function loadNextLogsPage() {
+    if (currentLogsPage < totalLogsPages) {
+        currentLogsPage++;
+        loadOperationLogs(currentLogsPage);
+    }
+}
+
+// 加载操作记录
+async function loadOperationLogs(page) {
+    if (isLoadingLogs || !hasMoreLogs) return;
+    
+    isLoadingLogs = true;
+    const logsList = document.getElementById('logs-list');
+    const loadingIndicator = document.getElementById('logs-loading');
+    const paginationInfo = document.getElementById('logs-pagination');
+    
+    // 显示加载提示
+    if (loadingIndicator) {
+        loadingIndicator.classList.remove('hidden');
+    }
+    
+    try {
+        const response = await api.operationLogAPI.getOperationLogs(appState.currentUser.id, page, 10);
+        
+        if (response.success) {
+            // 更新分页信息
+            totalLogsPages = response.pages || 1;
+            hasMoreLogs = page < totalLogsPages;
+            
+            // 更新分页显示
+            if (paginationInfo) {
+                paginationInfo.textContent = `共 ${response.total || 0} 条记录，第 ${page}/${totalLogsPages} 页`;
+            }
+            
+            // 如果是第一页，清空列表
+            if (page === 1) {
+                logsList.innerHTML = '';
+            }
+            
+            // 添加新记录
+            if (response.data && response.data.length > 0) {
+                response.data.forEach(log => {
+                    const logItem = document.createElement('div');
+                    logItem.className = 'p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors mx-auto w-full';
+                    logItem.style.maxWidth = '100%';
+                    
+                    // 格式化时间
+                    const formattedTime = formatDateTime(log.operation_time);
+                    
+                    // 创建记录内容 - 美化样式
+                    logItem.innerHTML = `
+                        <div class="flex flex-col p-1 mx-auto w-full" style="max-width: 100%;">
+                            <div class="flex justify-between items-start w-full">
+                                <p class="font-medium text-gray-800 flex items-center">
+                                    <i class="fa ${getOperationIcon(log.operation_type)} mr-2 text-blue-500"></i>
+                                    ${log.operation_type}
+                                </p>
+                                <span class="text-xs px-3 py-1 rounded-full font-medium ${log.operation_result === '成功' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} shadow-sm">
+                                    ${log.operation_result}
+                                </span>
+                            </div>
+                            <p class="text-gray-600 mt-2 text-sm leading-relaxed pl-6">${log.operation_content}</p>
+                            <div class="flex justify-end mt-2">
+                                <p class="text-gray-500 text-xs flex items-center">
+                                    <i class="fa fa-clock-o mr-1"></i>${formattedTime}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    logsList.appendChild(logItem);
+                });
+            } else if (page === 1) {
+                // 没有记录时显示空状态
+                logsList.innerHTML = '<div class="text-center py-10 text-gray-500">暂无操作记录</div>';
+            }
+        } else {
+            domUtils.showToast(response.message || '获取操作记录失败', 'error');
+        }
+    } catch (error) {
+        console.error('加载操作记录失败:', error);
+        domUtils.showToast(`加载操作记录失败: ${error.message}`, 'error');
+    } finally {
+        // 隐藏加载提示
+        if (loadingIndicator) {
+            loadingIndicator.classList.add('hidden');
+        }
+        isLoadingLogs = false;
+    }
+}
+
 // 处理清除数据
 function handleClearData() {
     domUtils.showConfirm(
@@ -2849,9 +3143,25 @@ function handleClearData() {
     );
 }
 
-// 显示操作记录
-function showOperationLogs() {
-    domUtils.showToast('操作记录功能开发中...');
+// 操作记录功能已实现
+
+// 根据操作类型获取对应的图标
+function getOperationIcon(operationType) {
+    const iconMap = {
+        '添加任务': 'fa-plus-circle',
+        '更新任务': 'fa-pencil',
+        '删除任务': 'fa-trash',
+        '完成任务': 'fa-check-circle',
+        '兑换心愿': 'fa-gift',
+        '登录系统': 'fa-sign-in',
+        '退出系统': 'fa-sign-out',
+        '添加分类': 'fa-folder-plus',
+        '删除分类': 'fa-folder-minus',
+        '开始番茄钟': 'fa-clock-o',
+        '完成番茄钟': 'fa-check-square-o'
+    };
+    
+    return iconMap[operationType] || 'fa-cog';
 }
 
 // 显示荣誉墙弹窗

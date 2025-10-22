@@ -225,11 +225,14 @@ const statisticsAPI = {
     }
 };
 
-// 操作记录API
-const logAPI = {
+// 操作记录相关API
+const operationLogAPI = {
     // 获取操作记录
-    getLogs: async (userId) => {
-        const response = await fetch(`${API_BASE_URL}/logs?user_id=${userId}`);
+    getOperationLogs: async (userId, page = 1, perPage = 10, startTime = null, endTime = null) => {
+        let url = `${API_BASE_URL}/logs?user_id=${userId}&page=${page}&per_page=${perPage}`;
+        if (startTime) url += `&start_time=${encodeURIComponent(startTime)}`;
+        if (endTime) url += `&end_time=${encodeURIComponent(endTime)}`;
+        const response = await fetch(url);
         return await response.json();
     }
 };
@@ -269,10 +272,10 @@ const api = {
     wishAPI,
     goldAPI,
     statisticsAPI,
-    logAPI,
+    operationLogAPI,
     honorAPI
 };
 
 // 支持默认导出和命名导出
 export default api;
-export { userAPI, taskAPI, categoryAPI, wishAPI, goldAPI, statisticsAPI, logAPI, honorAPI };
+export { userAPI, taskAPI, categoryAPI, wishAPI, goldAPI, statisticsAPI, operationLogAPI, honorAPI };

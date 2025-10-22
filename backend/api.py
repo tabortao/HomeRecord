@@ -511,14 +511,47 @@ def register_routes(app):
     @app.route('/api/logs', methods=['GET'])
     def get_operation_logs():
         user_id = request.args.get('user_id')
+        start_time_str = request.args.get('start_time')
+        end_time_str = request.args.get('end_time')
         
-        # 获取最近一个月的操作记录
-        one_month_ago = datetime.now() - timedelta(days=30)
-        logs = OperationLog.query.filter(
-            OperationLog.user_id == user_id,
-            OperationLog.operation_time >= one_month_ago
-        ).order_by(OperationLog.operation_time.desc()).all()
+        # 构建查询条件
+        query = OperationLog.query.filter(OperationLog.user_id == user_id)
         
+        # 添加时间范围过滤
+        if start_time_str:
+            try:
+                start_time = datetime.strptime(start_time_str, '%Y-%m-%d %H:%M:%S')
+                query = query.filter(OperationLog.operation_time >= start_time)
+            except ValueError:
+                # 时间格式不正确，忽略该参数
+                pass
+        
+        if end_time_str:
+            try:
+                end_time = datetime.strptime(end_time_str, '%Y-%m-%d %H:%M:%S')
+                query = query.filter(OperationLog.operation_time <= end_time)
+            except ValueError:
+                # 时间格式不正确，忽略该参数
+                pass
+        
+        # 如果没有提供时间范围，默认获取最近一个月的记录
+        if not start_time_str and not end_time_str:
+            one_month_ago = datetime.now() - timedelta(days=30)
+            query = query.filter(OperationLog.operation_time >= one_month_ago)
+        
+        # 添加分页
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        # 获取总数
+        total = query.count()
+        
+        # 获取分页数据
+        pagination = query.order_by(OperationLog.operation_time.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        logs = pagination.items
         result = []
         for log in logs:
             result.append({
@@ -529,7 +562,13 @@ def register_routes(app):
                 'operation_result': log.operation_result
             })
         
-        return jsonify(result)
+        return jsonify({
+            'success': True, 
+            'data': result,
+            'total': total,
+            'pages': pagination.pages,
+            'current_page': page
+        })
     
     # 荣誉系统路由
     @app.route('/api/honors/user/<int:user_id>', methods=['GET'])

@@ -61,6 +61,62 @@
             box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
             backdrop-filter: blur(4px);
         }
+        /* 操作记录弹窗样式 */
+        #operation-logs-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .operation-logs-content {
+            max-width: 90%;
+            max-height: 80%;
+            width: 768px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        @media (max-width: 768px) {
+            .operation-logs-content {
+                max-width: 95%;
+                max-height: 90%;
+                width: 100%;
+            }
+        }
+        
+        #operation-logs-container {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        #operation-logs-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #operation-logs-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        #operation-logs-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        
+        #operation-logs-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -211,6 +267,8 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 操作记录弹窗将通过JavaScript动态创建 -->
 
             <!-- 小心愿页面 -->
             <div id="wish-page" class="hidden">
@@ -386,6 +444,20 @@
         .nav-item-active div {
             background-color: #22c55e;
             color: white;
+        }
+        
+        /* 确保hidden类能正确隐藏元素 */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* 操作记录弹窗特定样式，确保默认隐藏 */
+        #operation-logs-modal {
+            display: none !important;
+        }
+        
+        #operation-logs-modal:not(.hidden) {
+            display: block !important;
         }
         .task-card {
             border-radius: 12px;
