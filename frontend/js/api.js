@@ -182,6 +182,22 @@ const wishAPI = {
             body: JSON.stringify({ user_id: userId })
         });
         return await response.json();
+    },
+
+    // 获取兑换记录
+    getExchangeHistory: async (userId, page = 1, perPage = 10) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/exchange-history?user_id=${userId}&page=${page}&per_page=${perPage}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('获取兑换记录失败:', error);
+            return { success: false, message: '获取记录失败，请稍后重试' };
+        }
     }
 };
 

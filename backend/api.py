@@ -5,6 +5,7 @@ import json
 import random
 import os
 import uuid
+import re
 from werkzeug.utils import secure_filename
 
 def register_routes(app):
@@ -406,11 +407,12 @@ def register_routes(app):
         
         db.session.commit()
         
-        # 记录操作日志
+        # 记录操作日志，包含兑换数量和单位信息
+        unit_info = f"{wish.exchange_amount}{wish.unit}" if wish.unit else str(wish.exchange_amount)
         log = OperationLog(
             user_id=user_id,
             operation_type='兑换心愿',
-            operation_content=f'兑换心愿：{wish.name}，消耗{wish.cost}金币',
+            operation_content=f'兑换心愿：{wish.name}，消耗{wish.cost}金币，兑换{unit_info}',
             operation_time=datetime.now(),
             operation_result='成功'
         )
@@ -418,6 +420,60 @@ def register_routes(app):
         db.session.commit()
         
         return jsonify({'success': True, 'remaining_gold': user.total_gold})
+    
+    @app.route('/api/exchange-history', methods=['GET'])
+    def get_exchange_history():
+        user_id = request.args.get('user_id')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        if not user_id:
+            return jsonify({'success': False, 'message': '用户ID不能为空'})
+        
+        # 查询兑换心愿的操作日志，按时间倒序排列
+        logs = OperationLog.query.filter_by(
+            user_id=user_id,
+            operation_type='兑换心愿'
+        ).order_by(OperationLog.operation_time.desc()).paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+        
+        result = []
+        for log in logs.items:
+            # 从操作内容中提取心愿名称、消耗金币和兑换数量信息
+            content = log.operation_content
+            
+            # 解析心愿名称
+            wish_name_match = re.search(r'兑换心愿：([^，]+)', content)
+            wish_name = wish_name_match.group(1) if wish_name_match else '未知心愿'
+            
+            # 解析消耗金币
+            cost_match = re.search(r'消耗(\d+)金币', content)
+            cost = int(cost_match.group(1)) if cost_match else 0
+            
+            # 解析兑换数量和单位
+            exchange_match = re.search(r'兑换([^，]+)', content)
+            exchange_info = exchange_match.group(1) if exchange_match else '未知数量'
+            
+            result.append({
+                'id': log.id,
+                'wish_name': wish_name,
+                'cost': cost,
+                'exchange_info': exchange_info,
+                'operation_time': log.operation_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'operation_result': log.operation_result
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'total': logs.total,
+            'pages': logs.pages,
+            'page': page,
+            'per_page': per_page
+        })
     
     # 金币管理路由
     @app.route('/api/gold/update', methods=['POST'])

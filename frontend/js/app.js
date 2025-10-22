@@ -1697,9 +1697,195 @@ async function handleExchangeWish(wishId, wishName, cost) {
     );
 }
 
+// 显示兑换记录相关变量
+let currentHistoryPage = 1;
+let totalHistoryPages = 1;
+let hasMoreHistory = true;
+let isLoadingHistory = false;
+
 // 显示兑换记录
 function showExchangeHistory() {
-    domUtils.showToast('兑换记录功能开发中...');
+    // 重置分页状态
+    currentHistoryPage = 1;
+    totalHistoryPages = 1;
+    hasMoreHistory = true;
+    isLoadingHistory = false;
+    
+    // 创建并显示模态框
+    const modalHTML = `
+    <div id="exchange-history-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg w-full max-w-md max-h-[70vh] flex flex-col">
+            <div class="p-3 border-b flex justify-between items-center">
+                <h3 class="text-lg font-semibold">兑换记录</h3>
+                <button id="close-history-modal" class="close-modal text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto flex-grow" id="history-content" style="max-height: calc(70vh - 100px);">
+                <div id="history-list" class="p-2">
+                    <div class="text-center py-8">加载中...</div>
+                </div>
+            </div>
+            <div class="p-3 border-t text-center text-sm">
+                <span id="pagination-info" class="text-gray-500">共 0 条记录，第 0/0 页</span>
+            </div>
+        </div>
+    </div>`;
+    
+    // 移除已存在的模态框
+    const existingModal = document.getElementById('exchange-history-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 添加新模态框
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // 绑定关闭事件
+    document.getElementById('close-history-modal').addEventListener('click', () => {
+        const modal = document.getElementById('exchange-history-modal');
+        if (modal) {
+            modal.remove();
+        }
+    });
+    
+    // 点击模态框背景关闭
+    const modal = document.getElementById('exchange-history-modal');
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    // 添加滚动加载功能
+    const contentArea = document.getElementById('history-content');
+    contentArea.addEventListener('scroll', handleHistoryScroll);
+    
+    // 加载第一页数据
+    loadExchangeHistory(currentHistoryPage);
+}
+
+function handleHistoryScroll() {
+    const contentArea = document.getElementById('history-content');
+    // 当滚动到底部附近且有更多数据且不在加载中时，加载下一页
+    if (contentArea.scrollHeight - contentArea.scrollTop <= contentArea.clientHeight * 1.1 && 
+        hasMoreHistory && !isLoadingHistory) {
+        loadNextPage();
+    }
+}
+
+function loadNextPage() {
+    if (currentHistoryPage < totalHistoryPages) {
+        currentHistoryPage++;
+        loadExchangeHistory(currentHistoryPage);
+    } else {
+        hasMoreHistory = false;
+    }
+}
+
+async function loadExchangeHistory(page) {
+    if (isLoadingHistory || !hasMoreHistory) return;
+    
+    isLoadingHistory = true;
+    const historyList = document.getElementById('history-list');
+    
+    // 添加加载提示（如果不是第一页）
+    if (page > 1) {
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'text-center py-2 text-gray-500';
+        loadingIndicator.id = 'loading-indicator';
+        loadingIndicator.textContent = '加载中...';
+        historyList.appendChild(loadingIndicator);
+    }
+    
+    try {
+        const response = await api.wishAPI.getExchangeHistory(appState.currentUser.id, page, 10);
+        
+        // 移除加载提示
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+        
+        if (response.success) {
+            // 如果是第一页，清空列表
+            if (page === 1) {
+                historyList.innerHTML = '';
+            }
+            
+            // 添加新记录
+            if (response.data && response.data.length > 0) {
+                response.data.forEach(record => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'p-3 border-b border-gray-100';
+                    
+                    // 格式化时间
+                    const formattedTime = formatDateTime(record.operation_time);
+                    
+                    // 创建记录内容
+                    historyItem.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-gray-600">${formattedTime}：使用${record.cost}金币可兑换了${record.exchange_info}</p>
+                                <p class="font-medium mt-1">${record.wish_name}</p>
+                            </div>
+                            <span class="text-green-500">${record.operation_result}</span>
+                        </div>
+                    `;
+                    
+                    historyList.appendChild(historyItem);
+                });
+            } else if (page === 1) {
+                // 没有记录时显示空状态
+                historyList.innerHTML = '<div class="text-center py-10 text-gray-500">暂无兑换记录</div>';
+            }
+            
+            // 更新分页信息
+            totalHistoryPages = response.pages || 1;
+            hasMoreHistory = page < totalHistoryPages;
+            
+            // 更新分页显示
+            const paginationInfo = document.getElementById('pagination-info');
+            if (paginationInfo) {
+                paginationInfo.textContent = `共 ${response.total || 0} 条记录，第 ${page}/${totalHistoryPages} 页`;
+            }
+        } else {
+            domUtils.showToast(response.message || '获取兑换记录失败', 'error');
+        }
+    } catch (error) {
+        console.error('加载兑换记录失败:', error);
+        console.log('当前用户ID:', appState.currentUser?.id);
+        console.log('当前页码:', page);
+        domUtils.showToast(`加载兑换记录失败: ${error.message}`, 'error');
+    } finally {
+        isLoadingHistory = false;
+    }
+}
+
+function formatDateTime(dateTimeStr) {
+    if (!dateTimeStr) return '';
+    
+    try {
+        // 解析日期时间字符串
+        const date = new Date(dateTimeStr);
+        
+        // 检查是否是有效的日期
+        if (isNaN(date.getTime())) {
+            return dateTimeStr; // 如果解析失败，返回原始字符串
+        }
+        
+        // 格式化日期时间
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        
+        return `${year}年${month}月${day}日${hours}:${minutes}`;
+    } catch (error) {
+        console.error('格式化日期时间失败:', error);
+        return dateTimeStr; // 出错时返回原始字符串
+    }
 }
 
 // 更新用户信息显示
