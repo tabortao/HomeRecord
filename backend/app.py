@@ -95,7 +95,15 @@ def login():
     
     user = User.query.filter_by(username=username).first()
     if user and user.password == password:
-        return jsonify({'success': True, 'user': {'id': user.id, 'username': user.username, 'role': user.role}})
+        return jsonify({'success': True, 'user': {
+            'id': user.id,
+            'username': user.username,
+            'nickname': user.nickname or user.username,
+            'phone': user.phone,
+            'avatar': user.avatar,
+            'role': user.role,
+            'total_gold': user.total_gold
+        }})
     return jsonify({'success': False, 'message': '用户名或密码错误'})
 
 @app.route('/api/register', methods=['POST'])

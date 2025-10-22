@@ -2119,7 +2119,7 @@ async function handleEditProfile(e) {
             avatarValue = avatarValue.replace('.png', '.svg');
         }
         const updateData = {
-            username: nickname,
+            nickname: nickname,
             phone: phone,
             avatar: avatarValue
         };
@@ -2139,7 +2139,7 @@ async function handleEditProfile(e) {
         }
         
         // 更新本地存储的用户信息
-        appState.currentUser.username = nickname;
+        appState.currentUser.nickname = nickname;
         appState.currentUser.phone = phone;
         appState.currentUser.avatar = avatarValue;
         localStorage.setItem('currentUser', JSON.stringify(appState.currentUser));
