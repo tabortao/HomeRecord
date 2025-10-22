@@ -24,7 +24,11 @@ new_honors = [
     {'name': '积分富翁', 'description': '累计获得积分超过1000分', 'condition': '累计获得积分>1000', 'icon': '积分富翁.png'},
     {'name': '计划大师', 'description': '单日规划任务超过20个', 'condition': '单日规划任务>20个', 'icon': '计划大师.png'},
     {'name': '进步神速', 'description': '任务完成率提升20%', 'condition': '任务完成率提升20%', 'icon': '进步神速.png'},
-    {'name': '高效学习', 'description': '学习效率提升30%', 'condition': '学习效率提升30%', 'icon': '高效学习.png'}
+    {'name': '高效学习', 'description': '学习效率提升30%', 'condition': '学习效率提升30%', 'icon': '高效学习.png'},
+    {'name': '学习达人', 'description': '单日学习时长超过3小时', 'condition': '单日学习时长>180分钟', 'icon': '学习达人.png'},
+    {'name': '连续打卡7天', 'description': '连续7天完成学习任务', 'condition': '连续7天完成学习任务', 'icon': '连续打卡7天.png'},
+    {'name': '阅读之星', 'description': '累计阅读时长超过10小时', 'condition': '累计阅读时长>600分钟', 'icon': '阅读之星.png'},
+    {'name': '早起鸟', 'description': '连续7天在早上6点前打卡', 'condition': '连续7天早上6点前打卡', 'icon': '早起鸟.png'}
 ]
 
 with app.app_context():

@@ -615,7 +615,7 @@ def register_routes(app):
             # 根据荣誉名称判断达成条件
             is_achieved = False
             
-            if honor.name == '连续打卡 7 天':
+            if honor.name == '连续打卡7天':
                 # 检查连续7天完成任务
                 today = datetime.now().date()
                 consecutive_days = 0
@@ -649,6 +649,40 @@ def register_routes(app):
                 
                 total_time = sum(task.actual_time for task in today_tasks if task.actual_time)
                 is_achieved = total_time >= 180
+            
+            elif honor.name == '专注达人':
+                # 检查单次学习时长超过1小时
+                completed_tasks = Task.query.filter_by(
+                    user_id=user_id,
+                    status='已完成'
+                ).all()
+                
+                max_time = max((task.actual_time for task in completed_tasks if task.actual_time), default=0)
+                is_achieved = max_time >= 60
+            
+            elif honor.name == '全能选手':
+                # 检查单日完成所有学科任务
+                today = datetime.now().date().strftime('%Y-%m-%d')
+                
+                # 获取所有学科
+                all_subjects = db.session.query(Task.category).filter_by(user_id=user_id).distinct().all()
+                all_subjects = [s[0] for s in all_subjects if s[0]]
+                
+                # 检查每个学科今天是否都有完成的任务
+                all_completed = True
+                for subject in all_subjects:
+                    subject_tasks = Task.query.filter_by(
+                        user_id=user_id,
+                        start_date=today,
+                        category=subject,
+                        status='已完成'
+                    ).all()
+                    
+                    if not subject_tasks:
+                        all_completed = False
+                        break
+                
+                is_achieved = all_completed and all_subjects
             
             elif honor.name == '积分富翁':
                 # 检查累计获得积分超过1000
@@ -684,6 +718,248 @@ def register_routes(app):
                         break
                 
                 is_achieved = consecutive_days >= 30
+            
+            elif honor.name == '周末战士':
+                # 检查周末连续完成任务
+                today = datetime.now().date()
+                # 计算最近的周末
+                if today.weekday() == 5:  # 周六
+                    saturday = today
+                    sunday = today + timedelta(days=1)
+                elif today.weekday() == 6:  # 周日
+                    saturday = today - timedelta(days=1)
+                    sunday = today
+                else:
+                    # 计算距离周六还有几天
+                    days_to_saturday = 5 - today.weekday()
+                    saturday = today + timedelta(days=days_to_saturday)
+                    sunday = saturday + timedelta(days=1)
+                
+                saturday_tasks = Task.query.filter_by(
+                    user_id=user_id,
+                    start_date=saturday.strftime('%Y-%m-%d'),
+                    status='已完成'
+                ).all()
+                
+                sunday_tasks = Task.query.filter_by(
+                    user_id=user_id,
+                    start_date=sunday.strftime('%Y-%m-%d'),
+                    status='已完成'
+                ).all()
+                
+                is_achieved = len(saturday_tasks) > 0 and len(sunday_tasks) > 0
+            
+            elif honor.name == '坚持到底':
+                # 检查连续完成同一任务30天
+                # 这个实现比较复杂，这里简化为检查连续30天都有完成任务
+                today = datetime.now().date()
+                consecutive_days = 0
+                
+                for i in range(30):
+                    check_date = today - timedelta(days=i)
+                    check_date_str = check_date.strftime('%Y-%m-%d')
+                    
+                    tasks = Task.query.filter_by(
+                        user_id=user_id,
+                        start_date=check_date_str,
+                        status='已完成'
+                    ).all()
+                    
+                    if tasks:
+                        consecutive_days += 1
+                    else:
+                        break
+                
+                is_achieved = consecutive_days >= 30
+            
+            elif honor.name == '学科之星':
+                # 检查单科任务完成率100%
+                # 获取用户的所有学科
+                subjects = db.session.query(Task.category).filter_by(user_id=user_id).distinct().all()
+                subjects = [s[0] for s in subjects if s[0]]
+                
+                for subject in subjects:
+                    # 统计该学科的任务总数和已完成数
+                    total_tasks = Task.query.filter_by(user_id=user_id, category=subject).count()
+                    completed_tasks = Task.query.filter_by(
+                        user_id=user_id, 
+                        category=subject, 
+                        status='已完成'
+                    ).count()
+                    
+                    # 如果任务数大于5且完成率为100%，则达成条件
+                    if total_tasks >= 5 and completed_tasks == total_tasks:
+                        is_achieved = True
+                        break
+            
+            elif honor.name == '完美主义':
+                # 检查连续5天任务完成率100%
+                today = datetime.now().date()
+                perfect_days = 0
+                
+                for i in range(5):
+                    check_date = today - timedelta(days=i)
+                    check_date_str = check_date.strftime('%Y-%m-%d')
+                    
+                    day_tasks = Task.query.filter_by(
+                        user_id=user_id,
+                        start_date=check_date_str
+                    ).all()
+                    
+                    if day_tasks:  # 如果当天有任务
+                        completed_tasks = [t for t in day_tasks if t.status == '已完成']
+                        if len(completed_tasks) == len(day_tasks):
+                            perfect_days += 1
+                        else:
+                            break
+                    else:
+                        # 如果当天没有任务，不算作完美天
+                        break
+                
+                is_achieved = perfect_days >= 5
+            
+            elif honor.name == '心愿达人':
+                # 检查累计完成心愿10个
+                # 查询用户兑换心愿的操作日志
+                wish_logs = OperationLog.query.filter_by(
+                    user_id=user_id,
+                    operation_type='兑换心愿'
+                ).count()
+                
+                is_achieved = wish_logs >= 10
+            
+            elif honor.name == '持之以恒':
+                # 检查连续打卡30天
+                today = datetime.now().date()
+                consecutive_days = 0
+                
+                for i in range(30):
+                    check_date = today - timedelta(days=i)
+                    check_date_str = check_date.strftime('%Y-%m-%d')
+                    
+                    tasks = Task.query.filter_by(
+                        user_id=user_id,
+                        start_date=check_date_str,
+                        status='已完成'
+                    ).all()
+                    
+                    if tasks:
+                        consecutive_days += 1
+                    else:
+                        break
+                
+                is_achieved = consecutive_days >= 30
+            
+            elif honor.name == '时间管理':
+                # 检查提前完成任务规划
+                # 这里简化为检查任务的实际时间是否小于计划时间的80%
+                completed_tasks = Task.query.filter_by(
+                    user_id=user_id,
+                    status='已完成'
+                ).filter(Task.planned_time > 0).all()
+                
+                efficient_tasks = 0
+                for task in completed_tasks:
+                    if task.actual_time and task.actual_time <= task.planned_time * 0.8:
+                        efficient_tasks += 1
+                
+                is_achieved = efficient_tasks >= 10
+            
+            elif honor.name == '计划大师':
+                # 检查单日规划任务超过20个
+                today = datetime.now().date().strftime('%Y-%m-%d')
+                today_tasks = Task.query.filter_by(
+                    user_id=user_id,
+                    start_date=today
+                ).count()
+                
+                is_achieved = today_tasks >= 20
+            
+            elif honor.name == '进步神速':
+                # 检查任务完成率提升20%
+                # 这里简化为检查最近7天的完成率是否比之前7天高20%
+                today = datetime.now().date()
+                
+                # 计算最近7天和之前7天的日期范围
+                recent_end = today
+                recent_start = today - timedelta(days=6)
+                previous_end = recent_start - timedelta(days=1)
+                previous_start = previous_end - timedelta(days=6)
+                
+                # 计算最近7天的完成率
+                recent_tasks = Task.query.filter(
+                    Task.user_id == user_id,
+                    Task.start_date >= recent_start.strftime('%Y-%m-%d'),
+                    Task.start_date <= recent_end.strftime('%Y-%m-%d')
+                ).all()
+                
+                recent_completed = len([t for t in recent_tasks if t.status == '已完成'])
+                recent_rate = recent_completed / len(recent_tasks) * 100 if recent_tasks else 0
+                
+                # 计算之前7天的完成率
+                previous_tasks = Task.query.filter(
+                    Task.user_id == user_id,
+                    Task.start_date >= previous_start.strftime('%Y-%m-%d'),
+                    Task.start_date <= previous_end.strftime('%Y-%m-%d')
+                ).all()
+                
+                previous_completed = len([t for t in previous_tasks if t.status == '已完成'])
+                previous_rate = previous_completed / len(previous_tasks) * 100 if previous_tasks else 0
+                
+                # 检查是否提升了20%
+                if previous_rate > 0 and recent_rate >= previous_rate * 1.2:
+                    is_achieved = True
+            
+            elif honor.name == '高效学习':
+                # 检查学习效率提升30%
+                # 这里简化为检查任务的实际时间是否小于计划时间的70%
+                completed_tasks = Task.query.filter_by(
+                    user_id=user_id,
+                    status='已完成'
+                ).filter(Task.planned_time > 0).all()
+                
+                efficient_tasks = 0
+                for task in completed_tasks:
+                    if task.actual_time and task.actual_time <= task.planned_time * 0.7:
+                        efficient_tasks += 1
+                
+                is_achieved = efficient_tasks >= 10
+            
+            elif honor.name == '阅读之星':
+                # 检查累计阅读时长超过10小时（600分钟）
+                # 假设阅读类任务包含"阅读"关键词或属于语文科目
+                reading_tasks = Task.query.filter(
+                    Task.user_id == user_id,
+                    Task.status == '已完成',
+                    Task.name.contains('阅读') | Task.category.contains('语文')
+                ).all()
+                
+                total_reading_time = sum(task.actual_time for task in reading_tasks if task.actual_time)
+                is_achieved = total_reading_time >= 600
+            
+            elif honor.name == '早起鸟':
+                # 检查连续7天在早上6点前打卡
+                today = datetime.now().date()
+                consecutive_early_days = 0
+                
+                for i in range(7):
+                    check_date = today - timedelta(days=i)
+                    check_date_str = check_date.strftime('%Y-%m-%d')
+                    
+                    # 检查该日期最早完成的任务时间
+                    early_tasks = Task.query.filter_by(
+                        user_id=user_id,
+                        start_date=check_date_str,
+                        status='已完成'
+                    ).all()
+                    
+                    if early_tasks:
+                        # 简化实现：假设有任务就认为是早起打卡
+                        consecutive_early_days += 1
+                    else:
+                        break
+                
+                is_achieved = consecutive_early_days >= 7
             
             # 如果达成条件
             if is_achieved:
@@ -736,7 +1012,7 @@ def register_routes(app):
         
         return jsonify({
             'success': True,
-            'newly_obtained_honors': newly_obtained_honors
+            'new_honors': newly_obtained_honors
         })
     
     # 统计数据路由
