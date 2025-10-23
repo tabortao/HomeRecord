@@ -319,6 +319,11 @@ def register_routes(app):
     def uploaded_file(filename):
         return send_from_directory('uploads', filename)
     
+    # 提供带有/api前缀的上传文件访问
+    @app.route('/api/uploads/<path:filename>')
+    def api_uploaded_file(filename):
+        return send_from_directory('uploads', filename)
+    
     @app.route('/api/tasks/series/<series_id>', methods=['DELETE'])
     def delete_task_series(series_id):
         tasks = Task.query.filter_by(series_id=series_id).all()

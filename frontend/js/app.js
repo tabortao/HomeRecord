@@ -226,6 +226,31 @@ function openImageViewer(images) {
     viewerModal.classList.remove('hidden');
     // 阻止页面滚动
     document.body.style.overflow = 'hidden';
+    
+    // 调整图片大小以适应窗口
+    resizeImageToFitWindow();
+    
+    // 添加窗口大小变化监听
+    window.addEventListener('resize', resizeImageToFitWindow);
+}
+
+// 调整图片大小以适应窗口
+function resizeImageToFitWindow() {
+    const imageElement = document.getElementById('current-task-image');
+    if (!imageElement) return;
+    
+    // 获取窗口宽高
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    // 设置图片最大宽高为窗口的90%
+    imageElement.style.maxWidth = `${windowWidth * 0.9}px`;
+    imageElement.style.maxHeight = `${windowHeight * 0.9}px`;
+    
+    // 确保图片能完全显示
+    imageElement.style.width = 'auto';
+    imageElement.style.height = 'auto';
+    imageElement.style.objectFit = 'contain';
 }
 
 // 关闭图片查看器
@@ -235,6 +260,9 @@ function closeImageViewer() {
         viewerModal.classList.add('hidden');
         // 恢复页面滚动
         document.body.style.overflow = '';
+        
+        // 移除窗口大小变化监听
+        window.removeEventListener('resize', resizeImageToFitWindow);
     }
 }
 
@@ -265,11 +293,15 @@ function updateViewerImage() {
     
     // 检查URL是否已经是完整的URL（包含http）
     if (imageUrl && !imageUrl.startsWith('http')) {
-        // 如果URL已经是相对路径且以/uploads开头，则直接使用
-        if (imageUrl.startsWith('/uploads')) {
+        // 支持/api/uploads/和/uploads/两种格式的URL
+        if (imageUrl.startsWith('/api/uploads/')) {
+            // 已经包含/api前缀，直接添加API_BASE_URL
+            imageUrl = `${API_BASE_URL}${imageUrl.substring('/api'.length)}`;
+        } else if (imageUrl.startsWith('/uploads/')) {
+            // 已经是/uploads开头，直接添加API_BASE_URL
             imageUrl = `${API_BASE_URL}${imageUrl}`;
         } else {
-            // 否则构建完整URL
+            // 否则构建完整URL，使用/api/uploads/格式以匹配后端路由
             imageUrl = `${API_BASE_URL}/uploads/${imageUrl}`;
         }
     }
@@ -278,6 +310,11 @@ function updateViewerImage() {
     
     // 更新计数器
     counterElement.textContent = `${currentImageIndex + 1}/${currentImages.length}`;
+    
+    // 图片加载完成后调整大小
+    imageElement.onload = function() {
+        resizeImageToFitWindow();
+    };
 }
 
 // 初始化番茄钟设置
