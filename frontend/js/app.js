@@ -1718,10 +1718,12 @@ async function handleTomatoFinish() {
                 // 正计时模式：使用已用时间（秒转分钟，向上取整）
                 actualMinutes = Math.ceil(appState.tomatoElapsedSeconds / 60);
             } else {
-                // 倒计时模式：使用计划时间减去剩余时间
-                const plannedSeconds = (appState.currentTask?.planned_time || 20) * 60;
-                const usedSeconds = plannedSeconds - appState.tomatoTimeLeft;
-                actualMinutes = Math.ceil(usedSeconds / 60);
+                // 倒计时模式：使用计划时间减去番茄钟结束时的剩余时间
+                // 这样实际完成时间就是真正使用的时间
+                const totalSeconds = (appState.currentTask?.planned_time || 20) * 60;
+                const remainingSeconds = appState.tomatoTimeLeft || 0;
+                const actualUsedSeconds = totalSeconds - remainingSeconds;
+                actualMinutes = Math.ceil(actualUsedSeconds / 60);
             }
             
             await api.taskAPI.updateTask(appState.tomatoTaskId, { 
