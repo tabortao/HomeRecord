@@ -119,12 +119,24 @@ function showLoginPage() {
     // 登录页不显示悬浮番茄球
     const bubble = document.getElementById('tomato-bubble');
     if (bubble) bubble.classList.add('hidden');
+    // 登录页不显示底部导航栏
+    const bottomNav = document.getElementById('bottom-nav');
+    if (bottomNav) bottomNav.classList.add('hidden');
+    // 登录页不显示添加任务按钮
+    const addTaskBtn = document.getElementById('add-task-btn');
+    if (addTaskBtn) addTaskBtn.classList.add('hidden');
 }
 
 // 显示主应用
 function showMainApp() {
     document.getElementById('login-page').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
+    // 显示底部导航栏
+    const bottomNav = document.getElementById('bottom-nav');
+    if (bottomNav) bottomNav.classList.remove('hidden');
+    // 显示添加任务按钮
+    const addTaskBtn = document.getElementById('add-task-btn');
+    if (addTaskBtn) addTaskBtn.classList.remove('hidden');
     
     // 初始化数据
     initData();
