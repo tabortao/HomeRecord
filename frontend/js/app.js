@@ -10,7 +10,9 @@ let appState = {
     selectedTaskId: null,
     tomatoTimer: null,
     tomatoTimeLeft: 0,
-    tomatoTaskId: null
+    tomatoTaskId: null,
+    tomatoMode: 'countdown', // countdown 或 stopwatch
+    tomatoElapsedSeconds: 0
 };
 
 // 全局筛选状态
@@ -712,25 +714,33 @@ function filterAndRenderTasks(tasks, filter) {
                     </div>
                     <div class="flex-1">
                         <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <h4 class="font-medium text-base ${taskStatusClass}">${task.name}</h4>
-                                ${task.description ? `<p class="text-sm text-gray-500 mt-1 ${taskStatusClass}">${task.description}</p>` : ''}
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <div class="flex items-center text-sm text-purple-600 font-medium">
-                                    <i class="fa fa-clock-o mr-1"></i>
-                                    <span>${task.planned_time}分钟</span>
-                                </div>
-                                <div class="flex items-center text-sm text-yellow-500 font-bold">
-                                    <i class="fa fa-star mr-1"></i>
-                                    <span>${task.points}分</span>
-                                </div>
-                                <button class="task-tomato p-1 hover:bg-green-100 rounded-full transition-colors duration-200" title="番茄钟">
+                            <h4 class="font-medium text-base ${taskStatusClass} flex-1">${task.name}</h4>
+                            <div class="flex items-center">
+                                <button class="task-tomato p-1 hover:bg-green-100 rounded-full transition-colors duration-200 mr-2" title="番茄钟">
                                     <img src="static/images/番茄钟.png" alt="番茄钟" class="w-5 h-5">
                                 </button>
                                 <button class="task-menu p-1 text-gray-500 hover:bg-gray-100 rounded-full transition-colors duration-200" title="操作">
                                     <i class="fa fa-ellipsis-v"></i>
                                 </button>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between w-full mt-1">
+                            ${task.description ? `<p class="text-sm text-gray-500 ${taskStatusClass} flex-1">${task.description}</p>` : '<div class="flex-1"></div>'}
+                            <div class="flex items-center space-x-3">
+                                <div class="flex items-center text-sm text-purple-600 font-medium">
+                                    <i class="fa fa-clock-o mr-1"></i>
+                                    <span>${task.planned_time}分钟</span>
+                                </div>
+                                ${isCompleted && task.actual_time ? `
+                                <div class="flex items-center text-sm text-green-600 font-medium">
+                                    <i class="fa fa-check-circle mr-1"></i>
+                                    <span>${task.actual_time}分钟</span>
+                                </div>
+                                ` : ''}
+                                <div class="flex items-center text-sm text-yellow-500 font-bold">
+                                    <i class="fa fa-star mr-1"></i>
+                                    <span>${task.points}分</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1387,11 +1397,16 @@ async function deleteTask(taskId) {
 function startTomatoTimer(task) {
     appState.currentTask = task;
     appState.tomatoTaskId = task.id;
+    appState.tomatoMode = 'countdown'; // 默认使用倒计时模式
+    appState.tomatoElapsedSeconds = 0; // 重置已用时间
 
     const tomatoModal = document.getElementById('tomato-modal');
     const tomatoTimerElement = document.getElementById('tomato-timer');
     const tomatoTaskNameElement = document.getElementById('tomato-task-name');
     const customInput = document.getElementById('tomato-custom-minutes');
+    const countdownModeBtn = document.getElementById('tomato-countdown-mode');
+    const stopwatchModeBtn = document.getElementById('tomato-stopwatch-mode');
+    const countdownOptions = document.getElementById('tomato-countdown-options');
 
     // 默认使用任务计划时间或20分钟
     const defaultMinutes = parseInt(task.planned_time || 20, 10);
@@ -1399,6 +1414,11 @@ function startTomatoTimer(task) {
     // 更新UI
     if (tomatoTaskNameElement) tomatoTaskNameElement.textContent = `番茄钟 - ${task.name}`;
     if (customInput) customInput.value = defaultMinutes;
+
+    // 设置模式按钮样式
+        if (countdownModeBtn) countdownModeBtn.className = 'px-4 py-2 rounded-full bg-pink-100 text-pink-700 font-semibold shadow-sm';
+        if (stopwatchModeBtn) stopwatchModeBtn.className = 'px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-semibold shadow-sm';
+    if (countdownOptions) countdownOptions.style.display = 'flex';
 
     // 将所有预设选项标记active
     document.querySelectorAll('.tomato-time-option').forEach(opt => {
@@ -1417,6 +1437,32 @@ function startTomatoTimer(task) {
 
     // 绑定一次性事件（安全的多次绑定保护）
     if (!appState._tomatoInit) {
+        // 计时模式切换事件
+        if (countdownModeBtn) {
+            countdownModeBtn.addEventListener('click', () => {
+                appState.tomatoMode = 'countdown';
+                countdownModeBtn.className = 'px-4 py-2 rounded-full bg-pink-100 text-pink-700 font-semibold shadow-sm';
+                stopwatchModeBtn.className = 'px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-semibold shadow-sm';
+                if (countdownOptions) countdownOptions.style.display = 'flex';
+                // 重置到默认时间
+                const defaultMins = parseInt(customInput.value || task.planned_time || 20, 10);
+                appState.tomatoTimeLeft = defaultMins * 60;
+                appState.tomatoElapsedSeconds = 0;
+                updateTomatoDisplays();
+            });
+        }
+
+        if (stopwatchModeBtn) {
+            stopwatchModeBtn.addEventListener('click', () => {
+                appState.tomatoMode = 'stopwatch';
+                stopwatchModeBtn.className = 'px-4 py-2 rounded-full bg-blue-100 text-blue-700 font-semibold shadow-sm';
+                countdownModeBtn.className = 'px-4 py-2 rounded-full bg-pink-50 text-pink-600 font-semibold shadow-sm';
+                if (countdownOptions) countdownOptions.style.display = 'none';
+                appState.tomatoElapsedSeconds = 0;
+                updateTomatoDisplays();
+            });
+        }
+
         // 预设时间按钮
         document.querySelectorAll('.tomato-time-option').forEach(opt => {
             opt.addEventListener('click', () => {
@@ -1467,8 +1513,12 @@ function formatTime(seconds) {
 function updateTomatoDisplays() {
     const timerElement = document.getElementById('tomato-timer');
     const bubbleElement = document.getElementById('bubble-timer');
-    if (timerElement) timerElement.textContent = formatTime(appState.tomatoTimeLeft);
-    if (bubbleElement) bubbleElement.textContent = formatTime(appState.tomatoTimeLeft);
+    
+    // 根据当前模式显示不同的时间
+    const displayTime = appState.tomatoMode === 'stopwatch' ? appState.tomatoElapsedSeconds : appState.tomatoTimeLeft;
+    
+    if (timerElement) timerElement.textContent = formatTime(displayTime);
+    if (bubbleElement) bubbleElement.textContent = formatTime(displayTime);
 }
 
 // 开始计时并收起为悬浮球
@@ -1476,34 +1526,50 @@ function handleTomatoStart() {
     // 如果已经在运行，忽略
     if (appState.tomatoTimer) return;
 
-    // 从自定义输入或选项中读取时间
-    const customInput = document.getElementById('tomato-custom-minutes');
-    let minutes = appState.currentTask?.planned_time || 20;
-    if (customInput) {
-        const v = parseInt(customInput.value, 10);
-        if (!isNaN(v) && v > 0) minutes = v;
-    } else {
-        // 若无输入，则尝试读取选中option
-        const sel = document.querySelector('.tomato-time-option.active');
-        if (sel) minutes = parseInt(sel.dataset.minutes, 10) || minutes;
-    }
+    if (appState.tomatoMode === 'countdown') {
+        // 从自定义输入或选项中读取时间
+        const customInput = document.getElementById('tomato-custom-minutes');
+        let minutes = appState.currentTask?.planned_time || 20;
+        if (customInput) {
+            const v = parseInt(customInput.value, 10);
+            if (!isNaN(v) && v > 0) minutes = v;
+        } else {
+            // 若无输入，则尝试读取选中option
+            const sel = document.querySelector('.tomato-time-option.active');
+            if (sel) minutes = parseInt(sel.dataset.minutes, 10) || minutes;
+        }
 
-    appState.tomatoTimeLeft = minutes * 60;
-    // 记录总秒数用于水位动画
-    appState.tomatoTotalSeconds = minutes * 60;
+        appState.tomatoTimeLeft = minutes * 60;
+        // 记录总秒数用于水位动画
+        appState.tomatoTotalSeconds = minutes * 60;
+    } else {
+        // 正计时模式，重置已用时间
+        appState.tomatoElapsedSeconds = 0;
+        appState.tomatoTotalSeconds = 3600; // 假设最大1小时用于动画
+    }
+    
     updateTomatoDisplays();
 
-    // 开始倒计时
-    appState.tomatoTimer = setInterval(() => {
-        appState.tomatoTimeLeft--;
-        if (appState.tomatoTimeLeft <= 0) {
-            clearInterval(appState.tomatoTimer);
-            appState.tomatoTimer = null;
-            handleTomatoFinish();
-            return;
-        }
-        updateTomatoDisplays();
-    }, 1000);
+    // 根据模式选择计时逻辑
+    if (appState.tomatoMode === 'countdown') {
+        // 倒计时模式
+        appState.tomatoTimer = setInterval(() => {
+            appState.tomatoTimeLeft--;
+            if (appState.tomatoTimeLeft <= 0) {
+                clearInterval(appState.tomatoTimer);
+                appState.tomatoTimer = null;
+                handleTomatoFinish();
+                return;
+            }
+            updateTomatoDisplays();
+        }, 1000);
+    } else {
+        // 正计时模式
+        appState.tomatoTimer = setInterval(() => {
+            appState.tomatoElapsedSeconds++;
+            updateTomatoDisplays();
+        }, 1000);
+    }
 
     // 收起 modal 并强制显示悬浮球（开始后应立即可见）
     hideTomatoModal();
@@ -1617,13 +1683,20 @@ function handleTomatoReset() {
         clearInterval(appState.tomatoTimer);
         appState.tomatoTimer = null;
     }
-    // 使用自定义输入或选项恢复时间
-    const customInput = document.getElementById('tomato-custom-minutes');
-    let minutes = appState.currentTask?.planned_time || 20;
-    if (customInput) minutes = Math.max(1, parseInt(customInput.value || '20', 10));
-    appState.tomatoTimeLeft = minutes * 60;
-    // 重置总秒数
-    appState.tomatoTotalSeconds = minutes * 60;
+    
+    if (appState.tomatoMode === 'countdown') {
+        // 倒计时模式：恢复到选中时间
+        const customInput = document.getElementById('tomato-custom-minutes');
+        let minutes = appState.currentTask?.planned_time || 20;
+        if (customInput) minutes = Math.max(1, parseInt(customInput.value || '20', 10));
+        appState.tomatoTimeLeft = minutes * 60;
+        appState.tomatoTotalSeconds = minutes * 60;
+    } else {
+        // 正计时模式：重置为0
+        appState.tomatoElapsedSeconds = 0;
+        appState.tomatoTotalSeconds = 3600; // 假设最大1小时用于动画
+    }
+    
     updateTomatoDisplays();
     // 隐藏悬浮球（符合在未运行时隐藏）
     ensureTomatoBubbleHidden();
@@ -1641,11 +1714,26 @@ async function handleTomatoFinish() {
     if (bubble) bubble.classList.add('hidden');
     if (modal) modal.classList.add('hidden');
 
-    // 更新后端任务为已完成（使用计划时间作为实际时间）
+    // 更新后端任务为已完成，根据模式使用不同的实际时间
     try {
         if (appState.tomatoTaskId) {
-            const planned = appState.currentTask?.planned_time || 0;
-            await api.taskAPI.updateTask(appState.tomatoTaskId, { status: '已完成', actual_time: planned, used_tomato: true });
+            // 计算实际使用时间（分钟）
+            let actualMinutes;
+            if (appState.tomatoMode === 'stopwatch') {
+                // 正计时模式：使用已用时间（秒转分钟，向上取整）
+                actualMinutes = Math.ceil(appState.tomatoElapsedSeconds / 60);
+            } else {
+                // 倒计时模式：使用计划时间减去剩余时间
+                const plannedSeconds = (appState.currentTask?.planned_time || 20) * 60;
+                const usedSeconds = plannedSeconds - appState.tomatoTimeLeft;
+                actualMinutes = Math.ceil(usedSeconds / 60);
+            }
+            
+            await api.taskAPI.updateTask(appState.tomatoTaskId, { 
+                status: '已完成', 
+                actual_time: actualMinutes, 
+                used_tomato: true 
+            });
         }
         // 刷新列表与统计
         await loadTasks();
@@ -1665,6 +1753,7 @@ async function handleTomatoFinish() {
     if (appState._waterRaf) cancelAnimationFrame(appState._waterRaf);
     appState.tomatoTotalSeconds = null;
     appState._waterRaf = null;
+    appState.tomatoElapsedSeconds = 0;
 }
 
 // 展示 modal（从悬浮球或其他入口）
