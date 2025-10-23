@@ -280,8 +280,8 @@ def register_routes(app):
         if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in ALLOWED_EXTENSIONS:
             return jsonify({'success': False, 'message': '不支持的文件类型'})
         
-        # 创建上传目录
-        upload_folder = os.path.join('uploads', f'task_{task_id}')
+        # 创建上传目录，按照 user_id/task_id 的结构组织
+        upload_folder = os.path.join('uploads', 'task_images', str(task.user_id), str(task_id))
         os.makedirs(upload_folder, exist_ok=True)
         
         # 生成带时间戳的文件名，格式：年月日时分秒_原始文件名
@@ -296,7 +296,7 @@ def register_routes(app):
         # 更新任务的图片信息
         images = json.loads(task.images or '[]')
         # 使用相对路径存储，便于前端访问
-        image_url = f'/uploads/task_{task_id}/{filename}'
+        image_url = f'/uploads/task_images/{task.user_id}/{task_id}/{filename}'
         images.append(image_url)
         task.images = json.dumps(images)
         db.session.commit()
@@ -312,7 +312,7 @@ def register_routes(app):
         db.session.add(log)
         db.session.commit()
         
-        return jsonify({'success': True, 'message': '图片上传成功', 'image_url': f'/uploads/task_{task_id}/{filename}'})
+        return jsonify({'success': True, 'message': '图片上传成功', 'image_url': f'/uploads/task_images/{task.user_id}/{task_id}/{filename}'})
     
     # 提供上传文件的访问
     @app.route('/uploads/<path:filename>')
