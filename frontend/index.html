@@ -10,19 +10,21 @@
     <style>
         body {            
             background-color: #f8fafc;            
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;        
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 0;
         }
         .nav-item-active {
             color: #22c55e;
             border-bottom: 2px solid #22c55e;
         }
         .card-shadow {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
         .floating-btn {
             position: fixed;
             bottom: 70px;
-            right: 80px;
+            right: 20px;
             width: 56px;
             height: 56px;
             border-radius: 50%;
@@ -39,17 +41,18 @@
             transform: scale(0.95);
         }
         .task-card {
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            margin-bottom: 0.75rem;
         }
         .task-card:active {
             background-color: #f3f4f6;
         }
         .tomato-bubble {
             position: fixed;
-            bottom: 160px;
-            right: 20px;
-            width: 80px;
-            height: 80px;
+            bottom: 140px;
+            right: 16px;
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
             background-color: rgba(34, 197, 94, 0.8);
             color: white;
@@ -57,7 +60,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 12px;
             box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
             backdrop-filter: blur(4px);
         }
@@ -76,22 +79,14 @@
         }
         
         .operation-logs-content {
-            max-width: 90%;
-            max-height: 80%;
-            width: 768px;
+            max-width: 95%;
+            max-height: 85%;
+            width: 100%;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
-        }
-        
-        @media (max-width: 768px) {
-            .operation-logs-content {
-                max-width: 95%;
-                max-height: 90%;
-                width: 100%;
-            }
         }
         
         #operation-logs-container {
@@ -101,17 +96,17 @@
         }
         
         #operation-logs-container::-webkit-scrollbar {
-            width: 6px;
+            width: 4px;
         }
         
         #operation-logs-container::-webkit-scrollbar-track {
             background: #f1f1f1;
-            border-radius: 3px;
+            border-radius: 2px;
         }
         
         #operation-logs-container::-webkit-scrollbar-thumb {
             background: #888;
-            border-radius: 3px;
+            border-radius: 2px;
         }
         
         #operation-logs-container::-webkit-scrollbar-thumb:hover {
@@ -122,7 +117,7 @@
 <body class="min-h-screen">
     <!-- 登录页面 -->
     <div id="login-page" class="min-h-screen flex flex-col items-center justify-center p-4">
-        <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
+        <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-5">
             <h1 class="text-2xl font-bold text-center text-green-600 mb-6">作业与积分小程序</h1>
             <div id="login-form">
                 <div class="mb-4">
@@ -164,12 +159,12 @@
     <!-- 主应用页面 -->
     <div id="app" class="hidden">
         <!-- 页面标题区域 -->
-        <div id="page-header" class="py-4 px-6 bg-white border-b border-green-100">
+    <div id="page-header" class="py-3 px-4 bg-white border-b border-green-100">
             <!-- 作业打卡页面标题 -->
             <div id="task-page-header" class="flex items-center justify-between">
                 <div class="flex items-center">
-                    <img id="task-page-avatar" src="static/images/avatars/default.svg" alt="用户头像" class="w-10 h-10 rounded-full mr-3 border-2 border-green-500">
-                    <h1 id="task-page-title" class="text-xl font-bold text-green-600">作业打卡</h1>
+                    <img id="task-page-avatar" src="static/images/avatars/default.svg" alt="用户头像" class="w-9 h-9 rounded-full mr-2 border-2 border-green-500">
+                    <h1 id="task-page-title" class="text-lg font-bold text-green-600">作业打卡</h1>
                 </div>
                 <div id="user-gold-display" class="flex items-center text-yellow-500">
                     <i class="fa fa-star mr-1"></i>
@@ -193,62 +188,58 @@
         </div>
         
         <!-- 顶部统计栏 -->
-        <div id="statistics-bar" class="bg-gradient-to-r from-green-50 to-blue-50 p-4 border-b border-green-100">
-            <div class="grid grid-cols-4 gap-2 text-center">
-                <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
-                    <div class="text-purple-500 mb-1 text-xl"><i class="fa fa-clock-o"></i></div>
+        <div id="statistics-bar" class="bg-gradient-to-r from-green-50 to-blue-50 p-3 border-b border-green-100">
+            <div class="grid grid-cols-4 gap-1 text-center">
+                <div class="bg-white rounded-lg p-2 shadow-sm">
+                    <div class="text-purple-500 mb-1 text-lg"><i class="fa fa-clock-o"></i></div>
                     <div class="text-gray-500 text-xs">日时长</div>
-                    <div id="day-time" class="text-purple-600 font-bold">0分钟</div>
+                    <div id="day-time" class="text-purple-600 font-bold text-sm">0分钟</div>
                 </div>
-                <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
-                    <div class="text-blue-500 mb-1 text-xl"><i class="fa fa-tasks"></i></div>
+                <div class="bg-white rounded-lg p-2 shadow-sm">
+                    <div class="text-blue-500 mb-1 text-lg"><i class="fa fa-tasks"></i></div>
                     <div class="text-gray-500 text-xs">任务数</div>
-                    <div id="task-count" class="text-blue-600 font-bold">0个</div>
+                    <div id="task-count" class="text-blue-600 font-bold text-sm">0个</div>
                 </div>
-                <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
-                    <div class="text-yellow-500 mb-1 text-xl"><i class="fa fa-money"></i></div>
+                <div class="bg-white rounded-lg p-2 shadow-sm">
+                    <div class="text-yellow-500 mb-1 text-lg"><i class="fa fa-money"></i></div>
                     <div class="text-gray-500 text-xs">日金币</div>
-                    <div id="day-gold" class="text-yellow-600 font-bold">0</div>
+                    <div id="day-gold" class="text-yellow-600 font-bold text-sm">0</div>
                 </div>
-                <div class="bg-white rounded-xl p-3 shadow-sm transform transition-transform hover:scale-105">
-                    <div class="text-green-500 mb-1 text-xl"><i class="fa fa-check-circle"></i></div>
+                <div class="bg-white rounded-lg p-2 shadow-sm">
+                    <div class="text-green-500 mb-1 text-lg"><i class="fa fa-check-circle"></i></div>
                     <div class="text-gray-500 text-xs">完成率</div>
-                    <div id="completion-rate" class="text-green-600 font-bold">0%</div>
+                    <div id="completion-rate" class="text-green-600 font-bold text-sm">0%</div>
                 </div>
             </div>
         </div>
 
         <!-- 内容区域 -->
-        <div id="content" class="flex-1 p-4 pb-20">
+        <div id="content" class="flex-1 p-3 pb-20">
             <!-- 作业打卡页面 -->
             <div id="task-page">
                 <!-- 日期选择器 -->
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-                    <div class="mb-2 md:mb-0"></div>
-                    <div class="flex items-center flex-wrap gap-2 justify-center w-full md:w-auto">
-                        <button id="prev-week" class="text-green-600 flex-none">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center justify-between w-full">
+                        <button id="prev-week" class="text-green-600 p-1">
                             <i class="fa fa-chevron-left"></i>
                         </button>
-                        <div class="flex-none">
-                            <h2 id="current-week" class="text-lg text-gray-800">2025年10月第41周</h2>
-                        </div>
-                        <button id="next-week" class="text-green-600 flex-none">
+                        <h2 id="current-week" class="text-base text-gray-800">2025年10月第41周</h2>
+                        <button id="next-week" class="text-green-600 p-1">
                             <i class="fa fa-chevron-right"></i>
                         </button>
                     </div>
-                    <div class="mb-2 md:mb-0"></div>
                 </div>
-                <div class="px-4">
-                    <div class="flex justify-between mt-4">
-                        <span class="text-xs text-gray-500">周一</span>
-                        <span class="text-xs text-gray-500">周二</span>
-                        <span class="text-xs text-gray-500">周三</span>
-                        <span class="text-xs text-gray-500">周四</span>
-                        <span class="text-xs text-gray-500">周五</span>
-                        <span class="text-xs text-gray-500">周六</span>
-                        <span class="text-xs text-gray-500">周日</span>
+                <div class="px-2">
+                    <div class="flex justify-between mt-3">
+                        <span class="text-xs text-gray-500">一</span>
+                        <span class="text-xs text-gray-500">二</span>
+                        <span class="text-xs text-gray-500">三</span>
+                        <span class="text-xs text-gray-500">四</span>
+                        <span class="text-xs text-gray-500">五</span>
+                        <span class="text-xs text-gray-500">六</span>
+                        <span class="text-xs text-gray-500">日</span>
                     </div>
-                    <div id="week-days" class="flex justify-between mt-2 mb-6">
+                    <div id="week-days" class="flex justify-between mt-2 mb-4">
                         <!-- 日期将通过JS动态生成 -->
                     </div>
                 </div>
@@ -271,124 +262,161 @@
             <!-- 操作记录弹窗将通过JavaScript动态创建 -->
 
             <!-- 小心愿页面 -->
-            <div id="wish-page" class="hidden">
-                <div class="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 mb-4 rounded-xl shadow-md">
-                    <div class="flex items-center justify-between bg-white px-6 py-3 rounded-xl shadow-sm">
-                        <div class="flex items-center">
-                            <i class="fa fa-star text-yellow-500 mr-2 text-xl"></i>
-                            <span class="text-gray-600 mr-2">可用金币：</span>
-                            <span id="wish-gold" class="text-yellow-500 font-bold text-lg">0</span>
+                <div id="wish-page" class="hidden">
+                    <div class="bg-gradient-to-r from-yellow-50 to-orange-50 p-3 mb-3 rounded-lg shadow-sm">
+                        <div class="flex items-center justify-between bg-white px-4 py-2 rounded-lg shadow-sm">
+                            <div class="flex items-center">
+                                <i class="fa fa-star text-yellow-500 mr-1.5 text-base"></i>
+                                <span class="text-gray-600 mr-1.5">可用金币：</span>
+                                <span id="wish-gold" class="text-yellow-500 font-bold">0</span>
+                            </div>
+                            <button id="exchange-history" class="text-xs bg-orange-100 text-orange-600 px-3 py-1 rounded-full hover:bg-orange-200 transition-colors duration-200">
+                                领取记录
+                            </button>
                         </div>
-                        <button id="exchange-history" class="text-sm bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full hover:bg-orange-200 transition-colors duration-200">
-                            领取记录
-                        </button>
                     </div>
-                </div>
-                
-                <div id="wish-list" class="grid grid-cols-2 gap-4">
+                    
+                    <div id="wish-list" class="grid grid-cols-2 gap-3">
                     <!-- 心愿将通过JS动态生成 -->
                 </div>
             </div>
 
             <!-- 我的页面 -->
-            <div id="profile-page" class="hidden">
-                
-                
-                <!-- 用户信息编辑和退出按钮 -->
-                <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
-                    <h3 class="font-bold text-gray-800 mb-4 text-lg flex items-center">
-                        <i class="fa fa-user-circle text-blue-500 mr-2"></i>账户管理
-                    </h3>
-                    <div class="space-y-3">
-                        <button id="edit-profile" class="w-full flex justify-between items-center p-4 rounded-xl hover:bg-blue-50 transition-colors duration-200">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                                    <i class="fa fa-edit text-blue-600"></i>
-                                </div>
-                                <span class="font-medium">编辑个人信息</span>
+                <div id="profile-page" class="hidden">
+                    <!-- 用户信息编辑和退出按钮 -->
+            <div class="bg-white rounded-lg shadow-md p-4 mb-3">
+                <h3 class="font-bold text-gray-800 mb-2 text-base flex items-center">
+                    <i class="fa fa-user-circle text-blue-500 mr-2"></i>账户管理
+                </h3>
+                <div class="space-y-1.5">
+                    <button id="edit-profile" class="w-full flex justify-between items-center p-2.5 rounded-lg hover:bg-blue-50 transition-colors duration-200">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2.5">
+                                <i class="fa fa-edit text-blue-600"></i>
                             </div>
-                            <i class="fa fa-chevron-right text-gray-400"></i>
-                        </button>
-                        <button id="logout" class="w-full flex justify-between items-center p-4 rounded-xl hover:bg-red-50 transition-colors duration-200">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mr-3">
-                                    <i class="fa fa-sign-out text-red-600"></i>
-                                </div>
-                                <span class="font-medium">退出登录</span>
+                            <span class="font-medium">编辑个人信息</span>
+                        </div>
+                        <i class="fa fa-chevron-right text-gray-400"></i>
+                    </button>
+                    <button id="logout" class="w-full flex justify-between items-center p-2.5 rounded-lg hover:bg-red-50 transition-colors duration-200">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mr-2.5">
+                                <i class="fa fa-sign-out text-red-600"></i>
                             </div>
-                            <i class="fa fa-chevron-right text-gray-400"></i>
-                        </button>
-                    </div>
+                            <span class="font-medium">退出登录</span>
+                        </div>
+                        <i class="fa fa-chevron-right text-gray-400"></i>
+                    </button>
                 </div>
+            </div>
 
-                <!-- 荣誉系统 -->
-                <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
-                    <h3 class="font-bold text-gray-800 mb-4 text-lg flex items-center">
-                        <i class="fa fa-star text-yellow-500 mr-2"></i>我的荣誉
-                    </h3>
-                    <div id="honor-list" class="grid grid-cols-4 gap-3">
-                        <!-- 荣誉将通过JS动态生成 -->
-                    </div>
-                </div>
+                    <!-- 荣誉系统 -->
+            <div class="bg-white rounded-lg shadow-md p-4 mb-3">
+                <h3 class="font-bold text-gray-800 mb-2 text-base flex items-center">
+                    <i class="fa fa-star text-yellow-500 mr-2"></i>我的荣誉
+                </h3>
+                <div id="honor-list" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%;">
+                <style>
+                    #honor-list {
+                        display: grid !important;
+                        grid-template-columns: repeat(4, 1fr) !important;
+                        gap: 12px !important;
+                        width: 100% !important;
+                        box-sizing: border-box !important;
+                    }
+                    
+                    #honor-list > div {
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        box-sizing: border-box !important;
+                    }
+                    
+                    @media (min-width: 640px) {
+                        #honor-list {
+                            grid-template-columns: repeat(5, 1fr) !important;
+                        }
+                    }
+                    
+                    @media (min-width: 768px) {
+                        #honor-list {
+                            grid-template-columns: repeat(6, 1fr) !important;
+                        }
+                    }
+                    
+                    @media (min-width: 1024px) {
+                        #honor-list {
+                            grid-template-columns: repeat(7, 1fr) !important;
+                        }
+                    }
+                    
+                    @media (min-width: 1280px) {
+                        #honor-list {
+                            grid-template-columns: repeat(8, 1fr) !important;
+                        }
+                    }
+                </style>
+                <!-- 荣誉将通过JS动态生成 -->
+            </div>
+        </div>
 
                 <!-- 数据管理 -->
-                <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
-                    <h3 class="font-bold text-gray-800 mb-4 text-lg flex items-center">
-                        <i class="fa fa-database text-green-500 mr-2"></i>数据管理
-                    </h3>
-                    <div class="space-y-3">
-                        <button id="clear-data" class="w-full flex justify-between items-center p-4 rounded-xl hover:bg-orange-50 transition-colors duration-200">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center mr-3">
-                                    <i class="fa fa-trash text-orange-600"></i>
-                                </div>
-                                <span class="font-medium">清除数据</span>
+            <div class="bg-white rounded-lg shadow-md p-4 mb-3">
+                <h3 class="font-bold text-gray-800 mb-2 text-base flex items-center">
+                    <i class="fa fa-database text-green-500 mr-2"></i>数据管理
+                </h3>
+                <div class="space-y-1.5">
+                    <button id="clear-data" class="w-full flex justify-between items-center p-2.5 rounded-lg hover:bg-orange-50 transition-colors duration-200">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center mr-2.5">
+                                <i class="fa fa-trash text-orange-600"></i>
                             </div>
-                            <i class="fa fa-chevron-right text-gray-400"></i>
-                        </button>
-                        <button id="operation-logs" class="w-full flex justify-between items-center p-4 rounded-xl hover:bg-purple-50 transition-colors duration-200">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-3">
-                                    <i class="fa fa-history text-purple-600"></i>
-                                </div>
-                                <span class="font-medium">操作记录</span>
+                            <span class="font-medium">清除数据</span>
+                        </div>
+                        <i class="fa fa-chevron-right text-gray-400"></i>
+                    </button>
+                    <button id="operation-logs" class="w-full flex justify-between items-center p-2.5 rounded-lg hover:bg-purple-50 transition-colors duration-200">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-2.5">
+                                <i class="fa fa-history text-purple-600"></i>
                             </div>
-                            <i class="fa fa-chevron-right text-gray-400"></i>
-                        </button>
+                            <span class="font-medium">操作记录</span>
+                        </div>
+                        <i class="fa fa-chevron-right text-gray-400"></i>
+                    </button>
+                </div>
+            </div>
+                    
+                    <!-- 设置 -->
+            <div class="bg-white rounded-lg shadow-md p-4 mb-3">
+                <h3 class="font-bold text-gray-800 mb-2 text-base flex items-center">
+                    <i class="fa fa-cog text-blue-500 mr-2"></i>设置
+                </h3>
+                <div class="space-y-1.5">
+                    <!-- 番茄钟设置 -->
+                    <button id="tomato-settings-btn" class="w-full p-2.5 rounded-lg hover:bg-blue-50 transition-colors duration-200 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center mr-2.5">
+                                <i class="fa fa-clock-o text-pink-600"></i>
+                            </div>
+                            <span class="font-medium">番茄钟设置</span>
+                        </div>
+                        <i class="fa fa-chevron-right text-gray-400"></i>
+                    </button>
+                        </label>                               
                     </div>
                 </div>
-                
-                <!-- 设置 -->
-                <div class="bg-white rounded-2xl shadow-lg p-5 mb-4">
-                    <h3 class="font-bold text-gray-800 mb-4 text-lg flex items-center">
-                        <i class="fa fa-cog text-blue-500 mr-2"></i>设置
-                    </h3>
-                    <div class="space-y-3">
-                        <!-- 番茄钟设置 -->
-                        <button id="tomato-settings-btn" class="w-full p-4 rounded-xl hover:bg-blue-50 transition-colors duration-200 flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center mr-3">
-                                    <i class="fa fa-clock-o text-pink-600"></i>
-                                </div>
-                                <span class="font-medium">番茄钟设置</span>
-                            </div>
-                            <i class="fa fa-chevron-right text-gray-400"></i>
-                        </button>
-                                </label>                              
-                            </div>
-                        </div>
-                    </div>
+            </div>
                 </div>
             </div>
         </div>
 
         <!-- 番茄钟设置模态窗口 -->
         <div id="tomato-settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-            <div class="bg-white rounded-2xl shadow-xl w-5/6 max-w-md p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold text-gray-800">番茄钟设置</h3>
+            <div class="bg-white rounded-lg shadow-lg w-5/6 max-w-md p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">番茄钟设置</h3>
                     <button id="close-tomato-settings" class="text-gray-400 hover:text-gray-600">
-                        <i class="fa fa-times text-xl"></i>
+                        <i class="fa fa-times"></i>
                     </button>
                 </div>
                 <div class="space-y-6">
@@ -770,7 +798,7 @@
             
             <!-- 荣誉墙内容 -->
             <div class="p-5 overflow-y-auto flex-1">
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="honor-wall-content">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3" id="honor-wall-content">
                     <!-- 荣誉将通过JS动态生成 -->
                 </div>
             </div>
@@ -808,8 +836,8 @@
 
     <!-- 图片查看器弹窗 -->
     <div id="image-viewer-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex items-center justify-center">
-        <div class="relative w-full max-w-4xl max-h-[90vh]">
-            <button id="close-image-viewer" class="absolute -top-12 right-0 text-white text-3xl hover:text-gray-300 transition-colors">
+        <div class="relative w-full max-h-[90vh]">
+            <button id="close-image-viewer" class="absolute -top-10 right-2 text-white text-2xl hover:text-gray-300 transition-colors">
                 <i class="fa fa-times"></i>
             </button>
             
@@ -817,15 +845,15 @@
                 <img id="current-task-image" src="" alt="任务图片" class="w-full h-auto max-h-[80vh] object-contain mx-auto">
                 
                 <!-- 左右翻页按钮 -->
-                <button id="prev-image-btn" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-50 hover:bg-opacity-70 text-black w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+                <button id="prev-image-btn" class="absolute left-1 top-1/2 -translate-y-1/2 bg-white bg-opacity-50 hover:bg-opacity-70 text-black w-8 h-8 rounded-full flex items-center justify-center transition-colors">
                     <i class="fa fa-chevron-left"></i>
                 </button>
-                <button id="next-image-btn" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-50 hover:bg-opacity-70 text-black w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+                <button id="next-image-btn" class="absolute right-1 top-1/2 -translate-y-1/2 bg-white bg-opacity-50 hover:bg-opacity-70 text-black w-8 h-8 rounded-full flex items-center justify-center transition-colors">
                     <i class="fa fa-chevron-right"></i>
                 </button>
                 
                 <!-- 图片计数器 -->
-                <div id="image-counter" class="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-sm">
+                <div id="image-counter" class="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black bg-opacity-70 text-white px-2 py-0.5 rounded-full text-xs">
                     1/1
                 </div>
             </div>

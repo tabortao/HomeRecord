@@ -3921,19 +3921,22 @@ function renderSingleHonor(honor, userHonor, container) {
     }
     
     const honorCard = document.createElement('div');
-    honorCard.className = `honor-card rounded-xl border ${borderColor} p-3 transform transition-all duration-300 hover:scale-105 cursor-pointer`;
+    // 优化卡片样式，使其更紧凑地适应移动设备的多列布局
+    honorCard.className = `honor-card ${isObtained ? cardBg : 'bg-white'} rounded-lg border ${borderColor} p-2 transform transition-all duration-300 hover:scale-105 cursor-pointer w-full min-h-[150px] flex flex-col`;
     honorCard.dataset.obtained = isObtained;
     honorCard.innerHTML = `
-        <div class="text-center">
-            <div class="w-20 h-20 mx-auto ${isObtained ? bgColor : 'bg-gray-100'} rounded-full flex items-center justify-center mb-3 shadow-md relative overflow-hidden">
-                ${honor.icon ? `<img src="/static/images/honors/${honor.icon}" alt="${honor.name}" class="w-12 h-12 object-contain ${isObtained ? '' : 'opacity-50'}">` : `<i class="fa fa-trophy ${isObtained ? iconColor : 'text-gray-400'} text-2xl"></i>`}
+        <div class="text-center flex flex-col items-center justify-between h-full">
+            <!-- 减小图标容器大小 -->
+            <div class="w-14 h-14 mx-auto ${isObtained ? bgColor : 'bg-gray-100'} rounded-full flex items-center justify-center mb-2 shadow-sm relative overflow-hidden">
+                ${honor.icon ? `<img src="/static/images/honors/${honor.icon}" alt="${honor.name}" class="w-8 h-8 object-contain ${isObtained ? '' : 'opacity-50'}">` : `<i class="fa fa-trophy ${isObtained ? iconColor : 'text-gray-400'} text-xl"></i>`}
                 <div class="absolute inset-0 bg-white opacity-20 rounded-full"></div>
-                ${isObtained ? '<div class="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm border border-yellow-200">' +
-                    `<span class="text-xs font-bold ${iconColor}">${userHonor.obtained_count}</span></div>` : ''}
+                ${isObtained ? '<div class="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm border border-yellow-200">' +
+                    `<span class="text-[10px] font-bold ${iconColor}">${userHonor.obtained_count}</span></div>` : ''}
             </div>
-            <h4 class="font-bold text-gray-800 mb-1">${honor.name}</h4>
-            <p class="text-sm text-gray-500 mb-2">${honor.description}</p>
-            ${isObtained ? `<div class="text-xs text-gray-500">获得于：${userHonor.last_obtained}</div>` : ''}
+            <!-- 调整字体大小和间距 -->
+            <h4 class="font-bold text-gray-800 mb-1 text-[11px]">${honor.name}</h4>
+            <p class="text-gray-500 mb-1 text-[10px] line-clamp-2">${honor.description}</p>
+            ${isObtained ? `<div class="text-[10px] text-gray-500 mt-auto">${userHonor.last_obtained.split(' ')[0]}</div>` : ''}
         </div>
     `;
     
