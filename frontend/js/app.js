@@ -2737,19 +2737,41 @@ async function loadHonors() {
 // 检查是否有新的荣誉可以获取
 async function checkNewHonors() {
     try {
+        // 添加详细的日志记录
+        console.log('检查荣誉开始，用户ID:', appState.currentUser?.id);
+        
+        if (!appState.currentUser || !appState.currentUser.id) {
+            console.warn('用户未登录，跳过荣誉检查');
+            return;
+        }
+        
         const result = await api.honorAPI.checkAndGrantHonors(appState.currentUser.id);
         
+        console.log('荣誉检查结果:', result);
+        
         if (result && result.new_honors && result.new_honors.length > 0) {
+            console.log('发现新荣誉:', result.new_honors.length, '个');
             // 显示新获得的荣誉
             for (const honor of result.new_honors) {
-                await showHonorCelebration(honor);
+                try {
+                    await showHonorCelebration(honor);
+                } catch (honorError) {
+                    console.error('显示荣誉庆祝效果失败:', honor.name, honorError);
+                }
             }
             
             // 重新加载荣誉列表以更新显示
-            await loadHonors();
+            try {
+                await loadHonors();
+            } catch (loadError) {
+                console.error('重新加载荣誉列表失败:', loadError);
+            }
         }
     } catch (error) {
         console.error('检查荣誉失败:', error);
+        console.error('错误类型:', error.name);
+        console.error('错误详情:', error.message);
+        // 静默失败，不影响用户体验
     }
 }
 

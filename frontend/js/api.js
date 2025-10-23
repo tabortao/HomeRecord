@@ -253,14 +253,32 @@ const honorAPI = {
     
     // 检查并授予新荣誉
     checkAndGrantHonors: async (userId) => {
-        const response = await fetch(`${API_BASE_URL}/honors/check`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ user_id: userId })
-        });
-        return await response.json();
+        try {
+            console.log('发送荣誉检查请求，用户ID:', userId);
+            
+            const response = await fetch(`${API_BASE_URL}/honors/check`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_id: userId })
+            });
+            
+            console.log('荣誉检查请求状态:', response.status);
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`HTTP错误! 状态: ${response.status}, 消息: ${errorData.message || '未知错误'}`);
+            }
+            
+            const data = await response.json();
+            console.log('荣誉检查响应数据:', data);
+            return data;
+        } catch (error) {
+            console.error('荣誉检查请求失败:', error);
+            // 重新抛出错误以便上层函数处理
+            throw error;
+        }
     }
 };
 
