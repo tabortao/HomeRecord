@@ -303,43 +303,257 @@ const operationLogAPI = {
 const honorAPI = {
     // 获取所有荣誉（包含用户状态）
     getAllHonors: async (userId) => {
-        const response = await fetch(`${API_BASE_URL}/honors/all?user_id=${userId}`);
-        return await response.json();
+        try {
+            console.log('===== 获取所有荣誉开始 =====');
+            console.log('获取所有荣誉，用户ID类型:', typeof userId);
+            console.log('获取所有荣誉，用户ID值:', userId);
+            
+            // 验证用户ID
+            if (!userId || userId === undefined || userId === null || userId === '') {
+                const error = new Error('无效的用户ID');
+                console.error('错误:', error);
+                throw error;
+            }
+            
+            const url = `${API_BASE_URL}/honors/all?user_id=${userId}`;
+            console.log('请求URL:', url);
+            
+            // 添加fetch超时处理
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                console.log('获取所有荣誉请求状态:', response.status);
+                
+                if (!response.ok) {
+                    // 尝试获取错误响应
+                    try {
+                        const errorData = await response.json();
+                        const error = new Error(`HTTP错误! 状态: ${response.status}, 消息: ${errorData.message || '未知错误'}`);
+                        console.error('错误响应数据:', errorData);
+                        throw error;
+                    } catch (jsonError) {
+                        // 如果无法解析JSON，获取原始文本
+                        const text = await response.text();
+                        const error = new Error(`HTTP错误! 状态: ${response.status}, 响应: ${text}`);
+                        console.error('无法解析JSON响应:', jsonError);
+                        console.error('原始响应文本:', text);
+                        throw error;
+                    }
+                }
+                
+                // 验证响应内容
+                try {
+                    const data = await response.json();
+                    console.log('获取所有荣誉响应数据类型:', typeof data);
+                    console.log('获取所有荣誉响应数据:', data);
+                    return data;
+                } catch (jsonError) {
+                    const text = await response.text();
+                    const error = new Error(`JSON解析失败: ${jsonError.message}`);
+                    console.error('JSON解析错误:', jsonError);
+                    console.error('原始响应文本:', text);
+                    throw error;
+                }
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                
+                if (fetchError.name === 'AbortError') {
+                    const error = new Error('获取所有荣誉请求超时');
+                    console.error('超时错误:', error);
+                    throw error;
+                }
+                
+                const error = new Error(`网络请求失败: ${fetchError.message}`);
+                console.error('网络请求错误:', fetchError);
+                throw error;
+            }
+        } catch (error) {
+            console.error('获取所有荣誉整体失败:', error);
+            // 重新抛出错误以便上层函数处理
+            throw error;
+        } finally {
+            console.log('===== 获取所有荣誉结束 =====');
+        }
     },
     
     // 获取用户荣誉
     getUserHonors: async (userId) => {
-        const response = await fetch(`${API_BASE_URL}/honors/user/${userId}`);
-        return await response.json();
+        try {
+            console.log('===== 获取用户荣誉开始 =====');
+            console.log('获取用户荣誉，用户ID类型:', typeof userId);
+            console.log('获取用户荣誉，用户ID值:', userId);
+            
+            // 验证用户ID
+            if (!userId || userId === undefined || userId === null || userId === '') {
+                const error = new Error('无效的用户ID');
+                console.error('错误:', error);
+                throw error;
+            }
+            
+            const url = `${API_BASE_URL}/honors/user/${userId}`;
+            console.log('请求URL:', url);
+            
+            // 添加fetch超时处理
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                console.log('获取用户荣誉请求状态:', response.status);
+                
+                if (!response.ok) {
+                    // 尝试获取错误响应
+                    try {
+                        const errorData = await response.json();
+                        const error = new Error(`HTTP错误! 状态: ${response.status}, 消息: ${errorData.message || '未知错误'}`);
+                        console.error('错误响应数据:', errorData);
+                        throw error;
+                    } catch (jsonError) {
+                        // 如果无法解析JSON，获取原始文本
+                        const text = await response.text();
+                        const error = new Error(`HTTP错误! 状态: ${response.status}, 响应: ${text}`);
+                        console.error('无法解析JSON响应:', jsonError);
+                        console.error('原始响应文本:', text);
+                        throw error;
+                    }
+                }
+                
+                // 验证响应内容
+                try {
+                    const data = await response.json();
+                    console.log('获取用户荣誉响应数据类型:', typeof data);
+                    console.log('获取用户荣誉响应数据:', data);
+                    return data;
+                } catch (jsonError) {
+                    const text = await response.text();
+                    const error = new Error(`JSON解析失败: ${jsonError.message}`);
+                    console.error('JSON解析错误:', jsonError);
+                    console.error('原始响应文本:', text);
+                    throw error;
+                }
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                
+                if (fetchError.name === 'AbortError') {
+                    const error = new Error('获取用户荣誉请求超时');
+                    console.error('超时错误:', error);
+                    throw error;
+                }
+                
+                const error = new Error(`网络请求失败: ${fetchError.message}`);
+                console.error('网络请求错误:', fetchError);
+                throw error;
+            }
+        } catch (error) {
+            console.error('获取用户荣誉整体失败:', error);
+            // 重新抛出错误以便上层函数处理
+            throw error;
+        } finally {
+            console.log('===== 获取用户荣誉结束 =====');
+        }
     },
     
     // 检查并授予新荣誉
     checkAndGrantHonors: async (userId) => {
         try {
-            console.log('发送荣誉检查请求，用户ID:', userId);
+            console.log('===== 荣誉检查开始 =====');
+            console.log('发送荣誉检查请求，用户ID类型:', typeof userId);
+            console.log('发送荣誉检查请求，用户ID值:', userId);
             
-            const response = await fetch(`${API_BASE_URL}/honors/check`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ user_id: userId })
-            });
-            
-            console.log('荣誉检查请求状态:', response.status);
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(`HTTP错误! 状态: ${response.status}, 消息: ${errorData.message || '未知错误'}`);
+            // 验证用户ID
+            if (!userId || userId === undefined || userId === null || userId === '') {
+                const error = new Error('无效的用户ID');
+                console.error('错误:', error);
+                throw error;
             }
             
-            const data = await response.json();
-            console.log('荣誉检查响应数据:', data);
-            return data;
+            const url = `${API_BASE_URL}/honors/check`;
+            console.log('请求URL:', url);
+            
+            // 添加fetch超时处理
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_id: userId }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                console.log('荣誉检查请求状态:', response.status);
+                
+                if (!response.ok) {
+                    // 尝试获取错误响应
+                    try {
+                        const errorData = await response.json();
+                        const error = new Error(`HTTP错误! 状态: ${response.status}, 消息: ${errorData.message || '未知错误'}`);
+                        console.error('错误响应数据:', errorData);
+                        throw error;
+                    } catch (jsonError) {
+                        // 如果无法解析JSON，获取原始文本
+                        const text = await response.text();
+                        const error = new Error(`HTTP错误! 状态: ${response.status}, 响应: ${text}`);
+                        console.error('无法解析JSON响应:', jsonError);
+                        console.error('原始响应文本:', text);
+                        throw error;
+                    }
+                }
+                
+                // 验证响应内容
+                try {
+                    const data = await response.json();
+                    console.log('荣誉检查响应数据类型:', typeof data);
+                    console.log('荣誉检查响应数据:', data);
+                    return data;
+                } catch (jsonError) {
+                    const text = await response.text();
+                    const error = new Error(`JSON解析失败: ${jsonError.message}`);
+                    console.error('JSON解析错误:', jsonError);
+                    console.error('原始响应文本:', text);
+                    throw error;
+                }
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                
+                if (fetchError.name === 'AbortError') {
+                    const error = new Error('荣誉检查请求超时');
+                    console.error('超时错误:', error);
+                    throw error;
+                }
+                
+                const error = new Error(`网络请求失败: ${fetchError.message}`);
+                console.error('网络请求错误:', fetchError);
+                throw error;
+            }
         } catch (error) {
-            console.error('荣誉检查请求失败:', error);
+            console.error('荣誉检查整体失败:', error);
             // 重新抛出错误以便上层函数处理
             throw error;
+        } finally {
+            console.log('===== 荣誉检查结束 =====');
         }
     }
 };

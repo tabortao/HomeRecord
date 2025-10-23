@@ -3309,39 +3309,46 @@ async function loadHonors() {
 async function checkNewHonors() {
     try {
         // 添加详细的日志记录
-        console.log('检查荣誉开始，用户ID:', appState.currentUser?.id);
+        console.log('检查荣誉开始，用户对象:', appState.currentUser);
         
-        if (!appState.currentUser || !appState.currentUser.id) {
-            console.warn('用户未登录，跳过荣誉检查');
+        // 更严格地检查用户ID
+        const userId = appState.currentUser?.id;
+        if (!userId || userId === undefined || userId === null || userId === '') {
+            console.warn('无效的用户ID，跳过荣誉检查');
             return;
         }
         
-        const result = await api.honorAPI.checkAndGrantHonors(appState.currentUser.id);
+        console.log('准备调用荣誉检查API，用户ID:', userId);
         
-        console.log('荣誉检查结果:', result);
-        
-        if (result && result.new_honors && result.new_honors.length > 0) {
-            console.log('发现新荣誉:', result.new_honors.length, '个');
-            // 显示新获得的荣誉
-            for (const honor of result.new_honors) {
+        try {
+            const result = await api.honorAPI.checkAndGrantHonors(userId);
+            
+            console.log('荣誉检查结果:', result);
+            
+            if (result && result.new_honors && result.new_honors.length > 0) {
+                console.log('发现新荣誉:', result.new_honors.length, '个');
+                // 显示新获得的荣誉
+                for (const honor of result.new_honors) {
+                    try {
+                        await showHonorCelebration(honor);
+                    } catch (honorError) {
+                        console.error('显示荣誉庆祝效果失败:', honor.name, honorError);
+                    }
+                }
+                
+                // 重新加载荣誉列表以更新显示
                 try {
-                    await showHonorCelebration(honor);
-                } catch (honorError) {
-                    console.error('显示荣誉庆祝效果失败:', honor.name, honorError);
+                    await loadHonors();
+                } catch (loadError) {
+                    console.error('重新加载荣誉列表失败:', loadError);
                 }
             }
-            
-            // 重新加载荣誉列表以更新显示
-            try {
-                await loadHonors();
-            } catch (loadError) {
-                console.error('重新加载荣誉列表失败:', loadError);
-            }
+        } catch (apiError) {
+            console.error('荣誉检查API调用失败:', apiError);
+            // 这里可以添加重试逻辑，但暂时保持静默失败
         }
     } catch (error) {
-        console.error('检查荣誉失败:', error);
-        console.error('错误类型:', error.name);
-        console.error('错误详情:', error.message);
+        console.error('检查荣誉过程出现异常:', error);
         // 静默失败，不影响用户体验
     }
 }
@@ -3865,7 +3872,7 @@ function hideHonorWall() {
 async function renderHonorWall() {
     try {
         const userHonors = await api.honorAPI.getUserHonors(appState.currentUser.id);
-        const allHonors = await api.honorAPI.getAllHonors();
+        const allHonors = await api.honorAPI.getAllHonors(appState.currentUser.id);
         
         const honorWallContent = document.getElementById('honor-wall-content');
         honorWallContent.innerHTML = '';
@@ -3935,7 +3942,7 @@ function renderSingleHonor(honor, userHonor, container) {
             </div>
             <!-- 调整字体大小和间距 -->
             <h4 class="font-bold text-gray-800 mb-1 text-[11px]">${honor.name}</h4>
-            <p class="text-gray-500 mb-1 text-[10px] line-clamp-2">${honor.description}</p>
+            <p class="text-gray-500 mb-1 text-[4px] line-clamp-2">${honor.description}</p>
             ${isObtained ? `<div class="text-[10px] text-gray-500 mt-auto">${userHonor.last_obtained.split(' ')[0]}</div>` : ''}
         </div>
     `;
