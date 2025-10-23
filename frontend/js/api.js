@@ -66,8 +66,38 @@ const taskAPI = {
         if (date) url += `&date=${date}`;
         if (category && category !== '全部学科') url += `&category=${category}`;
         
-        const response = await fetch(url);
-        return await response.json();
+        console.log('请求任务列表URL:', url);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        
+        console.log('响应状态:', response.status);
+        console.log('响应类型:', response.type);
+        
+        if (!response.ok) {
+            throw new Error(`API请求失败，状态码: ${response.status}`);
+        }
+        
+        // 确保响应不为空
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('响应不是有效的JSON格式');
+        }
+        
+        try {
+            const data = await response.json();
+            console.log('获取到的任务数据:', data);
+            return data;
+        } catch (jsonError) {
+            console.error('JSON解析错误:', jsonError);
+            // 尝试获取原始响应文本以便调试
+            const text = await response.text();
+            console.error('原始响应内容:', text);
+            throw new Error(`JSON解析失败: ${jsonError.message}`);
+        }
     },
 
     // 添加任务
@@ -100,6 +130,38 @@ const taskAPI = {
             method: 'DELETE'
         });
         return await response.json();
+    },
+    
+    // 上传任务图片
+    uploadTaskImages: async (taskId, files) => {
+        // 由于后端API只支持单个文件上传，我们需要循环上传每个文件
+        const uploadedImages = [];
+        
+        for (let i = 0; i < files.length; i++) {
+            const formData = new FormData();
+            // 根据后端api.py中的要求，字段名应为'file'
+            formData.append('file', files[i]);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                if (result.success && result.image_url) {
+                    uploadedImages.push(result.image_url);
+                }
+            } catch (error) {
+                console.error('上传图片失败:', error);
+            }
+        }
+        
+        return {
+            success: uploadedImages.length > 0,
+            image_url: uploadedImages[0], // 保持向后兼容
+            image_urls: uploadedImages    // 返回所有上传的图片URL
+        };
     }
 };
 

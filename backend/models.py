@@ -47,6 +47,7 @@ class Task(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     remark = db.Column(db.Text)
+    images = db.Column(db.Text)  # 存储任务图片路径，JSON格式
 
 # 任务分类表
 class TaskCategory(db.Model):

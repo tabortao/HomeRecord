@@ -1,16 +1,28 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from models import db, User, Task, TaskCategory, Wish, OperationLog, Honor, UserHonor
 from datetime import datetime, timedelta
 import json
 import os
-from datetime import datetime, timedelta
 import random
+import uuid
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///homerecord.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# 确保任务图片上传目录存在
+TASK_IMAGES_FOLDER = 'uploads/task_images'
+if not os.path.exists(TASK_IMAGES_FOLDER):
+    os.makedirs(TASK_IMAGES_FOLDER, exist_ok=True)
+
+# 允许的文件扩展名
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 CORS(app)
 db.init_app(app)
@@ -144,6 +156,14 @@ def get_tasks():
     tasks = query.all()
     result = []
     for task in tasks:
+        # 解析images字段，返回空列表如果为None或解析失败
+        images = []
+        if task.images:
+            try:
+                images = json.loads(task.images)
+            except json.JSONDecodeError:
+                images = []
+        
         result.append({
             'id': task.id,
             'name': task.name,
@@ -157,7 +177,8 @@ def get_tasks():
             'start_date': task.start_date,
             'end_date': task.end_date,
             'status': task.status,
-            'series_id': task.series_id
+            'series_id': task.series_id,
+            'images': images
         })
     
     return jsonify(result)
@@ -166,6 +187,10 @@ def get_tasks():
 def add_task():
     data = request.json
     user_id = data.get('user_id')
+    
+    # 处理images字段，确保它是JSON字符串格式
+    images = data.get('images', [])
+    images_json = json.dumps(images) if images else None
     
     # 创建任务
     task = Task(
@@ -181,7 +206,8 @@ def add_task():
         start_date=data.get('start_date'),
         end_date=data.get('end_date'),
         status=data.get('status', '未完成'),
-        series_id=data.get('series_id') or str(random.randint(100000, 999999))
+        series_id=data.get('series_id') or str(random.randint(100000, 999999)),
+        images=images_json
     )
     
     # 处理重复任务创建
@@ -234,7 +260,8 @@ def add_task():
                                 start_date=current_date.strftime('%Y-%m-%d'),
                                 end_date=end_date,
                                 status='未完成',
-                                series_id=task.series_id
+                                series_id=task.series_id,
+                                images=images_json
                             )
                             db.session.add(daily_task)
                         # 前进到下一天
@@ -261,7 +288,8 @@ def add_task():
                                     start_date=current_date.strftime('%Y-%m-%d'),
                                     end_date=end_date,
                                     status='未完成',
-                                    series_id=task.series_id
+                                    series_id=task.series_id,
+                                    images=images_json
                                 )
                                 db.session.add(weekday_task)
                         # 前进到下一天
@@ -295,7 +323,8 @@ def add_task():
                                 start_date=current_date.strftime('%Y-%m-%d'),
                                 end_date=end_date,
                                 status='未完成',
-                                series_id=task.series_id
+                                series_id=task.series_id,
+                                images=images_json
                             )
                             db.session.add(weekly_task)
                             
@@ -320,6 +349,8 @@ def add_task():
     db.session.commit()
     
     return jsonify({'success': True, 'task_id': task.id})
+
+# 任务图片上传和获取API已移至api.py文件中
 
 # 导入并注册API路由
 from api import register_routes

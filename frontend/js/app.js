@@ -1,8 +1,35 @@
 // 导入API和工具函数
 import * as api from './api.js';
+// 定义API基础URL
+const API_BASE_URL = 'http://localhost:5000/api';
 import { dateUtils, timeUtils, storageUtils, domUtils, colorUtils } from './utils.js';
 
-// 当前应用状态
+// 安全解析JSON的辅助函数
+function tryParseJSON(jsonString) {
+    // 检查输入类型
+    if (jsonString === null || jsonString === undefined) {
+        return null;
+    }
+    
+    // 如果已经是数组或对象，直接返回
+    if (Array.isArray(jsonString) || typeof jsonString === 'object') {
+        return jsonString;
+    }
+    
+    try {
+        // 尝试解析字符串
+        return JSON.parse(jsonString);
+    } catch (e) {
+        console.error('JSON解析错误:', e, '输入:', jsonString, '类型:', typeof jsonString);
+        // 如果输入看起来像空数组字符串，返回空数组
+        if (String(jsonString).trim() === '[]') {
+            return [];
+        }
+        return null;
+    }
+}
+
+// 全局状态
 let appState = {
     currentUser: null,
     currentDate: dateUtils.getCurrentDate(),
@@ -25,6 +52,233 @@ let currentLogsPage = 1;
 let totalLogsPages = 1;
 let hasMoreLogs = true;
 let isLoadingLogs = false;
+
+// 初始化任务图片上传功能
+function initTaskImagesUpload() {
+    const uploadContainer = document.getElementById('task-images-container');
+    const fileInput = document.getElementById('task-images-upload');
+    const previewContainer = document.getElementById('uploaded-images-preview');
+    
+    if (!uploadContainer || !fileInput || !previewContainer) return;
+    
+    // 点击上传区域触发文件选择
+    uploadContainer.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    // 处理文件选择
+    fileInput.addEventListener('change', (e) => {
+        handleFileSelection(e.target.files);
+    });
+    
+    // 处理拖拽上传
+    uploadContainer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadContainer.classList.add('border-indigo-500', 'bg-indigo-50');
+    });
+    
+    uploadContainer.addEventListener('dragleave', () => {
+        uploadContainer.classList.remove('border-indigo-500', 'bg-indigo-50');
+    });
+    
+    uploadContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadContainer.classList.remove('border-indigo-500', 'bg-indigo-50');
+        
+        if (e.dataTransfer.files.length > 0) {
+            handleFileSelection(e.dataTransfer.files);
+        }
+    });
+    
+    // 处理文件选择和预览
+    function handleFileSelection(files) {
+        previewContainer.classList.remove('hidden');
+        previewContainer.innerHTML = '';
+        
+        Array.from(files).forEach((file, index) => {
+            // 检查文件类型
+            if (!file.type.match('image.*')) {
+                domUtils.showToast('请选择图片文件', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewWrapper = document.createElement('div');
+                previewWrapper.className = 'relative group';
+                previewWrapper.dataset.index = index;
+                
+                const preview = document.createElement('img');
+                preview.src = e.target.result;
+                preview.className = 'w-full h-20 object-cover rounded-md border border-gray-200';
+                preview.alt = '图片预览';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity';
+                removeBtn.innerHTML = '<i class="fa fa-times text-xs"></i>';
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    previewWrapper.remove();
+                    
+                    // 如果没有预览图片了，隐藏预览容器
+                    if (previewContainer.children.length === 0) {
+                        previewContainer.classList.add('hidden');
+                    }
+                });
+                
+                previewWrapper.appendChild(preview);
+                previewWrapper.appendChild(removeBtn);
+                previewContainer.appendChild(previewWrapper);
+            };
+            
+            reader.readAsDataURL(file);
+        });
+    }
+}
+
+// 清除已上传图片预览
+function clearTaskImagesPreview() {
+    const previewContainer = document.getElementById('uploaded-images-preview');
+    const fileInput = document.getElementById('task-images-upload');
+    
+    if (previewContainer) {
+        previewContainer.innerHTML = '';
+        previewContainer.classList.add('hidden');
+    }
+    
+    if (fileInput) {
+        fileInput.value = '';
+    }
+}
+
+// 图片查看器相关功能
+let currentImages = [];
+let currentImageIndex = 0;
+
+// 初始化图片查看器
+function initImageViewer() {
+    const viewerModal = document.getElementById('image-viewer-modal');
+    const closeBtn = document.getElementById('close-image-viewer');
+    const prevBtn = document.getElementById('prev-image-btn');
+    const nextBtn = document.getElementById('next-image-btn');
+    
+    if (!viewerModal || !closeBtn || !prevBtn || !nextBtn) return;
+    
+    // 关闭图片查看器
+    closeBtn.addEventListener('click', closeImageViewer);
+    
+    // 点击模态窗口背景关闭
+    viewerModal.addEventListener('click', (e) => {
+        if (e.target === viewerModal) {
+            closeImageViewer();
+        }
+    });
+    
+    // 左右翻页
+    prevBtn.addEventListener('click', showPreviousImage);
+    nextBtn.addEventListener('click', showNextImage);
+    
+    // 键盘事件支持
+    document.addEventListener('keydown', (e) => {
+        if (!viewerModal.classList.contains('hidden')) {
+            if (e.key === 'Escape') {
+                closeImageViewer();
+            } else if (e.key === 'ArrowLeft') {
+                showPreviousImage();
+            } else if (e.key === 'ArrowRight') {
+                showNextImage();
+            }
+        }
+    });
+    
+    // 监听任务图片图标的点击事件
+    document.addEventListener('click', (e) => {
+        const imageIcon = e.target.closest('.task-images-icon');
+        if (imageIcon) {
+            const imagesData = imageIcon.dataset.images;
+            if (imagesData) {
+                try {
+                    const images = JSON.parse(imagesData);
+                    openImageViewer(images);
+                } catch (error) {
+                    console.error('解析图片数据失败:', error);
+                }
+            }
+        }
+    });
+}
+
+// 打开图片查看器
+function openImageViewer(images) {
+    const viewerModal = document.getElementById('image-viewer-modal');
+    const imageElement = document.getElementById('current-task-image');
+    const counterElement = document.getElementById('image-counter');
+    
+    if (!viewerModal || !imageElement || !counterElement) return;
+    
+    currentImages = images;
+    currentImageIndex = 0;
+    
+    // 显示第一张图片
+    updateViewerImage();
+    
+    // 显示模态窗口
+    viewerModal.classList.remove('hidden');
+    // 阻止页面滚动
+    document.body.style.overflow = 'hidden';
+}
+
+// 关闭图片查看器
+function closeImageViewer() {
+    const viewerModal = document.getElementById('image-viewer-modal');
+    if (viewerModal) {
+        viewerModal.classList.add('hidden');
+        // 恢复页面滚动
+        document.body.style.overflow = '';
+    }
+}
+
+// 显示上一张图片
+function showPreviousImage() {
+    if (currentImages.length > 0) {
+        currentImageIndex = (currentImageIndex - 1 + currentImages.length) % currentImages.length;
+        updateViewerImage();
+    }
+}
+
+// 显示下一张图片
+function showNextImage() {
+    if (currentImages.length > 0) {
+        currentImageIndex = (currentImageIndex + 1) % currentImages.length;
+        updateViewerImage();
+    }
+}
+
+// 更新查看器中的图片
+function updateViewerImage() {
+    const imageElement = document.getElementById('current-task-image');
+    const counterElement = document.getElementById('image-counter');
+    
+    if (!imageElement || !counterElement || currentImages.length === 0) return;
+    
+    let imageUrl = currentImages[currentImageIndex];
+    
+    // 检查URL是否已经是完整的URL（包含http）
+    if (imageUrl && !imageUrl.startsWith('http')) {
+        // 如果URL已经是相对路径且以/uploads开头，则直接使用
+        if (imageUrl.startsWith('/uploads')) {
+            imageUrl = `${API_BASE_URL}${imageUrl}`;
+        } else {
+            // 否则构建完整URL
+            imageUrl = `${API_BASE_URL}/uploads/${imageUrl}`;
+        }
+    }
+    
+    imageElement.src = imageUrl;
+    
+    // 更新计数器
+    counterElement.textContent = `${currentImageIndex + 1}/${currentImages.length}`;
+}
 
 // 初始化番茄钟设置
 function initTomatoSettings() {
@@ -95,6 +349,10 @@ function initApp() {
         showMainApp();
         // 初始化番茄钟设置
         initTomatoSettings();
+        // 初始化任务图片上传功能
+        initTaskImagesUpload();
+        // 初始化图片查看器
+        initImageViewer();
     } else {
         showLoginPage();
     }
@@ -298,6 +556,27 @@ function bindEvents() {
 
     // 周视图切换事件
     if(document.getElementById('prev-week')) document.getElementById('prev-week').addEventListener('click', handlePrevWeek);
+    
+    // 使用事件委托为任务图片图标绑定点击事件
+    document.addEventListener('click', (e) => {
+        const imagesIcon = e.target.closest('.task-images-icon');
+        if (imagesIcon) {
+            const imagesData = imagesIcon.getAttribute('data-images');
+            const images = tryParseJSON(imagesData) || [];
+            if (images.length > 0) {
+                // 将相对路径转换为完整URL
+                const fullImageUrls = images.map(img => {
+                    // 检查是否已经是完整URL
+                    if (img.startsWith('http://') || img.startsWith('https://')) {
+                        return img;
+                    }
+                    // 对于相对路径，添加API基础URL
+                    return `http://localhost:5000${img}`;
+                });
+                openImageViewer(fullImageUrls);
+            }
+        }
+    });
     if(document.getElementById('next-week')) document.getElementById('next-week').addEventListener('click', handleNextWeek);
     if(document.getElementById('current-date-btn')) document.getElementById('current-date-btn').addEventListener('click', handleCurrentDate);
     
@@ -580,103 +859,125 @@ async function loadStatistics() {
 
 // 加载任务列表
 async function loadTasks() {
+    const taskList = document.getElementById('task-list');
+    
+    // 先清空任务列表并显示加载中状态
+    taskList.innerHTML = `
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium">今日任务</h3>
+            <div class="flex space-x-2">
+                <button id="filter-all" class="px-3 py-1 rounded-full bg-green-600 text-white text-sm">全部</button>
+                <button id="filter-completed" class="px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm">已完成</button>
+                <button id="filter-pending" class="px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm">待完成</button>
+            </div>
+        </div>
+        <div class="text-center text-gray-500 py-8">
+            加载中...
+        </div>
+    `;
+    
+    // 初始化任务数组为空数组，确保即使API失败也能正常显示
+    let tasks = [];
+    
     try {
-        // 确保首次加载时使用默认的全部学科分类
-        if (appState.currentCategory === undefined) {
-            appState.currentCategory = '';
+        // 构建API URL
+        const API_BASE_URL = 'http://localhost:5000/api';
+        let url = `${API_BASE_URL}/tasks?user_id=${appState.currentUser.id}&date=${appState.currentDate}`;
+        
+        // 只有当分类有效且不是默认值时才添加category参数
+        if (appState.currentCategory && appState.currentCategory !== '全部学科' && appState.currentCategory !== '') {
+            url += `&category=${encodeURIComponent(appState.currentCategory)}`;
         }
         
-        const tasks = await api.taskAPI.getTasks(
-            appState.currentUser.id,
-            appState.currentDate,
-            appState.currentCategory
-        );
+        console.log('请求URL:', url);
         
-        const taskList = document.getElementById('task-list');
-        const isToday = appState.currentDate === dateUtils.getCurrentDate();
-        
-        // 添加任务筛选器 - 调整布局：今日任务和筛选器在同一行
-        taskList.innerHTML = `
-            <div class="flex justify-between items-center mb-4">
-                ${isToday ? '<h3 class="text-lg font-medium">今日任务</h3>' : ''}
-                <div class="flex space-x-2">
-                    <button id="filter-all" class="px-3 py-1 rounded-full bg-green-600 text-white text-sm">全部</button>
-                    <button id="filter-completed" class="px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm">已完成</button>
-                    <button id="filter-pending" class="px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm">待完成</button>
-                </div>
-            </div>
-        `;
-        
-        // 绑定筛选器事件
-        // currentFilter 已定义为全局变量
-        
-        // 筛选器点击事件
-        document.getElementById('filter-all').addEventListener('click', () => {
-            currentFilter = 'all';
-            updateFilterButtons();
-            filterAndRenderTasks(tasks, 'all');
+        // 发送请求
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
         });
         
-        document.getElementById('filter-completed').addEventListener('click', () => {
-            currentFilter = 'completed';
-            updateFilterButtons();
-            filterAndRenderTasks(tasks, 'completed');
-        });
+        console.log('响应状态:', response.status);
         
-        document.getElementById('filter-pending').addEventListener('click', () => {
-            currentFilter = 'pending';
-            updateFilterButtons();
-            filterAndRenderTasks(tasks, 'pending');
-        });
+        // 获取响应文本
+        const text = await response.text();
+        console.log('响应文本长度:', text.length);
         
-        // 更新筛选按钮激活状态
-        function updateFilterButtons() {
-            document.getElementById('filter-all').className = currentFilter === 'all' ? 'px-3 py-1 rounded-full bg-green-600 text-white text-sm font-medium' : 'px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm font-medium';
-            document.getElementById('filter-completed').className = currentFilter === 'completed' ? 'px-3 py-1 rounded-full bg-green-600 text-white text-sm font-medium' : 'px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm font-medium';
-            document.getElementById('filter-pending').className = currentFilter === 'pending' ? 'px-3 py-1 rounded-full bg-green-600 text-white text-sm font-medium' : 'px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-sm font-medium';
+        // 尝试解析JSON，但即使失败也继续执行
+        if (text && text.trim()) {
+            try {
+                const parsedData = JSON.parse(text);
+                if (Array.isArray(parsedData)) {
+                    tasks = parsedData;
+                    console.log('成功解析任务数据，共', tasks.length, '个任务');
+                } else {
+                    console.warn('任务数据不是数组格式');
+                }
+            } catch (jsonError) {
+                console.error('JSON解析失败:', jsonError);
+                console.log('原始响应:', text);
+            }
+        } else {
+            console.warn('响应为空');
         }
-        
-        // 确保在修改前保存当前分类状态
-        const currentCategoryState = appState.currentCategory;
-        
-        document.getElementById('filter-all').addEventListener('click', () => {
-            currentFilter = 'all';
-            updateTaskFilterButtons();
-            // 重置分类状态为全部学科
-            appState.currentCategory = '';
-            filterAndRenderTasks(tasks, currentFilter);
-        });
-        
-        document.getElementById('filter-completed').addEventListener('click', () => {
-            currentFilter = 'completed';
-            updateTaskFilterButtons();
-            // 重置分类状态为全部学科
-            appState.currentCategory = '';
-            filterAndRenderTasks(tasks, currentFilter);
-        });
-        
-        document.getElementById('filter-pending').addEventListener('click', () => {
-            currentFilter = 'pending';
-            updateTaskFilterButtons();
-            // 重置分类状态为全部学科
-            appState.currentCategory = '';
-            filterAndRenderTasks(tasks, currentFilter);
-        });
-        
-        // 恢复分类状态
-        appState.currentCategory = currentCategoryState;
-        
-        // 初始渲染任务
-        filterAndRenderTasks(tasks, currentFilter);
-        
     } catch (error) {
-        console.error('加载任务列表失败:', error);
-        taskList.innerHTML = `
-            <div class="text-center text-gray-500 py-8">
-                加载失败，请重试
-            </div>
-        `;
+        console.error('API请求失败:', error);
     }
+    
+    // 无论如何都设置筛选按钮事件
+    setupFilterButtons(tasks);
+    
+    // 更新筛选按钮状态
+    updateTaskFilterButtons();
+    
+    // 渲染任务列表
+    filterAndRenderTasks(tasks, currentFilter);
+}
+
+// 独立的筛选按钮设置函数
+function setupFilterButtons(tasks) {
+    // 获取按钮元素
+    const filterAll = document.getElementById('filter-all');
+    const filterCompleted = document.getElementById('filter-completed');
+    const filterPending = document.getElementById('filter-pending');
+    
+    if (!filterAll || !filterCompleted || !filterPending) {
+        console.error('筛选按钮元素未找到');
+        return;
+    }
+    
+    // 移除所有事件监听器（通过克隆节点）
+    const newFilterAll = filterAll.cloneNode(true);
+    const newFilterCompleted = filterCompleted.cloneNode(true);
+    const newFilterPending = filterPending.cloneNode(true);
+    
+    filterAll.parentNode.replaceChild(newFilterAll, filterAll);
+    filterCompleted.parentNode.replaceChild(newFilterCompleted, filterCompleted);
+    filterPending.parentNode.replaceChild(newFilterPending, filterPending);
+    
+    // 添加新的事件监听器
+    newFilterAll.addEventListener('click', () => {
+        currentFilter = 'all';
+        appState.currentCategory = '';
+        updateTaskFilterButtons();
+        filterAndRenderTasks(tasks, 'all');
+    });
+    
+    newFilterCompleted.addEventListener('click', () => {
+        currentFilter = 'completed';
+        appState.currentCategory = '';
+        updateTaskFilterButtons();
+        filterAndRenderTasks(tasks, 'completed');
+    });
+    
+    newFilterPending.addEventListener('click', () => {
+        currentFilter = 'pending';
+        appState.currentCategory = '';
+        updateTaskFilterButtons();
+        filterAndRenderTasks(tasks, 'pending');
+    });
 }
 
 // 更新筛选按钮状态
@@ -801,23 +1102,29 @@ function filterAndRenderTasks(tasks, filter) {
                             </div>
                         </div>
                         <div class="flex items-center justify-between w-full mt-1">
-                            ${task.description ? `<p class="text-sm text-gray-500 ${taskStatusClass} flex-1">${task.description}</p>` : '<div class="flex-1"></div>'}
-                            <div class="flex items-center space-x-3">
-                                <div class="flex items-center text-sm text-purple-600 font-medium">
-                                    <i class="fa fa-clock-o mr-1"></i>
-                                    <span>${task.planned_time}分钟</span>
+                                ${task.description ? `<p class="text-sm text-gray-500 ${taskStatusClass} flex-1">${task.description}</p>` : '<div class="flex-1"></div>'}
+                                <div class="flex items-center space-x-3">
+                                    ${task.images && tryParseJSON(task.images) && tryParseJSON(task.images).length > 0 ? `
+                                    <div class="task-images-icon flex items-center text-sm text-blue-500 cursor-pointer hover:text-blue-700 transition-colors" data-task-id="${task.id}" data-images='${task.images}'>
+                                        <i class="fa fa-image mr-1"></i>
+                                        <span>图片</span>
+                                    </div>
+                                    ` : ''}
+                                    <div class="flex items-center text-sm text-purple-600 font-medium">
+                                        <i class="fa fa-clock-o mr-1"></i>
+                                        <span>${task.planned_time}分钟</span>
+                                    </div>
+                                    ${isCompleted && task.actual_time ? `
+                                    <div class="flex items-center text-sm text-green-600 font-medium">
+                                        <i class="fa fa-check-circle mr-1"></i>
+                                        <span>${task.actual_time}分钟</span>
+                                    </div>
+                                    ` : ''}
+                                    <div class="flex items-center text-sm text-yellow-500 font-bold">
+                                        <i class="fa fa-star mr-1"></i>
+                                        <span>${task.points}分</span>
+                                    </div>
                                 </div>
-                                ${isCompleted && task.actual_time ? `
-                                <div class="flex items-center text-sm text-green-600 font-medium">
-                                    <i class="fa fa-check-circle mr-1"></i>
-                                    <span>${task.actual_time}分钟</span>
-                                </div>
-                                ` : ''}
-                                <div class="flex items-center text-sm text-yellow-500 font-bold">
-                                    <i class="fa fa-star mr-1"></i>
-                                    <span>${task.points}分</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>`;
@@ -1079,7 +1386,28 @@ function showAddTaskModal() {
 
 // 隐藏添加任务弹窗
 function hideAddTaskModal() {
-    document.getElementById('add-task-modal').classList.add('hidden');
+    const addTaskModal = document.getElementById('add-task-modal');
+    const taskForm = document.getElementById('task-form');
+    const modalTitle = document.getElementById('modal-title');
+    
+    if (addTaskModal) {
+        addTaskModal.classList.add('hidden');
+    }
+    
+    // 清除图片预览
+    clearTaskImagesPreview();
+    
+    // 重置表单状态
+    if (taskForm) {
+        taskForm.reset();
+        taskForm.dataset.editMode = 'false';
+        taskForm.dataset.taskId = '';
+    }
+    
+    // 重置模态框标题
+    if (modalTitle) {
+        modalTitle.textContent = '添加任务';
+    }
 }
 
 // 为关闭按钮添加事件监听
@@ -1231,6 +1559,7 @@ async function handleAddTask(e) {
     const taskForm = document.getElementById('task-form');
     const isEditMode = taskForm?.dataset.editMode === 'true';
     const taskId = taskForm?.dataset.taskId;
+    const fileInput = document.getElementById('task-images-upload');
     
     // 获取选中的重复设置
     const selectedRepeats = Array.from(document.querySelectorAll('input[name="task-repeat"]:checked')).map(input => input.value);
@@ -1269,6 +1598,52 @@ async function handleAddTask(e) {
             // 编辑模式
             await api.taskAPI.updateTask(taskId, taskData);
             
+            // 处理图片上传和已存在的图片
+            const previewContainer = document.getElementById('uploaded-images-preview');
+            let allImages = [];
+            
+            // 获取已删除的图片列表
+            const deletedImages = taskForm.dataset.deletedImages ? JSON.parse(taskForm.dataset.deletedImages) : [];
+            
+            // 1. 收集已存在的图片（标记为existingImage的），并排除已删除的图片
+            if (previewContainer) {
+                const existingImageElements = previewContainer.querySelectorAll('[data-existing-image="true"] img');
+                existingImageElements.forEach(img => {
+                    // 从完整URL中提取相对路径（去掉API_BASE_URL）
+                    let imageUrl = img.src;
+                    if (imageUrl.startsWith(API_BASE_URL)) {
+                        imageUrl = imageUrl.substring(API_BASE_URL.length);
+                    } else if (imageUrl.startsWith('http://localhost:5000')) {
+                        imageUrl = imageUrl.substring('http://localhost:5000'.length);
+                    }
+                    
+                    // 检查是否在已删除列表中
+                    const isDeleted = deletedImages.some(deletedUrl => 
+                        imageUrl.includes(deletedUrl) || deletedUrl.includes(imageUrl)
+                    );
+                    
+                    if (!isDeleted) {
+                        allImages.push(imageUrl);
+                    }
+                });
+            }
+            
+            // 2. 上传新图片并添加到现有图片列表
+            if (fileInput && fileInput.files.length > 0) {
+                const uploadResult = await api.taskAPI.uploadTaskImages(taskId, fileInput.files);
+                if (uploadResult.success && uploadResult.image_urls && uploadResult.image_urls.length > 0) {
+                    allImages = [...allImages, ...uploadResult.image_urls];
+                }
+            }
+            
+            // 3. 更新任务的images字段，使用所有保留的和新上传的图片URL
+            if (allImages.length > 0) {
+                await api.taskAPI.updateTask(taskId, { images: JSON.stringify(allImages) });
+            } else {
+                // 如果没有保留任何图片，则清空图片字段
+                await api.taskAPI.updateTask(taskId, { images: JSON.stringify([]) });
+            }
+            
             // 恢复原始表单状态
             taskForm.dataset.editMode = 'false';
             taskForm.dataset.taskId = '';
@@ -1280,6 +1655,15 @@ async function handleAddTask(e) {
         } else {
             // 添加模式
             const result = await api.taskAPI.addTask(taskData);
+            
+            // 处理图片上传
+            if (result.success && result.task_id && fileInput && fileInput.files.length > 0) {
+                const uploadResult = await api.taskAPI.uploadTaskImages(result.task_id, fileInput.files);
+                if (uploadResult.success && uploadResult.image_urls && uploadResult.image_urls.length > 0) {
+                    // 更新任务的images字段，使用所有上传的图片URL
+                    await api.taskAPI.updateTask(result.task_id, { images: JSON.stringify(uploadResult.image_urls) });
+                }
+            }
             if (result.success) {
                 hideAddTaskModal();
                 await loadTasks();
@@ -1442,6 +1826,66 @@ function editTask(task) {
     // 显示弹窗
     if (addTaskModal) {
         addTaskModal.classList.remove('hidden');
+        
+        // 显示任务已有的图片
+        const previewContainer = document.getElementById('uploaded-images-preview');
+        const fileInput = document.getElementById('task-images-upload');
+        
+        if (previewContainer && task.images) {
+            const taskImages = tryParseJSON(task.images);
+            if (taskImages && taskImages.length > 0) {
+                previewContainer.classList.remove('hidden');
+                previewContainer.innerHTML = '';
+                
+                taskImages.forEach((imageUrl, index) => {
+                    const previewWrapper = document.createElement('div');
+                    previewWrapper.className = 'relative group';
+                    previewWrapper.dataset.index = index;
+                    previewWrapper.dataset.existingImage = 'true'; // 标记为已存在的图片
+                    
+                    const preview = document.createElement('img');
+                    // 确保图片URL是完整的，并且正确处理路径分隔符
+                    let fullImageUrl;
+                    if (imageUrl && imageUrl.startsWith('http')) {
+                        fullImageUrl = imageUrl;
+                    } else {
+                        // 确保URL中不会有多余的斜杠
+                        const baseUrl = 'http://localhost:5000'; // 直接使用基础URL
+                        const path = imageUrl && imageUrl.startsWith('/') ? imageUrl : imageUrl ? `/${imageUrl}` : '';
+                        fullImageUrl = `${baseUrl}${path}`;
+                    }
+                    preview.src = fullImageUrl;
+                    preview.className = 'w-full h-20 object-cover rounded-md border border-gray-200';
+                    preview.alt = '图片预览';
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity';
+                    removeBtn.innerHTML = '<i class="fa fa-times text-xs"></i>';
+                    removeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        
+                        // 标记图片为已删除
+                        if (!taskForm.dataset.deletedImages) {
+                            taskForm.dataset.deletedImages = JSON.stringify([]);
+                        }
+                        const deletedImages = JSON.parse(taskForm.dataset.deletedImages);
+                        deletedImages.push(imageUrl); // 添加到已删除图片列表
+                        taskForm.dataset.deletedImages = JSON.stringify(deletedImages);
+                        
+                        previewWrapper.remove();
+                        
+                        // 如果没有预览图片了，隐藏预览容器
+                        if (previewContainer.children.length === 0) {
+                            previewContainer.classList.add('hidden');
+                        }
+                    });
+                    
+                    previewWrapper.appendChild(preview);
+                    previewWrapper.appendChild(removeBtn);
+                    previewContainer.appendChild(previewWrapper);
+                });
+            }
+        }
         
         // 添加键盘事件监听，处理输入法弹出
         setTimeout(() => {

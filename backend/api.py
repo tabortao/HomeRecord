@@ -130,7 +130,59 @@ def register_routes(app):
         return send_from_directory(UPLOAD_FOLDER, filename)
     
     # 任务相关路由
-    # 任务相关路由
+    # 获取任务列表
+    @app.route('/api/tasks', methods=['GET'])
+    def get_tasks_list():
+         try:
+             user_id = request.args.get('user_id', type=int)
+             date = request.args.get('date')
+             category = request.args.get('category')
+             
+             app.logger.info(f"Getting tasks for user_id: {user_id}, date: {date}, category: {category}")
+             
+             # 构建查询
+             query = Task.query.filter_by(user_id=user_id)
+             
+             # 按日期筛选
+             if date:
+                 query = query.filter_by(date=date)
+             
+             # 按分类筛选
+             if category and category != '全部学科':
+                 query = query.filter_by(category=category)
+             
+             # 执行查询
+             tasks = query.all()
+             
+             # 转换为字典列表
+             result = []
+             for task in tasks:
+                 task_dict = {
+                     'id': task.id,
+                     'name': task.name,
+                     'category': task.category,
+                     'points': task.points,
+                     'status': task.status,
+                     'date': task.date,
+                     'expected_time': task.expected_time,
+                     'actual_time': task.actual_time,
+                     'description': task.description,
+                     'user_id': task.user_id,
+                     'created_at': task.created_at.isoformat() if task.created_at else None,
+                     'updated_at': task.updated_at.isoformat() if task.updated_at else None,
+                     'series_id': task.series_id,
+                     'images': json.loads(task.images) if task.images else []
+                 }
+                 result.append(task_dict)
+             
+             app.logger.info(f"Found {len(result)} tasks")
+             # 确保始终返回有效的JSON数据
+             return jsonify(result)
+         except Exception as e:
+             app.logger.error(f"Error getting tasks: {e}")
+             # 确保错误响应也是有效的JSON
+             return jsonify({'error': str(e)}), 500
+    
     @app.route('/api/tasks/<int:task_id>', methods=['PUT'])
     def update_task(task_id):
         data = request.json
@@ -141,10 +193,14 @@ def register_routes(app):
         # 检查任务状态是否从非已完成变为已完成
         was_completed = task.status == '已完成'
         
-        # 更新任务信息
+            # 更新任务信息
         for key, value in data.items():
             if hasattr(task, key) and key != 'id' and key != 'user_id':
-                setattr(task, key, value)
+                if key == 'images':
+                    # 确保images是JSON字符串格式
+                    setattr(task, key, json.dumps(value) if value else None)
+                else:
+                    setattr(task, key, value)
         
         task.updated_at = datetime.now()
         
@@ -204,6 +260,64 @@ def register_routes(app):
         db.session.commit()
         
         return jsonify({'success': True})
+    
+    # 上传任务图片
+    @app.route('/api/tasks/<int:task_id>/upload', methods=['POST'])
+    def upload_task_images(task_id):
+        task = Task.query.get(task_id)
+        if not task:
+            return jsonify({'success': False, 'message': '任务不存在'})
+        
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': '没有文件上传'})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': '未选择文件'})
+        
+        # 验证文件类型
+        ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+        if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in ALLOWED_EXTENSIONS:
+            return jsonify({'success': False, 'message': '不支持的文件类型'})
+        
+        # 创建上传目录
+        upload_folder = os.path.join('uploads', f'task_{task_id}')
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # 生成带时间戳的文件名，格式：年月日时分秒_原始文件名
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        original_filename = secure_filename(file.filename)
+        filename = f"{timestamp}_{original_filename}"
+        
+        # 保存文件
+        filepath = os.path.join(upload_folder, filename)
+        file.save(filepath)
+        
+        # 更新任务的图片信息
+        images = json.loads(task.images or '[]')
+        # 使用相对路径存储，便于前端访问
+        image_url = f'/uploads/task_{task_id}/{filename}'
+        images.append(image_url)
+        task.images = json.dumps(images)
+        db.session.commit()
+        
+        # 记录操作日志
+        log = OperationLog(
+            user_id=task.user_id,
+            operation_type='上传任务图片',
+            operation_content=f'为任务{task.name}上传图片',
+            operation_time=datetime.now(),
+            operation_result='成功'
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '图片上传成功', 'image_url': f'/uploads/task_{task_id}/{filename}'})
+    
+    # 提供上传文件的访问
+    @app.route('/uploads/<path:filename>')
+    def uploaded_file(filename):
+        return send_from_directory('uploads', filename)
     
     @app.route('/api/tasks/series/<series_id>', methods=['DELETE'])
     def delete_task_series(series_id):
