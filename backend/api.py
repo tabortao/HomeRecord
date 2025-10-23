@@ -260,10 +260,14 @@ def register_routes(app):
                 
                 # 方法1：直接遍历用户目录下的所有可能子目录，查找包含任务ID的目录
                 if os.path.exists(user_dir):
+                    task_dirs_to_remove = []
                     for root, dirs, files in os.walk(user_dir):
                         # 检查目录路径中是否包含任务ID
                         if str(task_id) in root:
                             print(f"找到可能包含任务{task_id}图片的目录: {root}")
+                            # 记录需要删除的目录
+                            task_dirs_to_remove.append(root)
+                            # 删除目录中的所有文件
                             for file in files:
                                 file_path = os.path.join(root, file)
                                 try:
@@ -271,6 +275,15 @@ def register_routes(app):
                                     print(f"成功删除文件: {file_path}")
                                 except Exception as e:
                                     print(f"删除文件时出错 {file_path}: {str(e)}")
+                    
+                    # 删除空目录（从最深层开始删除）
+                    for directory in sorted(task_dirs_to_remove, reverse=True):
+                        if os.path.exists(directory) and not os.listdir(directory):
+                            try:
+                                os.rmdir(directory)
+                                print(f"成功删除空目录: {directory}")
+                            except Exception as e:
+                                    print(f"删除目录时出错 {directory}: {str(e)}")
                 
                 # 方法2：直接从URL构建绝对路径并删除
                 for image_url in image_urls:
@@ -415,10 +428,14 @@ def register_routes(app):
                     
                     # 方法1：直接遍历用户目录下的所有可能子目录，查找包含任务ID的目录
                     if os.path.exists(user_dir):
+                        task_dirs_to_remove = []
                         for root, dirs, files in os.walk(user_dir):
                             # 检查目录路径中是否包含任务ID
                             if str(task.id) in root:
                                 print(f"找到可能包含任务系列中任务{task.id}图片的目录: {root}")
+                                # 记录需要删除的目录
+                                task_dirs_to_remove.append(root)
+                                # 删除目录中的所有文件
                                 for file in files:
                                     file_path = os.path.join(root, file)
                                     try:
@@ -426,6 +443,15 @@ def register_routes(app):
                                         print(f"成功删除任务系列中的任务文件: {file_path}")
                                     except Exception as e:
                                         print(f"删除任务系列中的任务文件时出错 {file_path}: {str(e)}")
+                        
+                        # 删除空目录（从最深层开始删除）
+                        for directory in sorted(task_dirs_to_remove, reverse=True):
+                            if os.path.exists(directory) and not os.listdir(directory):
+                                try:
+                                    os.rmdir(directory)
+                                    print(f"成功删除任务系列中的空目录: {directory}")
+                                except Exception as e:
+                                    print(f"删除任务系列中的目录时出错 {directory}: {str(e)}")
                     
                     # 方法2：直接从URL构建绝对路径并删除
                     for image_url in image_urls:
