@@ -12,7 +12,9 @@ let appState = {
     tomatoTimeLeft: 0,
     tomatoTaskId: null,
     tomatoMode: 'countdown', // countdown 或 stopwatch
-    tomatoElapsedSeconds: 0
+    tomatoElapsedSeconds: 0,
+    // 番茄钟设置
+    fixedTomatoPage: false
 };
 
 // 全局筛选状态
@@ -24,6 +26,66 @@ let totalLogsPages = 1;
 let hasMoreLogs = true;
 let isLoadingLogs = false;
 
+// 初始化番茄钟设置
+function initTomatoSettings() {
+    // 从localStorage加载设置
+    const savedSettings = localStorage.getItem('tomatoSettings');
+    if (savedSettings) {
+        try {
+            const settings = JSON.parse(savedSettings);
+            appState.fixedTomatoPage = settings.fixedTomatoPage || false;
+        } catch (e) {
+            console.error('加载番茄钟设置失败:', e);
+        }
+    }
+    
+    // 获取DOM元素
+    const settingsBtn = document.getElementById('tomato-settings-btn');
+    const settingsModal = document.getElementById('tomato-settings-modal');
+    const closeBtn = document.getElementById('close-tomato-settings');
+    const checkbox = document.getElementById('fixed-tomato-page');
+    
+    if (checkbox) {
+        checkbox.checked = appState.fixedTomatoPage;
+        
+        // 添加复选框事件监听器
+        checkbox.addEventListener('change', function() {
+            appState.fixedTomatoPage = this.checked;
+            // 保存到localStorage
+            localStorage.setItem('tomatoSettings', JSON.stringify({
+                fixedTomatoPage: appState.fixedTomatoPage
+            }));
+        });
+    }
+    
+    // 设置按钮点击事件
+    if (settingsBtn && settingsModal) {
+        settingsBtn.addEventListener('click', function() {
+            settingsModal.classList.remove('hidden');
+            // 确保复选框状态正确
+            if (checkbox) {
+                checkbox.checked = appState.fixedTomatoPage;
+            }
+        });
+    }
+    
+    // 关闭按钮点击事件
+    if (closeBtn && settingsModal) {
+        closeBtn.addEventListener('click', function() {
+            settingsModal.classList.add('hidden');
+        });
+    }
+    
+    // 点击模态窗口外部关闭
+    if (settingsModal) {
+        settingsModal.addEventListener('click', function(event) {
+            if (event.target === settingsModal) {
+                settingsModal.classList.add('hidden');
+            }
+        });
+    }
+}
+
 // 初始化应用
 function initApp() {
     // 检查用户登录状态
@@ -31,6 +93,8 @@ function initApp() {
     if (savedUser) {
         appState.currentUser = savedUser;
         showMainApp();
+        // 初始化番茄钟设置
+        initTomatoSettings();
     } else {
         showLoginPage();
     }
@@ -1521,7 +1585,7 @@ function updateTomatoDisplays() {
     if (bubbleElement) bubbleElement.textContent = formatTime(displayTime);
 }
 
-// 开始计时并收起为悬浮球
+// 开始计时并根据设置决定是否收起为悬浮球
 function handleTomatoStart() {
     // 如果已经在运行，忽略
     if (appState.tomatoTimer) return;
@@ -1571,23 +1635,36 @@ function handleTomatoStart() {
         }, 1000);
     }
 
-    // 收起 modal 并强制显示悬浮球（开始后应立即可见）
-    hideTomatoModal();
-    const bubble = document.getElementById('tomato-bubble');
-    if (bubble) {
-        // 无论当前页面如何，开始后立刻显示悬浮球，页面切换时会重新评估可见性
-        bubble.classList.remove('hidden');
+    // 根据设置决定是收起为悬浮球还是保持弹窗显示
+    if (!appState.fixedTomatoPage) {
+        // 非固定模式：收起 modal 并强制显示悬浮球
+        hideTomatoModal();
+        const bubble = document.getElementById('tomato-bubble');
+        if (bubble) {
+            // 无论当前页面如何，开始后立刻显示悬浮球，页面切换时会重新评估可见性
+            bubble.classList.remove('hidden');
+        }
     }
+    // 固定模式：保持弹窗显示，不显示悬浮球
 
     // 启动水位动画
     startWaterFillAnimation();
 }
 
-// 关闭按钮行为：若在计时则收起为悬浮球，否则直接关闭
+// 关闭按钮行为：根据设置决定关闭行为
 function handleTomatoClose() {
-    if (appState.tomatoTimer) {
+    if (appState.fixedTomatoPage && appState.tomatoTimer) {
+        // 固定模式下，即使在计时中也直接关闭弹窗
+        const modal = document.getElementById('tomato-modal');
+        if (modal) modal.classList.add('hidden');
+        // 同时隐藏悬浮球
+        const bubble = document.getElementById('tomato-bubble');
+        if (bubble) bubble.classList.add('hidden');
+    } else if (appState.tomatoTimer) {
+        // 非固定模式且在计时中：收起为悬浮球
         hideTomatoModal();
     } else {
+        // 未在计时：直接关闭
         const modal = document.getElementById('tomato-modal');
         if (modal) modal.classList.add('hidden');
     }
@@ -1598,7 +1675,8 @@ function hideTomatoModal() {
     const modal = document.getElementById('tomato-modal');
     const bubble = document.getElementById('tomato-bubble');
     if (modal) modal.classList.add('hidden');
-    if (bubble) {
+    if (bubble && !appState.fixedTomatoPage) {
+        // 只有在非固定模式下才显示悬浮球
         if (appState.tomatoTimer) {
             bubble.classList.remove('hidden');
         } else {
