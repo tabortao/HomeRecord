@@ -1639,14 +1639,9 @@ function setupTomatoBubble() {
 function ensureTomatoBubbleHidden() {
     const bubble = document.getElementById('tomato-bubble');
     if (!bubble) return;
-    const page = document.querySelector('.nav-item-active')?.dataset?.page || 'task';
-    // 在指定页面始终不显示悬浮球
-    const hiddenPages = ['task', 'wish', 'profile', 'login'];
-    if (hiddenPages.includes(page)) {
-        bubble.classList.add('hidden');
-        return;
-    }
-    // 只有在计时中才显示
+    
+    // 只有在计时中才显示悬浮球，无论当前在哪个页面
+    // 移除页面限制，确保计时开始后能在任何页面显示悬浮球
     if (appState.tomatoTimer) bubble.classList.remove('hidden'); else bubble.classList.add('hidden');
 }
 
