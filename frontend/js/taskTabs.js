@@ -358,6 +358,9 @@ class TaskTabsManager {
             return;
         }
 
+        // 显示批量添加任务的加载提示
+        this.showNotification('正在批量添加任务，请稍后……', 'info');
+
         try {
                 console.log('开始添加选中的任务，共', selectedTasks.length, '个');
                 // 获取当前日期
@@ -418,11 +421,14 @@ class TaskTabsManager {
             this.closeModal();
             
             // 刷新任务列表
-            if (window.refreshTasks) {
+            if (window.loadTasks) {
+                console.log('调用window.loadTasks刷新任务列表');
+                window.loadTasks();
+            } else if (window.refreshTasks) {
                 console.log('调用window.refreshTasks刷新任务列表');
                 window.refreshTasks();
             } else {
-                console.log('window.refreshTasks不存在，使用页面重载刷新');
+                console.log('无法找到刷新任务列表的函数，使用页面重载刷新');
                 // 使用setTimeout稍微延迟重载，确保用户能看到成功提示
                 setTimeout(() => {
                     window.location.reload();

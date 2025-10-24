@@ -989,7 +989,9 @@ async function loadStatistics() {
 }
 
 // 加载任务列表
+// 将loadTasks函数暴露到window对象，供其他模块使用
 async function loadTasks() {
+    window.loadTasks = loadTasks;
     const taskList = document.getElementById('task-list');
     
     // 根据当前选择的日期生成动态标题
@@ -2644,7 +2646,7 @@ async function loadWishes() {
                     </p>
                 <div class="flex justify-between items-center mt-4">
                     <span class="text-xs text-gray-400">已兑换 ${wish.exchange_count || 0} 次</span>
-                    <button class="wish-exchange bg-yellow-500 text-white py-1.5 px-4 rounded-lg hover:shadow-md transition-all duration-200 text-sm font-medium">
+                    <button class="wish-exchange bg-yellow-500 text-white py-1 px-3 rounded-lg hover:shadow-sm transition-all duration-200 text-xs font-medium">
                         <i class="fa fa-gift mr-1"></i> 兑换
                     </button>
                 </div>
@@ -3203,7 +3205,7 @@ function showEditWishModal(wish) {
                             <i class="fa fa-image text-gray-400 text-4xl"></i>
                         </div>
                         <div class="w-full">
-                            <label for="wish-icon-upload" class="inline-block px-4 py-2 bg-blue-500 text-white rounded-xl cursor-pointer hover:opacity-90 transition-opacity w-full text-center">
+                            <label for="wish-icon-upload" class="inline-block px-3 py-1.5 bg-blue-500 text-white rounded-lg cursor-pointer hover:opacity-90 transition-opacity w-full text-center text-sm">
                                 <i class="fa fa-upload mr-1"></i> 上传图标
                             </label>
                             <input type="file" id="wish-icon-upload" accept="image/*" class="hidden">
@@ -3240,14 +3242,14 @@ function showEditWishModal(wish) {
                     <input type="number" id="edit-wish-exchange-amount" min="1" value="1" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none">
                 </div>
                 
-                <div class="flex justify-center gap-4">
-                    <button id="delete-wish-btn" class="bg-red-50 text-red-600 py-3 px-4 rounded-xl hover:bg-red-100 transition-colors duration-200 font-bold flex-1 max-w-[120px]">
+                <div class="flex justify-center gap-3">
+                    <button id="delete-wish-btn" class="bg-red-50 text-red-600 py-2 px-3 rounded-lg hover:bg-red-100 transition-colors duration-200 font-medium flex-1 max-w-[100px] text-sm">
                         <i class="fa fa-trash mr-1"></i> 删除
                     </button>
-                    <button id="cancel-wish-btn" class="bg-gray-100 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-200 transition-colors duration-200 font-bold flex-1 max-w-[120px]">
+                    <button id="cancel-wish-btn" class="bg-gray-100 text-gray-700 py-2 px-3 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium flex-1 max-w-[100px] text-sm">
                         <i class="fa fa-times mr-1"></i> 取消
                     </button>
-                    <button id="save-wish-btn" class="bg-yellow-500 text-white py-3 px-4 rounded-xl hover:opacity-90 transition-opacity duration-200 font-bold flex-1 max-w-[120px]">
+                    <button id="save-wish-btn" class="bg-yellow-500 text-white py-2 px-3 rounded-lg hover:opacity-90 transition-opacity duration-200 font-medium flex-1 max-w-[100px] text-sm">
                         <i class="fa fa-save mr-1"></i> 保存
                     </button>
                 </div>
@@ -3474,7 +3476,7 @@ function initWishPage() {
                 
                 addWishBtn = document.createElement('button');
                 addWishBtn.id = 'add-wish-btn';
-                addWishBtn.className = 'bg-yellow-500 text-white py-2 px-6 rounded-full shadow-md transform transition-all duration-300 hover:shadow-lg hover:-translate-y-1';
+                addWishBtn.className = 'bg-yellow-500 text-white py-1.5 px-4 rounded-full shadow-sm transform transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 text-sm';
                 addWishBtn.innerHTML = '<i class="fa fa-plus mr-2"></i> 创建心愿';
                 addWishBtn.addEventListener('click', () => showEditWishModal(null));
                 
