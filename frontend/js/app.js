@@ -3909,9 +3909,31 @@ function hideOperationLogs() {
             modal._resizeListener = null;
         }
         
+        // 移除ESC键事件监听
+        const escHandler = function(e) {
+            if (e.key === 'Escape') {
+                hideOperationLogs();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.removeEventListener('keydown', escHandler);
+        
+        // 移除点击外部区域关闭的事件监听
+        const closeClickHandler = function(e) {
+            if (e.target === modal) {
+                hideOperationLogs();
+                modal.removeEventListener('click', closeClickHandler);
+            }
+        };
+        modal.removeEventListener('click', closeClickHandler);
+        
         // 动画结束后完全隐藏
         setTimeout(() => {
             modal.style.display = 'none';
+            // 确保z-index降低，避免影响其他元素
+            modal.style.zIndex = '-1';
+            // 确保document.body可以正常点击
+            document.body.style.pointerEvents = '';
         }, 300);
     }
 }
