@@ -12,6 +12,7 @@
 - 启动后端服务，运行`cd backend; .\venv\Scripts\activate; python app.py`。
 - 后端采用 Python Flask 框架，数据库采用 SQLite，数据库文件位于`backend\instance\homerecord.db`。
 - 所有 API 路由均存储在`backend\api.py`文件中。
+- 所有数据库操作脚本均存储在`backend\script`目录下。
 - 测试账号：
   - 用户名：testuser
   - 密码：Testuser123
