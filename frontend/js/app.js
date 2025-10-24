@@ -116,8 +116,13 @@ function initTaskImagesUpload() {
                 
                 const preview = document.createElement('img');
                 preview.src = e.target.result;
-                preview.className = 'w-full h-20 object-cover rounded-md border border-gray-200';
+                preview.className = 'w-full h-20 object-contain rounded-md border border-gray-200 bg-white';
                 preview.alt = '图片预览';
+                
+                // 添加点击放大功能
+                preview.addEventListener('click', () => {
+                    openImageViewer([e.target.result]);
+                });
                 
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity';
@@ -299,17 +304,10 @@ function updateViewerImage() {
     
     // 检查URL是否已经是完整的URL（包含http）
     if (imageUrl && !imageUrl.startsWith('http')) {
-        // 支持/api/uploads/和/uploads/两种格式的URL
-        if (imageUrl.startsWith('/api/uploads/')) {
-            // 已经包含/api前缀，直接添加API_BASE_URL
-            imageUrl = `${API_BASE_URL}${imageUrl.substring('/api'.length)}`;
-        } else if (imageUrl.startsWith('/uploads/')) {
-            // 已经是/uploads开头，直接添加API_BASE_URL
-            imageUrl = `${API_BASE_URL}${imageUrl}`;
-        } else {
-            // 否则构建完整URL，使用/api/uploads/格式以匹配后端路由
-            imageUrl = `${API_BASE_URL}/uploads/${imageUrl}`;
-        }
+        // 确保URL中不会有多余的斜杠
+        const baseUrl = 'http://localhost:5000'; // 直接使用明确的基础URL
+        const path = imageUrl && imageUrl.startsWith('/') ? imageUrl : imageUrl ? `/${imageUrl}` : '';
+        imageUrl = `${baseUrl}${path}`;
     }
     
     imageElement.src = imageUrl;
@@ -2081,8 +2079,23 @@ function editTask(task) {
                         fullImageUrl = `${baseUrl}${path}`;
                     }
                     preview.src = fullImageUrl;
-                    preview.className = 'w-full h-20 object-cover rounded-md border border-gray-200';
+                    preview.className = 'w-full h-20 object-contain rounded-md border border-gray-200 bg-white';
                     preview.alt = '图片预览';
+                    
+                    // 添加点击放大功能
+                    preview.addEventListener('click', () => {
+                        const allImages = taskImages.map(imgUrl => {
+                            if (imgUrl && imgUrl.startsWith('http')) {
+                                return imgUrl;
+                            } else {
+                                const path = imgUrl && imgUrl.startsWith('/') ? imgUrl : imgUrl ? `/${imgUrl}` : '';
+                                return `http://localhost:5000${path}`;
+                            }
+                        });
+                        openImageViewer(allImages);
+                        currentImageIndex = index;
+                        updateViewerImage();
+                    });
                     
                     const removeBtn = document.createElement('button');
                     removeBtn.className = 'absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity';
