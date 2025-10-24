@@ -231,8 +231,16 @@
 .fa-ellipsis-v:before {
   content: "\f142";
 }
+/* 改为使用Font Awesome 4.7.0中可用的金币图标 */
+/* 小心愿页面编辑图标旁边的金币数图标 */
 .fa-coins:before {
-  content: "\f51e";
+  content: "\f0d6";
+}
+
+/* 编辑心愿页面中所需金币输入框左侧的图标 - 隐藏 */
+#edit-wish-cost + i.fa-coins,
+#edit-wish-cost ~ i.fa-coins {
+  display: none;
 }
 .fa-save:before {
   content: "\f0c7";
