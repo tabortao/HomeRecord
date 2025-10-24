@@ -1124,7 +1124,7 @@ function filterAndRenderTasks(tasks, filter) {
             taskElement.innerHTML = `
                 <div class="flex items-start">
                     <div class="mr-3 mt-1">
-                        <i class="fa ${iconClass} ${statusClass} text-xl"></i>
+                        <i class="fa ${iconClass} ${statusClass} text-3xl"></i>
                     </div>
                     <div class="flex-1">
                         <div class="flex justify-between items-start">
