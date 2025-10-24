@@ -983,10 +983,28 @@ async function loadStatistics() {
 async function loadTasks() {
     const taskList = document.getElementById('task-list');
     
+    // 根据当前选择的日期生成动态标题
+    const today = dateUtils.getCurrentDate();
+    const currentDate = appState.currentDate;
+    let taskTitle = '今日任务';
+    
+    // 如果不是今天，显示具体日期
+    if (currentDate !== today) {
+        try {
+            // 解析日期字符串为Date对象
+            const dateObj = new Date(currentDate);
+            const month = dateObj.getMonth() + 1;
+            const day = dateObj.getDate();
+            taskTitle = `${month}月${day}日任务`;
+        } catch (error) {
+            console.error('日期解析失败:', error);
+        }
+    }
+    
     // 先清空任务列表并显示加载中状态
     taskList.innerHTML = `
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium">今日任务</h3>
+            <h3 class="text-lg font-medium">${taskTitle}</h3>
             <div class="flex space-x-2">
                 <button id="filter-all" class="px-3 py-1 rounded-full bg-green-600 text-white text-sm">全部</button>
                 <button id="filter-completed" class="px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm">已完成</button>
