@@ -238,7 +238,16 @@ const domUtils = {
 const colorUtils = {
     // 获取任务分类对应的颜色
     getCategoryColor: (categoryName) => {
-        const categoryColors = {
+        // 首先检查全局taskTabsManager中的动态学科列表
+        if (window.taskTabsManager && window.taskTabsManager.categories && window.taskTabsManager.categories.length > 0) {
+            const category = window.taskTabsManager.categories.find(cat => cat.name === categoryName);
+            if (category && category.color) {
+                return category.color;
+            }
+        }
+        
+        // 如果动态列表中没有找到，使用默认颜色映射
+        const defaultCategoryColors = {
             '语文': '#FF6B6B',
             '数学': '#4ECDC4',
             '英语': '#45B7D1',
@@ -251,7 +260,7 @@ const colorUtils = {
             '惩罚': '#FFA07A'
         };
         
-        return categoryColors[categoryName] || '#999999';
+        return defaultCategoryColors[categoryName] || '#999999';
     }
 };
 

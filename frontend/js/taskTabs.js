@@ -1,6 +1,7 @@
 // 导入API和工具函数
 import { taskAPI } from './api.js';
 import { categoryAPI } from './api.js';
+import { colorUtils } from './utils.js';
 
 // 标签页管理
 class TaskTabsManager {
@@ -209,7 +210,7 @@ class TaskTabsManager {
                     <div>
                         <label for="task-${task.id}" class="text-sm font-medium text-gray-800 cursor-pointer">${task.name}</label>
                         <div class="flex items-center text-xs text-gray-500 mt-0.5">
-                            <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full mr-2">${task.category}</span>
+                            <span class="px-2 py-0.5 rounded-full mr-2" style="background-color: rgba(0,0,0,0.05); color: ${colorUtils.getCategoryColor(task.category)}">${task.category}</span>
                             <span class="mr-2"><i class="fa fa-clock-o mr-1"></i>${task.time}分钟</span>
                             <span><i class="fa fa-star text-yellow-500 mr-1"></i>${task.points}分</span>
                         </div>

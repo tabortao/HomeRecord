@@ -1,5 +1,6 @@
 // 学科设置模块
 import * as api from './api.js';
+import { domUtils } from './utils.js';
 
 class SubjectSettingsManager {
     constructor() {
@@ -247,24 +248,27 @@ class SubjectSettingsManager {
         // 删除学科（只对非内置学科添加事件监听）
         if (deleteBtn) {
             deleteBtn.addEventListener('click', async () => {
-                if (!confirm(`确定要删除学科"${subject.name}"吗？`)) {
-                    return;
-                }
-                
-                try {
-                    await api.categoryAPI.deleteCategory(subject.id);
-                    this.loadSubjects(); // 重新加载列表
-                    
-                    // 通知全局更新
-                    if (window.taskTabsManager) {
-                        window.taskTabsManager.loadCategories();
+                // 使用更友好的确认对话框
+                domUtils.showConfirm(
+                    '确认删除',
+                    `确定要删除学科"${subject.name}"吗？`,
+                    async () => {
+                        try {
+                            await api.categoryAPI.deleteCategory(subject.id);
+                            this.loadSubjects(); // 重新加载列表
+                            
+                            // 通知全局更新
+                            if (window.taskTabsManager) {
+                                window.taskTabsManager.loadCategories();
+                            }
+                            
+                            this.showToast('学科删除成功');
+                        } catch (error) {
+                            console.error('删除学科失败:', error);
+                            this.showToast('删除失败，该学科可能还有任务', 'error');
+                        }
                     }
-                    
-                    alert('学科删除成功');
-                } catch (error) {
-                    console.error('删除学科失败:', error);
-                    alert('删除失败，该学科可能还有任务');
-                }
+                );
             });
         }
     }
