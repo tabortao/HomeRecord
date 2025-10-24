@@ -244,6 +244,8 @@ def register_routes(app):
         
         user_id = task.user_id
         task_name = task.name
+        task_points = task.points
+        task_status = task.status
         
         # 删除任务相关的图片文件
         if task.images:
@@ -324,6 +326,24 @@ def register_routes(app):
             except Exception as e:
                 print(f"删除图片时出错: {str(e)}")
                 # 继续执行任务删除，不因图片删除失败而中断
+        
+        # 如果是已完成的任务，需要扣除对应的金币
+        if task_status == '已完成' and task_points > 0:
+            # 获取用户
+            user = User.query.get(user_id)
+            if user:
+                # 扣除金币
+                user.total_gold = max(0, user.total_gold - task_points)
+                
+                # 记录金币扣除日志
+                gold_log = OperationLog(
+                    user_id=user_id,
+                    operation_type='修改金币',
+                    operation_content=f'删除已完成任务：{task_name}，扣除{task_points}金币',
+                    operation_time=datetime.now(),
+                    operation_result='成功'
+                )
+                db.session.add(gold_log)
         
         # 删除任务记录
         db.session.delete(task)
@@ -412,6 +432,7 @@ def register_routes(app):
             return jsonify({'success': False, 'message': '任务系列不存在'})
         
         user_id = tasks[0].user_id
+        total_deducted_points = 0
         # 获取当前工作目录，确保使用绝对路径
         current_dir = os.path.dirname(os.path.abspath(__file__))
         
@@ -493,8 +514,28 @@ def register_routes(app):
                     print(f"删除任务系列中的任务图片时出错: {str(e)}")
                     # 继续执行，不因图片删除失败而中断
             
+            # 检查是否是已完成的任务，如果是则记录需要扣除的金币
+            if task.status == '已完成' and task.points > 0:
+                total_deducted_points += task.points
+                
+                # 记录金币扣除日志
+                gold_log = OperationLog(
+                    user_id=user_id,
+                    operation_type='修改金币',
+                    operation_content=f'删除任务系列中的已完成任务：{task.name}，扣除{task.points}金币',
+                    operation_time=datetime.now(),
+                    operation_result='成功'
+                )
+                db.session.add(gold_log)
+            
             # 删除任务记录
             db.session.delete(task)
+        
+        # 如果有需要扣除的金币，更新用户金币数
+        if total_deducted_points > 0:
+            user = User.query.get(user_id)
+            if user:
+                user.total_gold = max(0, user.total_gold - total_deducted_points)
         
         db.session.commit()
         

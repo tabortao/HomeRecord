@@ -1938,9 +1938,32 @@ async function deleteTask(taskId) {
         '确定要删除这个任务吗？',
         async () => {
             try {
+                // 先获取任务信息，检查是否已完成
+                const tasks = await api.taskAPI.getTasks(appState.currentUser.id, appState.currentDate, '');
+                const task = tasks.find(t => t.id === taskId);
+                
+                // 如果是已完成的任务，在UI上先显示临时扣除，提升响应感
+                // 注意：实际的金币扣除在后端API中执行，避免重复扣除
+                if (task && task.status === '已完成' && task.points > 0) {
+                    const deductAmount = -task.points; // 负值表示扣除
+                    try {
+                        const dayEl = document.getElementById('day-gold');
+                        const totalEl = document.getElementById('total-gold');
+                        if (dayEl) dayEl.textContent = Math.max(0, (parseInt(dayEl.textContent || '0', 10) + deductAmount)).toString();
+                        if (totalEl) totalEl.textContent = Math.max(0, (parseInt(totalEl.textContent || '0', 10) + deductAmount)).toString();
+                    } catch (e) {
+                        // 忽略格式化错误
+                    }
+                }
+                
+                // 删除任务（后端会处理金币扣除）
                 await api.taskAPI.deleteTask(taskId);
+                
+                // 重新加载任务列表和统计数据
                 await loadTasks();
                 await loadStatistics();
+                await updateUserInfo(); // 确保金币数据一致性
+                
                 domUtils.showToast('任务已删除');
             } catch (error) {
                 domUtils.showToast('删除失败，请重试', 'error');
