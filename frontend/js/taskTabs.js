@@ -1,5 +1,5 @@
 // 导入API和工具函数
-import * as api from './api.js';
+import { taskAPI } from './api.js';
 
 // 标签页管理
 class TaskTabsManager {
@@ -78,85 +78,107 @@ class TaskTabsManager {
     async recognizeTasks() {
         const content = document.getElementById('batch-task-content').value.trim();
         if (!content) {
-            alert('请输入作业文本内容');
+            this.showNotification('请输入作业文本内容', 'warning');
             return;
         }
 
         try {
             // 模拟API调用（实际应该调用后端API）
-            // const result = await api.recognizeTasks(content);
+            // const result = await taskAPI.recognizeTasks(content);
             // 这里使用本地模拟数据进行识别
             this.recognizedTasks = this.mockRecognizeTasks(content);
             this.renderRecognizedTasks();
         } catch (error) {
             console.error('识别任务失败:', error);
-            alert('任务识别失败，请重试');
+            this.showNotification('任务识别失败，请重试', 'error');
         }
     }
 
     // 模拟任务识别（实际应该由后端API完成）
     mockRecognizeTasks(content) {
         const tasks = [];
-        // 简单的规则匹配来识别任务
-        const lines = content.split(/[；;\n]/);
+        const lines = content.split('\n');
         
-        lines.forEach((line, index) => {
+        // 定义可能的学科列表
+        const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治', '劳动', '生活', '兴趣', '表扬', '批评', '独立', '惩罚'];
+        let currentSubject = '其他';
+        let taskIndex = 0;
+        
+        lines.forEach(line => {
             line = line.trim();
             if (!line) return;
             
-            let category = '其他';
-            let name = line;
-            let points = 1;
-            let time = 10;
-            
-            // 尝试识别学科分类
-            if (line.includes('语文')) {
-                category = '语文';
-                name = line.replace(/语文[：:]/, '').trim();
-            } else if (line.includes('数学')) {
-                category = '数学';
-                name = line.replace(/数学[：:]/, '').trim();
-            } else if (line.includes('英语')) {
-                category = '英语';
-                name = line.replace(/英语[：:]/, '').trim();
-            } else if (line.includes('物理')) {
-                category = '物理';
-                name = line.replace(/物理[：:]/, '').trim();
-            } else if (line.includes('化学')) {
-                category = '化学';
-                name = line.replace(/化学[：:]/, '').trim();
-            } else if (line.includes('生物')) {
-                category = '生物';
-                name = line.replace(/生物[：:]/, '').trim();
-            } else if (line.includes('历史')) {
-                category = '历史';
-                name = line.replace(/历史[：:]/, '').trim();
-            } else if (line.includes('地理')) {
-                category = '地理';
-                name = line.replace(/地理[：:]/, '').trim();
-            } else if (line.includes('政治')) {
-                category = '政治';
-                name = line.replace(/政治[：:]/, '').trim();
+            // 检查是否是学科标题行
+            if (subjects.includes(line)) {
+                currentSubject = line;
+                return; // 跳过学科标题行，不创建任务
             }
             
-            // 基于任务长度设置默认时间和积分
-            if (name.length > 20) {
-                time = 20;
-                points = 2;
-            } else if (name.length > 10) {
-                time = 15;
-                points = 1;
+            // 检查是否是任务列表项（数字. 开头或数字.开头）
+            const taskMatch = line.match(/^(\d+)[.。]\s*(.+)$/);
+            if (taskMatch) {
+                // 是任务列表项，提取任务名称
+                const taskName = taskMatch[2].trim();
+                let points = 1;
+                let time = 10;
+                
+                // 基于任务长度设置默认时间和积分
+                if (taskName.length > 20) {
+                    time = 20;
+                    points = 2;
+                } else if (taskName.length > 10) {
+                    time = 15;
+                    points = 1;
+                }
+                
+                tasks.push({
+                    id: `temp-${taskIndex++}`,
+                    name: taskName,
+                    category: currentSubject,
+                    points: points,
+                    time: time,
+                    selected: true,
+                    description: ''
+                });
+            } else {
+                // 处理其他情况，尝试匹配学科和任务
+                let category = currentSubject; // 默认使用当前学科
+                let name = line;
+                
+                // 尝试从行中提取学科
+                for (const subject of subjects) {
+                    if (line.includes(subject)) {
+                        category = subject;
+                        // 从行中移除学科名称和可能的分隔符
+                        name = line.replace(`${subject}[：:、]?`.replace(/\[([^\]]+)\]/g, '$1'), '').trim();
+                        break;
+                    }
+                }
+                
+                // 只有当任务名称不为空时才添加
+                if (name) {
+                    let points = 1;
+                    let time = 10;
+                    
+                    if (name.length > 20) {
+                        time = 20;
+                        points = 2;
+                    } else if (name.length > 10) {
+                        time = 15;
+                        points = 1;
+                    }
+                    
+                    tasks.push({
+                        id: `temp-${taskIndex++}`,
+                        name: name,
+                        category: category,
+                        points: points,
+                        time: time,
+                        selected: true,
+                        description: ''
+                    });
+                }
             }
-            
-            tasks.push({
-                id: `temp-${index}`,
-                name: name,
-                category: category,
-                points: points,
-                time: time,
-                selected: true,
-                description: ''
-            });
         });
         
         return tasks;
@@ -321,32 +343,65 @@ class TaskTabsManager {
     async addSelectedTasks() {
         const selectedTasks = this.recognizedTasks.filter(task => task.selected);
         if (selectedTasks.length === 0) {
-            alert('请选择要添加的任务');
+            this.showNotification('请选择要添加的任务', 'warning');
             return;
         }
 
         try {
-            // 获取当前日期
-            const today = new Date();
-            const formattedDate = today.toISOString().split('T')[0];
-            
-            // 逐个添加任务
-            for (const task of selectedTasks) {
-                const taskData = {
-                    name: task.name,
-                    description: task.description,
-                    category: task.category,
-                    time: task.time,
-                    points: task.points,
-                    date: formattedDate,
-                    repeat: '无'
-                };
+                console.log('开始添加选中的任务，共', selectedTasks.length, '个');
+                // 获取当前日期
+                const today = new Date();
+                const formattedDate = today.toISOString().split('T')[0];
+                console.log('当前日期:', formattedDate);
                 
-                await api.createTask(taskData);
-            }
+                // 逐个添加任务
+                for (const task of selectedTasks) {
+                    console.log('正在处理任务:', task.name);
+                    // 从localStorage获取用户ID，如果不存在则使用测试账号ID 2
+                    let userId = localStorage.getItem('user_id');
+                    // 如果localStorage中没有user_id，使用默认值2（测试账号ID）
+                    if (!userId) {
+                        userId = '2';
+                        console.log('localStorage中未找到user_id，使用默认值2');
+                    }
+                    console.log('用户ID:', userId);
+                    
+                    // 确保所有必要字段都有值
+                    const taskName = task.name || '未命名任务';
+                    const taskCategory = task.category || '其他';
+                    const taskTime = task.time || 10;
+                    const taskPoints = task.points || 1;
+                    
+                    const taskData = {
+                        user_id: userId,
+                        name: taskName,
+                        description: task.description || '',
+                        icon: 'default.png',
+                        category: taskCategory,
+                        planned_time: taskTime,
+                        actual_time: 0,
+                        points: taskPoints,
+                        start_date: formattedDate,
+                        date: formattedDate,
+                        end_date: formattedDate,
+                        status: '未完成',
+                        repeat_setting: '无'
+                    };
+                    
+                    console.log('准备添加任务数据:', taskData);
+                    try {
+                        console.log('开始调用taskAPI.addTask');
+                        const response = await taskAPI.addTask(taskData);
+                        console.log('任务添加成功，响应:', response);
+                    } catch (error) {
+                        console.error('单个任务添加失败:', error);
+                        console.error('错误详情:', error.message);
+                        // 继续添加其他任务，不中断整个流程
+                    }
+                }
             
             // 显示成功提示
-            alert(`成功添加${selectedTasks.length}个任务`);
+            this.showNotification(`成功添加${selectedTasks.length}个任务`, 'success');
             
             // 关闭模态窗口
             this.closeModal();
@@ -357,8 +412,56 @@ class TaskTabsManager {
             }
         } catch (error) {
             console.error('添加任务失败:', error);
-            alert('添加任务失败，请重试');
+            this.showNotification('添加任务失败，请重试', 'error');
         }
+    }
+    
+    // 显示非模态提示
+    showNotification(message, type = 'info') {
+        // 检查是否已有通知元素
+        let notification = document.getElementById('custom-notification');
+        
+        if (!notification) {
+            // 创建通知元素
+            notification = document.createElement('div');
+            notification.id = 'custom-notification';
+            notification.className = 'fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out opacity-0 translate-y-[-20px]';
+            document.body.appendChild(notification);
+        }
+        
+        // 设置通知类型样式
+        notification.className = 'fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out';
+        
+        if (type === 'success') {
+            notification.className += ' bg-green-50 text-green-800 border-l-4 border-green-500';
+        } else if (type === 'error') {
+            notification.className += ' bg-red-50 text-red-800 border-l-4 border-red-500';
+        } else if (type === 'warning') {
+            notification.className += ' bg-yellow-50 text-yellow-800 border-l-4 border-yellow-500';
+        } else {
+            notification.className += ' bg-blue-50 text-blue-800 border-l-4 border-blue-500';
+        }
+        
+        // 设置消息内容
+        notification.textContent = message;
+        
+        // 显示通知
+        setTimeout(() => {
+            notification.classList.add('opacity-100', 'translate-y-0');
+        }, 10);
+        
+        // 自动消失
+        setTimeout(() => {
+            notification.classList.remove('opacity-100', 'translate-y-0');
+            notification.classList.add('opacity-0', 'translate-y-[-20px]');
+            
+            // 动画结束后移除元素
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
     }
 
     // 关闭模态窗口
