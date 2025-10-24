@@ -185,6 +185,18 @@ const categoryAPI = {
         return await response.json();
     },
 
+    // 更新分类
+    updateCategory: async (categoryId, categoryData) => {
+        const response = await fetch(`${API_BASE_URL}/categories/${categoryId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(categoryData)
+        });
+        return await response.json();
+    },
+
     // 删除分类
     deleteCategory: async (categoryId) => {
         const response = await fetch(`${API_BASE_URL}/categories/${categoryId}`, {

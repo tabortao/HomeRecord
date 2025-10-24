@@ -1,10 +1,12 @@
 // 导入API和工具函数
 import { taskAPI } from './api.js';
+import { categoryAPI } from './api.js';
 
 // 标签页管理
 class TaskTabsManager {
     constructor() {
         this.recognizedTasks = [];
+        this.categories = [];
         this.init();
     }
 
@@ -13,6 +15,8 @@ class TaskTabsManager {
         this.initTabEvents();
         // 初始化批量添加事件监听
         this.initBatchAddEvents();
+        // 加载学科分类
+        this.loadCategories();
     }
 
     // 初始化标签页切换事件
@@ -267,9 +271,22 @@ class TaskTabsManager {
     }
 
     // 编辑任务
-    editTask(taskId) {
+    async editTask(taskId) {
         const task = this.recognizedTasks.find(t => t.id === taskId);
         if (!task) return;
+        
+        // 确保学科分类已加载
+        if (this.categories.length === 0) {
+            await this.loadCategories();
+        }
+        
+        // 使用已加载的学科分类列表
+        const categories = this.categories.length > 0 ? this.categories : [
+            { name: '语文' }, { name: '数学' }, { name: '英语' },
+            { name: '物理' }, { name: '化学' }, { name: '生物' },
+            { name: '历史' }, { name: '地理' }, { name: '政治' },
+            { name: '其他' }
+        ];
         
         // 创建编辑模态窗口
         const editModal = document.createElement('div');
@@ -285,16 +302,9 @@ class TaskTabsManager {
                     <div>
                         <label for="edit-task-category" class="block text-sm font-medium text-gray-700 mb-1">学科分类</label>
                         <select id="edit-task-category" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                            <option value="语文" ${task.category === '语文' ? 'selected' : ''}>语文</option>
-                            <option value="数学" ${task.category === '数学' ? 'selected' : ''}>数学</option>
-                            <option value="英语" ${task.category === '英语' ? 'selected' : ''}>英语</option>
-                            <option value="物理" ${task.category === '物理' ? 'selected' : ''}>物理</option>
-                            <option value="化学" ${task.category === '化学' ? 'selected' : ''}>化学</option>
-                            <option value="生物" ${task.category === '生物' ? 'selected' : ''}>生物</option>
-                            <option value="历史" ${task.category === '历史' ? 'selected' : ''}>历史</option>
-                            <option value="地理" ${task.category === '地理' ? 'selected' : ''}>地理</option>
-                            <option value="政治" ${task.category === '政治' ? 'selected' : ''}>政治</option>
-                            <option value="其他" ${task.category === '其他' ? 'selected' : ''}>其他</option>
+                            ${categories.map(cat => 
+                                `<option value="${cat.name}" ${task.category === cat.name ? 'selected' : ''}>${cat.name}</option>`
+                            ).join('')}
                         </select>
                     </div>
                     <div>
@@ -481,6 +491,103 @@ class TaskTabsManager {
             document.getElementById('batch-task-content').value = '';
             document.getElementById('recognition-results').classList.add('hidden');
             this.recognizedTasks = [];
+        }
+    }
+    
+    // 加载学科分类列表（供SubjectSettingsManager调用）
+    async loadCategories() {
+        try {
+            // 获取当前用户ID
+            const userId = localStorage.getItem('user_id') || '2';
+            
+            console.log('开始加载学科分类，用户ID:', userId);
+            // 从API获取学科分类
+            const categories = await categoryAPI.getCategories(userId);
+            this.categories = categories;
+            
+            console.log('成功加载学科分类:', this.categories);
+            
+            // 更新所有相关的UI组件
+            this.updateCategoryDropdowns();
+            
+        } catch (error) {
+            console.error('加载学科分类时出错:', error);
+            // 使用默认学科列表作为后备
+            this.categories = [
+                { name: '语文' }, { name: '数学' }, { name: '英语' },
+                { name: '物理' }, { name: '化学' }, { name: '生物' },
+                { name: '历史' }, { name: '地理' }, { name: '政治' },
+                { name: '其他' }
+            ];
+        }
+    }
+    
+    // 更新所有学科分类下拉菜单
+    updateCategoryDropdowns() {
+        console.log('更新学科分类下拉菜单');
+        
+        // 查找并更新页面上所有的学科分类下拉菜单
+        const categorySelectors = document.querySelectorAll('select[id*="category"], select[class*="category"]');
+        categorySelectors.forEach(select => {
+            const currentValue = select.value;
+            
+            // 清空现有选项（保留第一个选项，如果是"全部学科"等）
+            const firstOption = select.firstElementChild;
+            const hasAllOption = firstOption && (firstOption.value === '全部学科' || firstOption.textContent === '全部学科');
+            
+            select.innerHTML = '';
+            
+            // 如果原本有"全部学科"选项，重新添加
+            if (hasAllOption) {
+                const allOption = document.createElement('option');
+                allOption.value = '全部学科';
+                allOption.textContent = '全部学科';
+                select.appendChild(allOption);
+            }
+            
+            // 添加学科选项
+            this.categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.name;
+                option.textContent = cat.name;
+                select.appendChild(option);
+            });
+            
+            // 尝试保持之前选择的值
+            if (currentValue) {
+                const optionExists = Array.from(select.options).some(opt => opt.value === currentValue);
+                if (optionExists) {
+                    select.value = currentValue;
+                } else if (this.categories.length > 0) {
+                    select.value = this.categories[0].name;
+                }
+            }
+        });
+        
+        // 特别更新编辑任务模态窗口中的学科下拉菜单
+        if (document.getElementById('edit-task-category')) {
+            const editCategorySelect = document.getElementById('edit-task-category');
+            const currentValue = editCategorySelect.value;
+            
+            editCategorySelect.innerHTML = '';
+            
+            // 添加学科选项
+            this.categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.name;
+                option.textContent = cat.name;
+                editCategorySelect.appendChild(option);
+            });
+            
+            // 尝试保持之前选择的值
+            if (currentValue) {
+                const optionExists = Array.from(editCategorySelect.options).some(opt => opt.value === currentValue);
+                if (optionExists) {
+                    editCategorySelect.value = currentValue;
+                } else if (this.categories.length > 0) {
+                    editCategorySelect.value = this.categories[0].name;
+                }
+            }
         }
     }
 }

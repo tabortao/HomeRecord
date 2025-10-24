@@ -3,6 +3,8 @@ import * as api from './api.js';
 // 定义API基础URL
 const API_BASE_URL = 'http://localhost:5000/api';
 import { dateUtils, timeUtils, storageUtils, domUtils, colorUtils } from './utils.js';
+// 导入学科设置管理器
+import SubjectSettingsManager from './subjectSettings.js';
 
 // 安全解析JSON的辅助函数
 function tryParseJSON(jsonString) {
@@ -475,6 +477,15 @@ function initApp() {
         initTaskImagesUpload();
         // 初始化图片查看器
         initImageViewer();
+        // 初始化学科设置
+        setTimeout(() => {
+            try {
+                window.subjectSettingsManager = new SubjectSettingsManager();
+                console.log('学科设置管理器初始化成功');
+            } catch (error) {
+                console.error('学科设置管理器初始化失败:', error);
+            }
+        }, 500);
     } else {
         showLoginPage();
     }

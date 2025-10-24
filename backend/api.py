@@ -599,6 +599,43 @@ def register_routes(app):
             'is_builtin': category.is_builtin
         }})
     
+    @app.route('/api/categories/<int:category_id>', methods=['PUT'])
+    def update_category(category_id):
+        category = TaskCategory.query.get(category_id)
+        if not category:
+            return jsonify({'success': False, 'message': '分类不存在'})
+        
+        data = request.json
+        
+        # 检查是否要修改名称
+        if 'name' in data and data['name'] != category.name:
+            # 检查新名称是否已存在
+            existing_category = TaskCategory.query.filter_by(name=data['name']).first()
+            if existing_category:
+                return jsonify({'success': False, 'message': '分类名称已存在'})
+            
+            # 如果修改了名称，需要同步更新所有使用该分类的任务
+            if data['name'] != category.name:
+                old_name = category.name
+                category.name = data['name']
+                # 更新所有使用该分类的任务
+                tasks = Task.query.filter_by(category=old_name).all()
+                for task in tasks:
+                    task.category = data['name']
+        
+        # 更新颜色
+        if 'color' in data:
+            category.color = data['color']
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'category': {
+            'id': category.id,
+            'name': category.name,
+            'color': category.color,
+            'is_builtin': category.is_builtin
+        }})
+    
     @app.route('/api/categories/<int:category_id>', methods=['DELETE'])
     def delete_category(category_id):
         category = TaskCategory.query.get(category_id)

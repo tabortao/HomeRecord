@@ -37,22 +37,39 @@ with app.app_context():
         db.session.commit()
     
     # 初始化内置任务分类
-    categories = [
-        {'name': '语文', 'color': '#FF6B6B', 'is_builtin': True},
-        {'name': '数学', 'color': '#4ECDC4', 'is_builtin': True},
-        {'name': '英语', 'color': '#45B7D1', 'is_builtin': True},
-        {'name': '劳动', 'color': '#96CEB4', 'is_builtin': True},
-        {'name': '生活', 'color': '#FFEAA7', 'is_builtin': True},
-        {'name': '兴趣', 'color': '#DDA0DD', 'is_builtin': True},
-        {'name': '表扬', 'color': '#77DD77', 'is_builtin': True},
-        {'name': '批评', 'color': '#FF6347', 'is_builtin': True},
-        {'name': '独立', 'color': '#87CEEB', 'is_builtin': True},
-        {'name': '惩罚', 'color': '#FFA07A', 'is_builtin': True}
-    ]
-    for category in categories:
-        if not TaskCategory.query.filter_by(name=category['name'], is_builtin=True).first():
-            new_category = TaskCategory(**category)
+    # 使用try-except块确保事务安全
+    try:
+        # 定义新的内置学科列表
+        new_categories = [
+            {'name': '语文', 'color': '#FF6B6B', 'is_builtin': True},
+            {'name': '数学', 'color': '#4ECDC4', 'is_builtin': True},
+            {'name': '英语', 'color': '#45B7D1', 'is_builtin': True},
+            {'name': '科学', 'color': '#96CEB4', 'is_builtin': True},
+            {'name': '体育', 'color': '#FFEAA7', 'is_builtin': True},
+            {'name': '其他', 'color': '#DDA0DD', 'is_builtin': True}
+        ]
+        
+        # 为每个新的内置学科，先删除数据库中所有同名的记录（无论是否内置）
+        for cat_data in new_categories:
+            # 删除所有同名记录
+            TaskCategory.query.filter_by(name=cat_data['name']).delete()
+            # 立即提交删除操作
+            db.session.commit()
+            # 添加新的内置学科
+            new_category = TaskCategory(**cat_data)
             db.session.add(new_category)
+            # 立即提交添加操作
+            db.session.commit()
+        
+        # 删除不再使用的旧内置学科
+        builtin_names = set(cat['name'] for cat in new_categories)
+        old_builtin = TaskCategory.query.filter(TaskCategory.is_builtin == True, ~TaskCategory.name.in_(builtin_names)).all()
+        for category in old_builtin:
+            db.session.delete(category)
+        db.session.commit()
+    except Exception as e:
+        print(f"初始化内置学科时出错: {e}")
+        db.session.rollback()
     
     # 初始化内置心愿
     wishes = [
