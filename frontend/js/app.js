@@ -1383,13 +1383,60 @@ async function toggleTaskStatus(taskId, currentStatus) {
             await api.taskAPI.updateTask(taskId, { status: newStatus });
         }
         
-        // 重新加载任务列表和统计数据
-        await loadTasks();
+        // 直接更新DOM中任务卡片的状态，而不是重新加载整个任务列表
+        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (taskElement) {
+            // 更新图标状态
+            const statusIcon = taskElement.querySelector('.fa-circle-o, .fa-check-circle');
+            if (statusIcon) {
+                statusIcon.className = newStatus === '已完成' ? 'fa fa-check-circle text-green-500 text-3xl' : 'fa fa-circle-o text-gray-400 text-3xl';
+            }
+            
+            // 更新任务名称样式（划线效果）
+            const taskNameElement = taskElement.querySelector('h4.font-medium');
+            if (taskNameElement) {
+                if (newStatus === '已完成') {
+                    taskNameElement.classList.add('line-through', 'text-gray-400');
+                } else {
+                    taskNameElement.classList.remove('line-through', 'text-gray-400');
+                }
+            }
+            
+            // 如果启用了任务自动排序，调整任务在列表中的位置
+            if (appState.taskSettings?.autoSort) {
+                const categoryElement = taskElement.closest('.category-tasks');
+                if (categoryElement) {
+                    // 获取该分类下所有任务
+                    const tasksInCategory = Array.from(categoryElement.querySelectorAll('.task-card'));
+                    // 按状态排序：未完成的排在前面
+                    tasksInCategory.sort((a, b) => {
+                        const statusA = a.querySelector('.fa-check-circle') ? '已完成' : '未完成';
+                        const statusB = b.querySelector('.fa-check-circle') ? '已完成' : '未完成';
+                        if (statusA === '未完成' && statusB === '已完成') return -1;
+                        if (statusA === '已完成' && statusB === '未完成') return 1;
+                        return 0;
+                    });
+                    
+                    // 重新排序DOM元素
+                    tasksInCategory.forEach(taskEl => {
+                        categoryElement.appendChild(taskEl);
+                    });
+                    
+                    // 检查是否需要重新排序整个分类
+                    if (window.sortCategoriesByCompletion) {
+                        sortCategoriesByCompletion();
+                    }
+                }
+            }
+        }
+        
+        // 仍然更新统计数据和用户信息，因为这些是全局性的数据
         await loadStatistics();
         await updateUserInfo(); // 确保金币数据一致性
         
         domUtils.showToast('任务状态已更新');
     } catch (error) {
+        console.error('更新任务状态失败:', error);
         domUtils.showToast('更新失败，请重试', 'error');
     }
 }
