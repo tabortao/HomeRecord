@@ -406,9 +406,16 @@ class TaskTabsManager {
             // 关闭模态窗口
             this.closeModal();
             
-            // 刷新任务列表（假设app.js中有refreshTasks函数）
+            // 刷新任务列表
             if (window.refreshTasks) {
+                console.log('调用window.refreshTasks刷新任务列表');
                 window.refreshTasks();
+            } else {
+                console.log('window.refreshTasks不存在，使用页面重载刷新');
+                // 使用setTimeout稍微延迟重载，确保用户能看到成功提示
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
             }
         } catch (error) {
             console.error('添加任务失败:', error);
