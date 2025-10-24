@@ -41,7 +41,11 @@ let appState = {
     tomatoMode: 'countdown', // countdown 或 stopwatch
     tomatoElapsedSeconds: 0,
     // 番茄钟设置
-    fixedTomatoPage: false
+    fixedTomatoPage: false,
+    // 任务设置
+    taskSettings: {
+        autoSort: false // 任务自动排序开关
+    }
 };
 
 // 全局筛选状态
@@ -378,6 +382,85 @@ function initTomatoSettings() {
 }
 
 // 初始化应用
+// 初始化任务设置
+function initTaskSettings() {
+    // 从localStorage加载任务设置
+    try {
+        const savedSettings = localStorage.getItem('taskSettings');
+        if (savedSettings) {
+            appState.taskSettings = JSON.parse(savedSettings);
+        }
+    } catch (error) {
+        console.error('加载任务设置失败:', error);
+    }
+    
+    // 绑定任务设置按钮事件
+    const taskSettingsBtn = document.getElementById('task-settings-btn');
+    if (taskSettingsBtn) {
+        taskSettingsBtn.addEventListener('click', showTaskSettingsModal);
+    }
+    
+    // 绑定关闭按钮事件
+    const closeTaskSettingsBtn = document.getElementById('close-task-settings');
+    if (closeTaskSettingsBtn) {
+        closeTaskSettingsBtn.addEventListener('click', hideTaskSettingsModal);
+    }
+    
+    // 绑定保存设置按钮事件
+    const saveTaskSettingsBtn = document.getElementById('save-task-settings');
+    if (saveTaskSettingsBtn) {
+        saveTaskSettingsBtn.addEventListener('click', saveTaskSettings);
+    }
+}
+
+// 显示任务设置模态窗口
+function showTaskSettingsModal() {
+    const modal = document.getElementById('task-settings-modal');
+    const autoSortCheckbox = document.getElementById('auto-sort-tasks');
+    
+    if (modal && autoSortCheckbox) {
+        // 设置复选框状态
+        autoSortCheckbox.checked = appState.taskSettings.autoSort;
+        // 显示模态窗口
+        modal.classList.remove('hidden');
+    }
+}
+
+// 隐藏任务设置模态窗口
+function hideTaskSettingsModal() {
+    const modal = document.getElementById('task-settings-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// 保存任务设置
+function saveTaskSettings() {
+    const autoSortCheckbox = document.getElementById('auto-sort-tasks');
+    
+    if (autoSortCheckbox) {
+        // 更新设置
+        appState.taskSettings.autoSort = autoSortCheckbox.checked;
+        
+        // 保存到localStorage
+        try {
+            localStorage.setItem('taskSettings', JSON.stringify(appState.taskSettings));
+            domUtils.showToast('设置已保存');
+            
+            // 重新加载任务以应用排序
+            if (appState.currentUser) {
+                loadTasks();
+            }
+        } catch (error) {
+            console.error('保存任务设置失败:', error);
+            domUtils.showToast('保存设置失败', 'error');
+        }
+        
+        // 关闭模态窗口
+        hideTaskSettingsModal();
+    }
+}
+
 function initApp() {
     // 检查用户登录状态
     const savedUser = storageUtils.getUser();
@@ -386,6 +469,8 @@ function initApp() {
         showMainApp();
         // 初始化番茄钟设置
         initTomatoSettings();
+        // 初始化任务设置
+        initTaskSettings();
         // 初始化任务图片上传功能
         initTaskImagesUpload();
         // 初始化图片查看器
@@ -1094,8 +1179,26 @@ function filterAndRenderTasks(tasks, filter) {
     // 移除原始的分类加载函数调用（因为我们现在直接在筛选函数中处理分类）
     // loadCategories(); // 不再需要这个函数
     
+    // 处理任务排序
+    let categoriesToRender = Object.keys(tasksByCategory);
+    
+    if (appState.taskSettings.autoSort) {
+        // 对学科进行排序：有未完成任务的学科排在前面
+        categoriesToRender = categoriesToRender.sort((catA, catB) => {
+            const hasPendingA = tasksByCategory[catA].some(task => task.status === '未完成');
+            const hasPendingB = tasksByCategory[catB].some(task => task.status === '未完成');
+            
+            // 如果A有未完成任务而B没有，则A排在前面
+            if (hasPendingA && !hasPendingB) return -1;
+            // 如果B有未完成任务而A没有，则B排在前面
+            if (!hasPendingA && hasPendingB) return 1;
+            // 否则保持原有顺序
+            return 0;
+        });
+    }
+    
     // 渲染每个分类的任务
-    Object.keys(tasksByCategory).forEach(category => {
+    categoriesToRender.forEach(category => {
         const categoryElement = document.createElement('div');
         categoryElement.className = 'mb-6';
         
@@ -1109,8 +1212,18 @@ function filterAndRenderTasks(tasks, filter) {
         `;
         categoryElement.appendChild(categoryHeader);
         
-        // 任务列表
-        tasksByCategory[category].forEach(task => {
+        // 任务列表 - 如果开启自动排序，则学科内未完成任务排在前面
+        let categoryTasks = tasksByCategory[category];
+        if (appState.taskSettings.autoSort) {
+            categoryTasks = categoryTasks.sort((taskA, taskB) => {
+                // 未完成任务排在前面
+                if (taskA.status === '未完成' && taskB.status === '已完成') return -1;
+                if (taskA.status === '已完成' && taskB.status === '未完成') return 1;
+                return 0; // 状态相同保持原顺序
+            });
+        }
+        
+        categoryTasks.forEach(task => {
             const taskElement = document.createElement('div');
             taskElement.className = 'task-card bg-white p-4 mb-3 shadow-sm rounded-xl border-2 border-transparent hover:border-green-300 transition-all duration-200';
             taskElement.dataset.taskId = task.id;

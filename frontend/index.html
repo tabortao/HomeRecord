@@ -402,8 +402,17 @@
                         </div>
                         <i class="fa fa-chevron-right text-gray-400"></i>
                     </button>
-                        </label>                               
-                    </div>
+                    
+                    <!-- 任务设置 -->
+                    <button id="task-settings-btn" class="w-full p-2.5 rounded-lg hover:bg-green-50 transition-colors duration-200 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-2.5">
+                                <i class="fa fa-tasks text-green-600"></i>
+                            </div>
+                            <span class="font-medium">任务设置</span>
+                        </div>
+                        <i class="fa fa-chevron-right text-gray-400"></i>
+                    </button>
                 </div>
             </div>
                 </div>
@@ -429,6 +438,34 @@
                             <p class="text-sm text-gray-500 mt-1 ml-7">勾选后，番茄钟将保持全屏显示，不会缩小为悬浮球</p>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 任务设置模态窗口 -->
+        <div id="task-settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-lg w-5/6 max-w-md p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">任务设置</h3>
+                    <button id="close-task-settings" class="text-gray-400 hover:text-gray-600">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="auto-sort-tasks" class="w-5 h-5 text-green-600 rounded border-gray-300 focus:ring-green-500">
+                                <span class="ml-2 text-gray-700 font-medium">任务自动排序</span>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1 ml-7">勾选后，学科下已完成任务排下方，所有任务完成的学科排在有未完成任务的学科下方</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button id="save-task-settings" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        保存设置
+                    </button>
                 </div>
             </div>
         </div>
