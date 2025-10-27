@@ -79,6 +79,18 @@ def register_routes(app):
             user.phone = data['phone']
         if 'avatar' in data:
             user.avatar = data['avatar']
+        # 更新权限信息 - 添加对子账号权限的处理
+        if 'permissions' in data:
+            # 根据前端传入的值设置权限对象
+            if data['permissions'] == 'edit':
+                user.permissions = json.dumps({'view_only': False})
+            else:  # view或其他值默认为仅查看
+                user.permissions = json.dumps({'view_only': True})
+        elif 'permission' in data:  # 兼容另一种字段名
+            if data['permission'] == 'edit':
+                user.permissions = json.dumps({'view_only': False})
+            else:  # view或其他值默认为仅查看
+                user.permissions = json.dumps({'view_only': True})
         
         # 处理密码更新
         if 'current_password' in data and 'new_password' in data:

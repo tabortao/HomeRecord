@@ -327,7 +327,7 @@ class SubaccountManager {
                                 <div>
                                     <div class="font-medium">${subaccount.nickname || subaccount.username}</div>
                                     <div class="text-sm text-gray-500">${subaccount.username}</div>
-                                    <div class="text-xs text-green-600 mt-1">权限: ${subaccount.permissions === 'view' ? '仅查看' : '可编辑'}</div>
+                                    <div class="text-xs text-green-600 mt-1">权限: ${this.getPermissionDisplayText(subaccount.permissions)}</div>
                                 </div>
                             </div>
                             <div class="flex space-x-2">
@@ -504,6 +504,31 @@ class SubaccountManager {
         }
     }
     
+    // 获取权限显示文本
+    getPermissionDisplayText(permissions) {
+        try {
+            // 检查权限类型并正确解析
+            if (typeof permissions === 'string') {
+                // 如果是字符串，尝试解析为JSON对象
+                try {
+                    const permObj = JSON.parse(permissions);
+                    return permObj.view_only === false ? '可编辑' : '仅查看';
+                } catch (e) {
+                    // 如果解析失败，可能是前端直接传递的值
+                    return permissions === 'edit' ? '可编辑' : '仅查看';
+                }
+            } else if (typeof permissions === 'object' && permissions !== null) {
+                // 如果已经是对象
+                return permissions.view_only === false ? '可编辑' : '仅查看';
+            }
+            // 默认返回仅查看
+            return '仅查看';
+        } catch (error) {
+            console.error('解析权限失败:', error);
+            return '仅查看';
+        }
+    }
+
     // 保存子账号修改
     async saveSubaccountChanges() {
         try {
@@ -517,14 +542,20 @@ class SubaccountManager {
                 return;
             }
             
-            // 构建更新数据
+            // 构建更新数据 - 确保使用正确的字段名
             const updateData = {
                 nickname,
-                permissions: permission
+                permissions: permission,
+                // 添加权限字段的另一种可能名称，以防后端使用不同的字段名
+                permission: permission
             };
+            
+            console.log('更新子账号数据:', updateData);
             
             // 更新子账号基本信息
             const updateResult = await api.userAPI.updateUserInfo(subaccountId, updateData);
+            
+            console.log('更新结果:', updateResult);
             
             if (!updateResult.success) {
                 domUtils.showToast('更新失败: ' + updateResult.message, 'error');
