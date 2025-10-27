@@ -3801,7 +3801,8 @@ function updateSettingsPagePermissions() {
     const permissions = user.permissions || {};
     const viewOnly = !isMainAccount && permissions.view_only !== false;
     
-    // 需要隐藏的设置按钮ID列表
+    // 需要根据权限控制的设置按钮
+    // 对于仅查看权限的子账号，番茄钟设置和任务设置按钮需要恢复可见并可操作
     const settingButtons = [
         'tomato-settings-btn',
         'task-settings-btn',
@@ -3813,13 +3814,18 @@ function updateSettingsPagePermissions() {
     settingButtons.forEach(btnId => {
         const button = document.getElementById(btnId);
         if (button) {
-            if (viewOnly) {
-                // 仅查看权限时彻底隐藏按钮
+            // 番茄钟设置和任务设置按钮始终显示并可操作
+            if (btnId === 'tomato-settings-btn' || btnId === 'task-settings-btn') {
+                button.style.display = 'flex';
+                button.classList.remove('hidden');
+                button.disabled = false;
+            } else if (viewOnly) {
+                // 其他按钮在仅查看权限时隐藏
                 button.style.display = 'none';
                 button.classList.add('hidden');
                 button.disabled = true;
             } else {
-                // 有编辑权限时显示按钮
+                // 有编辑权限时显示所有按钮
                 button.style.display = 'flex';
                 button.classList.remove('hidden');
                 button.disabled = false;

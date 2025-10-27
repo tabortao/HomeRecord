@@ -108,3 +108,15 @@ class UserHonor(db.Model):
     honor_id = db.Column(db.Integer, db.ForeignKey('honor.id'), nullable=False)
     obtained_at = db.Column(db.DateTime, default=datetime.now)
     obtained_count = db.Column(db.Integer, default=1)
+
+# 用户设置表
+class UserSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+    fixed_tomato_page = db.Column(db.Boolean, default=False)
+    task_auto_sort = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    # 关系定义
+    user = db.relationship('User', backref=db.backref('settings', uselist=False))
