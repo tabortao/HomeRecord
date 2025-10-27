@@ -2272,9 +2272,9 @@ function startTomatoTimer(task) {
         const closeBtn = document.getElementById('tomato-close');
         if (closeBtn) closeBtn.addEventListener('click', handleTomatoClose);
 
-        // 重置
-        const resetBtn = document.getElementById('tomato-reset');
-        if (resetBtn) resetBtn.addEventListener('click', handleTomatoReset);
+        // 暂停/恢复
+        const pauseBtn = document.getElementById('tomato-pause');
+        if (pauseBtn) pauseBtn.addEventListener('click', handleTomatoPause);
 
         // 完成按钮（手动完成）
         const finishBtn = document.getElementById('tomato-finish');
@@ -2309,6 +2309,10 @@ function updateTomatoDisplays() {
 function handleTomatoStart() {
     // 如果已经在运行，忽略
     if (appState.tomatoTimer) return;
+    
+    // 更新暂停按钮文本为"暂停"
+    const pauseBtn = document.getElementById('tomato-pause');
+    if (pauseBtn) pauseBtn.textContent = '暂停';
 
     if (appState.tomatoMode === 'countdown') {
         // 从自定义输入或选项中读取时间
@@ -2470,29 +2474,51 @@ function startWaterFillAnimation() {
     appState._waterRaf = requestAnimationFrame(animate);
 }
 
-// 重置：停止计时并恢复到当前选中时间
-function handleTomatoReset() {
+// 暂停/恢复：暂停或恢复当前计时
+function handleTomatoPause() {
+    const pauseBtn = document.getElementById('tomato-pause');
+    
     if (appState.tomatoTimer) {
+        // 当前正在计时，需要暂停
         clearInterval(appState.tomatoTimer);
         appState.tomatoTimer = null;
-    }
-    
-    if (appState.tomatoMode === 'countdown') {
-        // 倒计时模式：恢复到选中时间
-        const customInput = document.getElementById('tomato-custom-minutes');
-        let minutes = appState.currentTask?.planned_time || 20;
-        if (customInput) minutes = Math.max(1, parseInt(customInput.value || '20', 10));
-        appState.tomatoTimeLeft = minutes * 60;
-        appState.tomatoTotalSeconds = minutes * 60;
+        if (pauseBtn) pauseBtn.textContent = '继续';
+        // 暂停水位动画
+        if (appState._waterRaf) {
+            cancelAnimationFrame(appState._waterRaf);
+            appState._waterRaf = null;
+        }
     } else {
-        // 正计时模式：重置为0
-        appState.tomatoElapsedSeconds = 0;
-        appState.tomatoTotalSeconds = 3600; // 假设最大1小时用于动画
+        // 当前已暂停，需要恢复计时
+        // 根据模式选择计时逻辑
+        if (appState.tomatoMode === 'countdown') {
+            // 倒计时模式
+            appState.tomatoTimer = setInterval(() => {
+                appState.tomatoTimeLeft--;
+                if (appState.tomatoTimeLeft <= 0) {
+                    clearInterval(appState.tomatoTimer);
+                    appState.tomatoTimer = null;
+                    if (pauseBtn) pauseBtn.textContent = '暂停';
+                    handleTomatoFinish();
+                    return;
+                }
+                updateTomatoDisplays();
+            }, 1000);
+        } else {
+            // 正计时模式
+            appState.tomatoTimer = setInterval(() => {
+                appState.tomatoElapsedSeconds++;
+                updateTomatoDisplays();
+            }, 1000);
+        }
+        
+        if (pauseBtn) pauseBtn.textContent = '暂停';
+        // 重新启动水位动画
+        startWaterFillAnimation();
+        
+        // 确保悬浮球显示（如果在计时中）
+        ensureTomatoBubbleHidden();
     }
-    
-    updateTomatoDisplays();
-    // 隐藏悬浮球（符合在未运行时隐藏）
-    ensureTomatoBubbleHidden();
 }
 
 // 完成：停止计时并标记任务完成，更新后端和界面
@@ -2501,6 +2527,11 @@ async function handleTomatoFinish() {
         clearInterval(appState.tomatoTimer);
         appState.tomatoTimer = null;
     }
+    
+    // 重置暂停按钮文本为"暂停"
+    const pauseBtn = document.getElementById('tomato-pause');
+    if (pauseBtn) pauseBtn.textContent = '暂停';
+    
     // 隐藏UI
     const bubble = document.getElementById('tomato-bubble');
     const modal = document.getElementById('tomato-modal');
