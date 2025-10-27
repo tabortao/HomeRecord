@@ -475,6 +475,9 @@ function initApp() {
         initTaskImagesUpload();
         // 初始化图片查看器
         initImageViewer();
+        // 初始化时更新设置页面和我的页面权限
+    updateSettingsPagePermissions();
+    updateProfilePagePermissions();
         // 初始化学科设置
         setTimeout(() => {
             try {
@@ -812,6 +815,9 @@ async function handleLogin() {
             showMainApp();
             // 更新用户信息显示
             updateUserInfo();
+            // 立即更新设置页面和我的页面权限
+    updateSettingsPagePermissions();
+    updateProfilePagePermissions();
             domUtils.showToast('登录成功');
         } else {
             domUtils.showToast(result.message, 'error');
@@ -908,6 +914,17 @@ function switchPage(page) {
         // 隐藏小心愿添加按钮
         const addWishBtn = document.getElementById('add-wish-btn');
         if (addWishBtn) addWishBtn.style.display = 'none';
+        
+        // 如果是profile页面，更新设置页面和我的页面权限
+    if (page === 'profile') {
+        // 立即调用一次，然后延迟再次调用确保DOM元素完全加载
+        updateSettingsPagePermissions();
+        updateProfilePagePermissions();
+        setTimeout(() => {
+            updateSettingsPagePermissions();
+            updateProfilePagePermissions();
+        }, 100);
+    }
     }
 
     // 更新番茄钟悬浮球显示状态（在页面切换时）
@@ -3238,6 +3255,10 @@ async function updateUserInfo() {
         // 更新小心愿页面权限
         updateWishPagePermissions();
         
+        // 更新设置页面和我的页面权限
+    updateSettingsPagePermissions();
+    updateProfilePagePermissions();
+        
     } catch (error) {
         console.error('更新用户信息失败:', error);
     }
@@ -3767,6 +3788,81 @@ function initWishPage() {
             addWishBtn.style.display = 'inline-flex';
         }
     }
+}
+
+// 更新设置页面权限控制
+function updateSettingsPagePermissions() {
+    const user = appState.currentUser;
+    if (!user) return;
+    
+    // 判断是否为主账号（没有parent_id的用户为主账号）
+    const isMainAccount = !user.parent_id;
+    // 子账号根据权限控制功能按钮
+    const permissions = user.permissions || {};
+    const viewOnly = !isMainAccount && permissions.view_only !== false;
+    
+    // 需要隐藏的设置按钮ID列表
+    const settingButtons = [
+        'tomato-settings-btn',
+        'task-settings-btn',
+        'subject-settings-btn',
+        'gold-settings-btn'
+    ];
+    
+    // 遍历所有设置按钮，根据权限控制显示/隐藏
+    settingButtons.forEach(btnId => {
+        const button = document.getElementById(btnId);
+        if (button) {
+            if (viewOnly) {
+                // 仅查看权限时彻底隐藏按钮
+                button.style.display = 'none';
+                button.classList.add('hidden');
+                button.disabled = true;
+            } else {
+                // 有编辑权限时显示按钮
+                button.style.display = 'flex';
+                button.classList.remove('hidden');
+                button.disabled = false;
+            }
+        }
+    });
+}
+
+// 更新我的页面权限控制
+function updateProfilePagePermissions() {
+    const user = appState.currentUser;
+    if (!user) return;
+    
+    // 判断是否为主账号（没有parent_id的用户为主账号）
+    const isMainAccount = !user.parent_id;
+    // 子账号根据权限控制功能按钮
+    const permissions = user.permissions || {};
+    const viewOnly = !isMainAccount && permissions.view_only !== false;
+    
+    // 需要隐藏的我的页面按钮ID列表
+    const profileButtons = [
+        'edit-profile',       // 编辑个人信息
+        'subaccount-management', // 子账号管理
+        'clear-data'          // 清除数据
+    ];
+    
+    // 遍历所有我的页面按钮，根据权限控制显示/隐藏
+    profileButtons.forEach(btnId => {
+        const button = document.getElementById(btnId);
+        if (button) {
+            if (viewOnly) {
+                // 仅查看权限时彻底隐藏按钮
+                button.style.display = 'none';
+                button.classList.add('hidden');
+                button.disabled = true;
+            } else {
+                // 有编辑权限时显示按钮
+                button.style.display = 'flex';
+                button.classList.remove('hidden');
+                button.disabled = false;
+            }
+        }
+    });
 }
 
 // 更新小心愿页面权限控制
