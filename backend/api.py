@@ -791,6 +791,12 @@ def register_routes(app):
     def exchange_wish(wish_id):
         data = request.json
         user_id = data.get('user_id')
+        # 获取兑换数量，默认为1
+        quantity = data.get('quantity', 1)
+        
+        # 验证数量参数
+        if not isinstance(quantity, int) or quantity <= 0:
+            return jsonify({'success': False, 'message': '兑换数量必须是正整数'})
         
         user = User.query.get(user_id)
         wish = Wish.query.get(wish_id)
@@ -798,29 +804,37 @@ def register_routes(app):
         if not user or not wish:
             return jsonify({'success': False, 'message': '用户或心愿不存在'})
         
-        if user.total_gold < wish.cost:
+        # 计算总金币消耗
+        total_cost = wish.cost * quantity
+        
+        if user.total_gold < total_cost:
             return jsonify({'success': False, 'message': '金币不足'})
         
         # 扣除金币
-        user.total_gold -= wish.cost
+        user.total_gold -= total_cost
         # 增加兑换次数
-        wish.exchange_count += 1
+        wish.exchange_count += quantity
         
         db.session.commit()
         
         # 记录操作日志，包含兑换数量和单位信息
-        unit_info = f"{wish.exchange_amount}{wish.unit}" if wish.unit else str(wish.exchange_amount)
+        if wish.unit:
+            total_amount = wish.exchange_amount * quantity if wish.exchange_amount else quantity
+            unit_info = f"{total_amount}{wish.unit}"
+        else:
+            unit_info = str(quantity)
+            
         log = OperationLog(
             user_id=user_id,
             operation_type='兑换心愿',
-            operation_content=f'兑换心愿：{wish.name}，消耗{wish.cost}金币，兑换{unit_info}',
+            operation_content=f'兑换心愿：{wish.name}，消耗{total_cost}金币，兑换{unit_info}',
             operation_time=datetime.now(),
             operation_result='成功'
         )
         db.session.add(log)
         db.session.commit()
         
-        return jsonify({'success': True, 'remaining_gold': user.total_gold})
+        return jsonify({'success': True, 'remaining_gold': user.total_gold, 'total_cost': total_cost, 'quantity': quantity})
     
     @app.route('/api/exchange-history', methods=['GET'])
     def get_exchange_history():

@@ -2758,28 +2758,63 @@ async function loadWishes() {
 
 // 处理兑换心愿
 async function handleExchangeWish(wishId, wishName, cost) {
+    // 获取心愿详情，包含兑换数量信息
+    const wishes = await api.wishAPI.getWishes(appState.currentUser.id);
+    const wish = wishes.find(w => w.id === wishId);
     const userInfo = await api.userAPI.getUserInfo(appState.currentUser.id);
     
-    if (userInfo.user.total_gold < cost) {
-        domUtils.showToast('金币不足，无法兑换', 'error');
-        return;
-    }
-    
-    domUtils.showConfirm(
-        '确认兑换',
-        `确定要花费 ${cost} 金币兑换「${wishName}」吗？`,
-        async () => {
-            try {
-                const result = await api.wishAPI.exchangeWish(wishId, appState.currentUser.id);
-                if (result.success) {
-                    await loadWishes();
-                    await loadStatistics();
-                    await updateUserInfo(); // 确保所有页面的金币显示一致
-                    domUtils.showToast('兑换成功！');
-                }
-            } catch (error) {
-                domUtils.showToast('兑换失败，请重试', 'error');
+    // 让用户输入兑换数量
+    domUtils.showPrompt(
+        '输入兑换数量',
+        wish.exchange_amount && wish.unit 
+            ? `请输入要兑换的${wishName}数量（每${wish.exchange_amount}${wish.unit}需要${cost}金币）`
+            : `请输入要兑换的${wishName}数量（每个需要${cost}金币）`,
+        '1', // 默认兑换1个
+        async (quantityStr) => {
+            // 验证输入数量
+            const quantity = parseInt(quantityStr);
+            if (isNaN(quantity) || quantity <= 0) {
+                domUtils.showToast('请输入有效的兑换数量', 'error');
+                return;
             }
+            
+            // 计算总金币消耗
+            const totalCost = cost * quantity;
+            
+            // 检查金币是否足够
+            if (userInfo.user.total_gold < totalCost) {
+                domUtils.showToast('金币不足，无法兑换', 'error');
+                return;
+            }
+            
+            // 显示确认弹窗
+            let confirmMessage = `确定要花费 ${totalCost} 金币兑换 ${quantity} 个「${wishName}」吗？`;
+            if (wish.exchange_amount && wish.unit) {
+                const totalAmount = quantity * wish.exchange_amount;
+                confirmMessage = `确定要花费 ${totalCost} 金币兑换 ${totalAmount}${wish.unit} 的「${wishName}」吗？`;
+            }
+            
+            domUtils.showConfirm(
+                '确认兑换',
+                confirmMessage,
+                async () => {
+                    try {
+                        // 执行兑换操作
+                        const result = await api.wishAPI.exchangeWish(wishId, appState.currentUser.id, quantity);
+                        if (result.success) {
+                            // 更新页面数据
+                            await loadWishes();
+                            await loadStatistics();
+                            await updateUserInfo(); // 确保所有页面的金币显示一致
+                            // 显示兑换成功提示
+                            domUtils.showToast(`兑换成功${quantity}个${wishName}（扣除${totalCost}金币）`);
+                        }
+                    } catch (error) {
+                        console.error('兑换失败:', error);
+                        domUtils.showToast('兑换失败，请重试', 'error');
+                    }
+                }
+            );
         }
     );
 }
