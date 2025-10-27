@@ -440,8 +440,64 @@
                         </div>
                         <i class="fa fa-chevron-right text-gray-400"></i>
                     </button>
+                    
+                    <!-- 关于 -->
+                    <button id="about-btn" class="w-full p-2.5 rounded-lg hover:bg-blue-50 transition-colors duration-200 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2.5">
+                                <i class="fa fa-info-circle text-blue-600"></i>
+                            </div>
+                            <span class="font-medium">关于</span>
+                        </div>
+                        <i class="fa fa-chevron-right text-gray-400"></i>
+                    </button>
                 </div>
             </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关于页面模态窗口 -->
+        <div id="about-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden overflow-y-auto">
+            <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col mx-4">
+                <!-- 弹窗头部 -->
+                <div class="bg-green-600 text-white p-5 flex justify-between items-center">
+                    <h3 class="text-xl font-bold">关于任务积分助手</h3>
+                    <button id="close-about-modal" class="text-white hover:text-green-100">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- 弹窗内容 -->
+                <div class="p-6 flex flex-col items-center">
+                    <!-- 软件图标和名称 -->
+                    <img id="app-icon" src="static/images/favicon/android-chrome-192x192.png" alt="任务积分助手" class="w-24 h-24 rounded-2xl mb-4 shadow-lg">
+                    <h2 id="app-name" class="text-2xl font-bold text-green-600 mb-2">任务积分助手</h2>
+                    <p id="app-version" class="text-gray-500 mb-6">版本 1.0.0</p>
+                    
+                    <!-- 功能介绍 -->
+                    <div class="w-full mb-6">
+                        <p id="app-description" class="text-gray-600 text-center mb-4">帮助学生培养良好的学习习惯和时间管理能力</p>
+                    </div>
+                    
+                    <!-- 联系按钮 -->
+                    <div class="w-full space-y-3">
+                        <button id="xiaohongshu-btn" class="w-full bg-red-50 text-red-600 py-3 rounded-lg font-medium flex items-center justify-center hover:bg-red-100 transition-colors">
+                            <i class="fa fa-heart mr-2"></i>
+                            关注小红书
+                        </button>
+                        <button id="email-btn" class="w-full bg-blue-50 text-blue-600 py-3 rounded-lg font-medium flex items-center justify-center hover:bg-blue-100 transition-colors">
+                            <i class="fa fa-envelope mr-2"></i>
+                            邮件联系
+                        </button>
+                    </div>
+                    
+                    <!-- 底部版权信息 -->
+                    <div class="mt-auto pt-6 text-center text-gray-400 text-sm">
+                        <p>© 2025 任务积分助手</p>
+                    </div>
                 </div>
             </div>
         </div>

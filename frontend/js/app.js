@@ -4386,14 +4386,99 @@ async function saveGoldSettings() {
     }
 }
 
-// 添加金币设置相关的事件监听器
+// 添加金币设置和关于页面相关的事件监听器
 document.addEventListener('DOMContentLoaded', function() {
     // 金币设置事件
     document.getElementById('gold-settings-btn')?.addEventListener('click', showGoldSettingsModal);
     document.getElementById('close-gold-settings')?.addEventListener('click', hideGoldSettingsModal);
     document.getElementById('cancel-gold-settings')?.addEventListener('click', hideGoldSettingsModal);
     document.getElementById('save-gold-settings')?.addEventListener('click', saveGoldSettings);
+    
+    // 关于页面事件
+    document.getElementById('about-btn')?.addEventListener('click', showAboutModal);
+    document.getElementById('close-about-modal')?.addEventListener('click', hideAboutModal);
+    document.getElementById('xiaohongshu-btn')?.addEventListener('click', handleXiaohongshuClick);
+    
+    // 邮件联系按钮事件
+    document.getElementById('email-btn')?.addEventListener('click', function() {
+        const email = this.getAttribute('data-email');
+        if (email) {
+            window.location.href = `mailto:${email}`;
+        }
+    });
+    
+    // 点击模态窗口背景关闭
+    document.getElementById('about-modal')?.addEventListener('click', function(event) {
+        if (event.target === this) {
+            hideAboutModal();
+        }
+    });
 });
+
+// 显示关于模态窗口
+async function showAboutModal() {
+    try {
+        // 读取配置文件获取版本号、描述和联系邮箱
+        const response = await fetch('static/config/config.json');
+        const config = await response.json();
+        
+        // 更新版本号显示
+        if (config.version) {
+            document.getElementById('app-version').textContent = `版本 ${config.version}`;
+        }
+        
+        // 更新描述显示
+        if (config.description) {
+            document.getElementById('app-description').textContent = config.description;
+        }
+        
+        // 更新联系邮箱
+        if (config.contactEmail) {
+            document.getElementById('email-btn').textContent = '邮件联系';
+            // 存储邮箱地址供点击事件使用
+            document.getElementById('email-btn').setAttribute('data-email', config.contactEmail);
+        }
+        
+        // 存储小红书链接用于后续使用
+        if (config.xiaohongshuUrl) {
+            document.getElementById('xiaohongshu-btn').setAttribute('data-url', config.xiaohongshuUrl);
+        }
+    } catch (error) {
+        console.error('读取配置文件失败:', error);
+        // 使用默认版本号
+        document.getElementById('app-version').textContent = '版本 1.0.0';
+        // 使用默认描述
+        document.getElementById('app-description').textContent = '帮助学生培养良好的学习习惯和时间管理能力';
+        // 使用默认邮箱
+        document.getElementById('email-btn').textContent = '邮件联系';
+        document.getElementById('email-btn').setAttribute('data-email', 'support@homerecord.com');
+    }
+    
+    // 显示模态窗口
+    const aboutModal = document.getElementById('about-modal');
+    if (aboutModal) {
+        aboutModal.classList.remove('hidden');
+        // 防止背景滚动
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// 隐藏关于模态窗口
+function hideAboutModal() {
+    const aboutModal = document.getElementById('about-modal');
+    if (aboutModal) {
+        aboutModal.classList.add('hidden');
+        // 恢复背景滚动
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// 处理小红书按钮点击
+function handleXiaohongshuClick() {
+    const url = this.getAttribute('data-url') || 'https://www.xiaohongshu.com';
+    // 在新窗口打开链接
+    window.open(url, '_blank');
+}
 
 // 启动应用
 initApp();
