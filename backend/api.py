@@ -27,14 +27,37 @@ def register_routes(app):
         if not user:
             return jsonify({'success': False, 'message': '用户不存在'})
         
+        # 获取父账号信息（如果有）
+        parent_info = None
+        if user.parent_id:
+            parent = User.query.get(user.parent_id)
+            if parent:
+                parent_info = {
+                    'id': parent.id,
+                    'username': parent.username,
+                    'nickname': parent.nickname or parent.username
+                }
+        
+        # 获取权限信息
+        permissions = None
+        if user.permissions:
+            try:
+                permissions = json.loads(user.permissions)
+            except:
+                permissions = {'view_only': True}  # 默认仅查看权限
+        
         return jsonify({
             'success': True,
             'user': {
                 'id': user.id,
                 'username': user.username,
-                'nickname': user.nickname,
+                'nickname': user.nickname or user.username,
                 'phone': user.phone,
                 'avatar': user.avatar,
+                'role': user.role,
+                'parent_id': user.parent_id,  # 是否是子账号
+                'parent_info': parent_info,    # 父账号信息
+                'permissions': permissions,    # 权限信息
                 'total_gold': user.total_gold
             }
         })
@@ -199,11 +222,16 @@ def register_routes(app):
              user_id = request.args.get('user_id', type=int)
              date = request.args.get('date')
              category = request.args.get('category')
+              
+             # 获取用户信息，检查是否为子账号
+             user = User.query.get(user_id)
+             # 如果是子账号，使用父账号ID来查询数据
+             effective_user_id = user.parent_id if user and user.parent_id else user_id
              
-             app.logger.info(f"Getting tasks for user_id: {user_id}, date: {date}, category: {category}")
-             
+             app.logger.info(f"Getting tasks for user_id: {user_id}, effective_user_id: {effective_user_id}, date: {date}, category: {category}")
+              
              # 构建查询
-             query = Task.query.filter_by(user_id=user_id)
+             query = Task.query.filter_by(user_id=effective_user_id)
              
              # 按日期筛选
              if date:
@@ -722,9 +750,14 @@ def register_routes(app):
     def get_wishes():
         user_id = request.args.get('user_id')
         
-        # 获取内置心愿和用户自定义心愿
+        # 获取用户信息，检查是否为子账号
+        user = User.query.get(user_id)
+        # 如果是子账号，使用父账号ID来查询数据
+        effective_user_id = user.parent_id if user and user.parent_id else user_id
+        
+        # 获取内置心愿和主账号/子账号相关心愿
         wishes = Wish.query.filter(
-            (Wish.is_builtin == True) | (Wish.user_id == user_id)
+            (Wish.is_builtin == True) | (Wish.user_id == effective_user_id)
         ).all()
         
         result = []
@@ -1494,8 +1527,17 @@ def register_routes(app):
         user_id = request.args.get('user_id')
         date = request.args.get('date')
         
+        # 获取用户信息，检查是否是子账号
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': '用户不存在'})
+        
+        # 如果是子账号，使用父账号的ID来查询数据
+        query_user_id = user.parent_id if user.parent_id else user_id
+        query_user = User.query.get(query_user_id)
+        
         # 计算日统计数据
-        day_tasks = Task.query.filter_by(user_id=user_id, start_date=date).all()
+        day_tasks = Task.query.filter_by(user_id=query_user_id, start_date=date).all()
         
         # 今日总任务个数（所有状态的任务）
         total_count = len(day_tasks)
@@ -1509,14 +1551,12 @@ def register_routes(app):
         # 计算日金币（已完成任务的积分总和）
         day_gold = sum(task.points for task in day_tasks if task.status == '已完成')
         
-        user = User.query.get(user_id)
-        
         return jsonify({
             'day_time': total_time,
             'task_count': total_count,  # 返回今日总任务个数
             'day_gold': day_gold,
             'completion_rate': round(completion_rate, 1),
-            'total_gold': user.total_gold
+            'total_gold': query_user.total_gold
         })
     
     # 检查用户名是否可用
@@ -1574,12 +1614,21 @@ def register_routes(app):
             # 注意：前端传递的是permission字段，后端使用permissions字段
             permission = data.get('permission', 'view')
             
+            # 确保权限信息以JSON对象格式存储
+            permissions = {}
+            if permission == 'view':
+                permissions = {'view_only': True, 'can_edit': False}
+            elif permission == 'edit':
+                permissions = {'view_only': False, 'can_edit': True}
+            else:
+                permissions = {'view_only': True, 'can_edit': False}  # 默认仅查看权限
+            
             new_subaccount = User(
                 username=data['username'],
                 nickname=data['nickname'],
                 parent_id=parent_id,
                 role='subaccount',
-                permissions=json.dumps(permission)  # 直接存储权限值
+                permissions=json.dumps(permissions)  # 存储权限JSON对象
             )
             new_subaccount.set_password(data['password'])
             

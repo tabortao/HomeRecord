@@ -1034,7 +1034,7 @@ async function loadTasks() {
     let tasks = [];
     
     try {
-        // 构建API URL
+        // 构建API URL - 对于子账号，后端会自动处理为主账号的任务
         const API_BASE_URL = 'http://localhost:5000/api';
         let url = `${API_BASE_URL}/tasks?user_id=${appState.currentUser.id}&date=${appState.currentDate}`;
         
@@ -1043,6 +1043,9 @@ async function loadTasks() {
             url += `&category=${encodeURIComponent(appState.currentCategory)}`;
         }
         
+        // 检查用户类型
+        const isSubAccount = appState.currentUser && appState.currentUser.parent_id;
+        console.log('用户信息:', { id: appState.currentUser.id, isSubAccount });
         console.log('请求URL:', url);
         
         // 发送请求
@@ -1063,12 +1066,13 @@ async function loadTasks() {
         if (text && text.trim()) {
             try {
                 const parsedData = JSON.parse(text);
+                // 处理不同格式的响应
                 if (Array.isArray(parsedData)) {
                     tasks = parsedData;
-                    console.log('成功解析任务数据，共', tasks.length, '个任务');
-                } else {
-                    console.warn('任务数据不是数组格式');
+                } else if (parsedData.tasks && Array.isArray(parsedData.tasks)) {
+                    tasks = parsedData.tasks;
                 }
+                console.log('成功解析任务数据，共', tasks.length, '个任务');
             } catch (jsonError) {
                 console.error('JSON解析失败:', jsonError);
                 console.log('原始响应:', text);
@@ -1076,18 +1080,38 @@ async function loadTasks() {
         } else {
             console.warn('响应为空');
         }
+        
+        // 更新统计数据
+        if (typeof loadStatistics === 'function') {
+            await loadStatistics();
+        }
     } catch (error) {
         console.error('API请求失败:', error);
+        
+        // 显示错误提示
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg';
+        errorMessage.textContent = '加载任务失败，请重试';
+        document.body.appendChild(errorMessage);
+        setTimeout(() => {
+            errorMessage.remove();
+        }, 3000);
     }
     
     // 无论如何都设置筛选按钮事件
-    setupFilterButtons(tasks);
+    if (typeof setupFilterButtons === 'function') {
+        setupFilterButtons(tasks);
+    }
     
     // 更新筛选按钮状态
-    updateTaskFilterButtons();
+    if (typeof updateTaskFilterButtons === 'function') {
+        updateTaskFilterButtons();
+    }
     
     // 渲染任务列表
-    filterAndRenderTasks(tasks, currentFilter);
+    if (typeof filterAndRenderTasks === 'function') {
+        filterAndRenderTasks(tasks, currentFilter);
+    }
 }
 
 // 独立的筛选按钮设置函数
@@ -1351,12 +1375,18 @@ function filterAndRenderTasks(tasks, filter) {
 
 // 切换任务状态
 async function toggleTaskStatus(taskId, currentStatus) {
-    const newStatus = currentStatus === '已完成' ? '未完成' : '已完成';
-    
     try {
-        // 先获取任务信息（用于金币与时间处理）
+        // 先获取任务信息（用于金币与时间处理和权限检查）
         const tasks = await api.taskAPI.getTasks(appState.currentUser.id, appState.currentDate, '');
         const task = tasks.find(t => t.id === taskId);
+        
+        // 检查是否有编辑权限
+        if (task && task.can_edit === false) {
+            domUtils.showToast('无权限修改任务状态', 'error');
+            return;
+        }
+        
+        const newStatus = currentStatus === '已完成' ? '未完成' : '已完成';
 
         // 如果是标记为已完成，且没有使用番茄钟，则使用计划时间作为实际时间
         if (newStatus === '已完成') {
@@ -1912,20 +1942,38 @@ function showTaskMenu(task) {
     // 创建自定义菜单元素
     const menuElement = document.createElement('div');
     menuElement.className = 'task-menu-dropdown fixed z-50 bg-white shadow-lg rounded-lg p-2';
-    menuElement.innerHTML = `
+    
+    // 根据任务的can_edit属性决定是否显示编辑和删除按钮
+    const canEdit = task.can_edit !== false; // 默认可以编辑
+    
+    let menuHTML = '';
+    
+    // 如果可以编辑，添加编辑按钮
+    if (canEdit) {
+        menuHTML += `
         <button class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded">
             <i class="fa fa-pencil text-gray-600 mr-3"></i>
             <span>编辑</span>
-        </button>
+        </button>`;
+    }
+    
+    // 番茄钟按钮始终显示
+    menuHTML += `
         <button class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded">
             <i class="fa fa-clock-o text-yellow-500 mr-3"></i>
             <span>番茄钟</span>
-        </button>
+        </button>`;
+    
+    // 如果可以编辑，添加删除按钮
+    if (canEdit) {
+        menuHTML += `
         <button class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded text-red-600">
             <i class="fa fa-trash mr-3"></i>
             <span>删除</span>
-        </button>
-    `;
+        </button>`;
+    }
+    
+    menuElement.innerHTML = menuHTML;
     
     // 移除之前的菜单
     const existingMenu = document.querySelector('.task-menu-dropdown');
@@ -1977,6 +2025,12 @@ function showTaskMenu(task) {
 function editTask(task) {
     if (!task) {
         domUtils.showToast('未找到任务', 'error');
+        return;
+    }
+    
+    // 检查是否有编辑权限
+    if (task.can_edit === false) {
+        domUtils.showToast('无权限编辑任务', 'error');
         return;
     }
     
@@ -2140,6 +2194,22 @@ function editTask(task) {
 
 // 删除任务
 async function deleteTask(taskId) {
+    try {
+        // 先获取任务信息，检查权限
+        const tasks = await api.taskAPI.getTasks(appState.currentUser.id, appState.currentDate, '');
+        const task = tasks.find(t => t.id === taskId);
+        
+        // 检查是否有删除权限
+        if (task && task.can_edit === false) {
+            domUtils.showToast('无权限删除任务', 'error');
+            return;
+        }
+    } catch (error) {
+        console.error('检查任务权限失败:', error);
+        domUtils.showToast('检查权限失败，请重试', 'error');
+        return;
+    }
+    
     domUtils.showConfirm(
         '确认删除',
         '确定要删除这个任务吗？',
@@ -3020,15 +3090,38 @@ async function updateUserInfo() {
         
         try {
             const userInfo = await api.userAPI.getUserInfo(appState.currentUser.id);
-            // 只使用API返回的用户ID、金币和头像等需要后端维护的字段，其他使用本地更新的值
-                if (userInfo.user) {
-                    user = { ...user, id: userInfo.user.id, total_gold: userInfo.user.total_gold, avatar: userInfo.user.avatar };
-                    // 同步更新appState中的信息
-                    appState.currentUser.total_gold = userInfo.user.total_gold;
-                    appState.currentUser.avatar = userInfo.user.avatar;
-                    // 保存到本地存储
-                    storageUtils.saveUser(appState.currentUser);
+            // 使用API返回的所有需要后端维护的字段
+            if (userInfo.user) {
+                // 合并所有字段，包括子账号相关信息
+                user = {
+                    ...user, 
+                    id: userInfo.user.id, 
+                    total_gold: userInfo.user.total_gold, 
+                    avatar: userInfo.user.avatar,
+                    role: userInfo.user.role,
+                    parent_id: userInfo.user.parent_id,
+                    parent_info: userInfo.user.parent_info,
+                    permissions: userInfo.user.permissions
+                };
+                
+                // 如果是子账号，获取父账号的金币数据
+                if (user.parent_id) {
+                    try {
+                        const parentInfo = await api.userAPI.getUserInfo(user.parent_id);
+                        if (parentInfo.user) {
+                            // 子账号使用父账号的金币数据
+                            user.total_gold = parentInfo.user.total_gold;
+                        }
+                    } catch (parentApiError) {
+                        console.log('获取父账号信息失败，继续使用当前金币数据');
+                    }
                 }
+                
+                // 同步更新appState中的信息
+                Object.assign(appState.currentUser, user);
+                // 保存到本地存储
+                storageUtils.saveUser(appState.currentUser);
+            }
         } catch (apiError) {
             // API调用失败不影响本地信息的更新显示
             console.log('API调用失败，使用本地用户信息');
@@ -3037,6 +3130,22 @@ async function updateUserInfo() {
         // 更新我的页面信息
         if(document.getElementById('profile-username')) document.getElementById('profile-username').textContent = user.username;
         if(document.getElementById('profile-id')) document.getElementById('profile-id').textContent = `ID: ${user.id.toString().padStart(6, '0')}`;
+        
+        // 显示子账号状态和父账号信息
+        const isSubAccount = user.parent_id !== null && user.parent_id !== undefined;
+        if(isSubAccount && user.parent_info) {
+            // 如果是子账号，显示子账号标识和父账号信息
+            let accountTypeText = `子账号 · ${user.parent_info.nickname || user.parent_info.username}`;
+            if(document.getElementById('profile-account-type')) {
+                document.getElementById('profile-account-type').textContent = accountTypeText;
+                document.getElementById('profile-account-type').classList.remove('hidden');
+            }
+        } else {
+            // 主账号隐藏子账号标识
+            if(document.getElementById('profile-account-type')) {
+                document.getElementById('profile-account-type').classList.add('hidden');
+            }
+        }
         
         // 更新头像 - 区分默认头像和自定义上传头像
         let avatarUrl;
@@ -3061,6 +3170,27 @@ async function updateUserInfo() {
         if(document.getElementById('total-gold')) document.getElementById('total-gold').textContent = goldValue;
         if(document.getElementById('total-gold-stats')) document.getElementById('total-gold-stats').textContent = goldValue;
         if(document.getElementById('wish-gold')) document.getElementById('wish-gold').textContent = goldValue;
+        
+        // 根据子账号权限控制功能按钮
+        const permissions = user.permissions || {};
+        const viewOnly = permissions.view_only !== false;
+        
+        // 控制添加任务按钮
+        if(viewOnly) {
+            // 仅查看权限时禁用添加任务按钮
+            const addTaskButtons = document.querySelectorAll('#add-task-btn, #task-page-add-btn');
+            addTaskButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            });
+        } else {
+            // 可编辑权限时启用添加任务按钮
+            const addTaskButtons = document.querySelectorAll('#add-task-btn, #task-page-add-btn');
+            addTaskButtons.forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            });
+        }
         
     } catch (error) {
         console.error('更新用户信息失败:', error);

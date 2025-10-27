@@ -123,6 +123,14 @@ def login():
     
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
+        # 获取用户权限信息
+        permissions = None
+        if user.permissions:
+            try:
+                permissions = json.loads(user.permissions)
+            except:
+                permissions = {'view_only': True}  # 默认仅查看权限
+        
         return jsonify({'success': True, 'user': {
             'id': user.id,
             'username': user.username,
@@ -130,6 +138,8 @@ def login():
             'phone': user.phone,
             'avatar': user.avatar,
             'role': user.role,
+            'parent_id': user.parent_id,  # 添加父账号ID
+            'permissions': permissions,    # 添加权限信息
             'total_gold': user.total_gold
         }})
     return jsonify({'success': False, 'message': '用户名或密码错误'})
@@ -159,16 +169,38 @@ def register():
 # 任务相关路由
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
-    user_id = request.args.get('user_id')
+    # 获取请求中的用户ID
+    current_user_id = request.args.get('user_id')
     date = request.args.get('date')
     category = request.args.get('category')
     
-    query = Task.query.filter_by(user_id=user_id)
+    if not current_user_id:
+        return jsonify({'success': False, 'message': '缺少用户ID参数'}), 400
+    
+    # 查询当前用户信息，判断是否为子账号
+    current_user = User.query.get(current_user_id)
+    if not current_user:
+        return jsonify({'success': False, 'message': '用户不存在'}), 404
+    
+    # 确定要查询的用户ID - 子账号应该只看到父账号的任务
+    query_user_id = current_user_id
+    if current_user.parent_id is not None:
+        query_user_id = current_user.parent_id
+    
+    # 构建查询，获取指定用户的任务
+    query = Task.query.filter_by(user_id=query_user_id)
     
     if date:
         query = query.filter_by(start_date=date)
     if category and category != '全部学科':
         query = query.filter_by(category=category)
+    
+    # 添加明确的排序逻辑，确保任务顺序一致
+    # 首先按状态排序（未完成的在前），然后按创建时间排序（最新创建的在前）
+    query = query.order_by(
+        Task.status != '未完成',  # 未完成的任务排在前面
+        Task.id.desc()  # 按ID降序（假设ID自增，表示创建时间顺序）
+    )
     
     tasks = query.all()
     result = []
@@ -180,6 +212,24 @@ def get_tasks():
                 images = json.loads(task.images)
             except json.JSONDecodeError:
                 images = []
+        
+        # 解析用户权限
+        permissions = {}
+        if current_user.permissions:
+            try:
+                parsed = json.loads(current_user.permissions)
+                # 确保permissions是字典类型
+                if isinstance(parsed, dict):
+                    permissions = parsed
+            except (json.JSONDecodeError, TypeError):
+                permissions = {}
+        
+        # 判断任务是否可以编辑（基于任务归属和用户权限）
+        can_edit = True
+        # 如果是子账号且任务属于父账号，需要检查权限
+        if current_user.parent_id is not None and task.user_id == current_user.parent_id:
+            # 如果是仅查看权限，则不能编辑父账号的任务
+            can_edit = permissions.get('view_only') is False
         
         result.append({
             'id': task.id,
@@ -195,7 +245,9 @@ def get_tasks():
             'end_date': task.end_date,
             'status': task.status,
             'series_id': task.series_id,
-            'images': images
+            'images': images,
+            'user_id': task.user_id,  # 添加任务归属用户ID
+            'can_edit': can_edit      # 添加编辑权限标志
         })
     
     return jsonify(result)
