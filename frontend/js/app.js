@@ -3171,15 +3171,15 @@ async function updateUserInfo() {
             console.log('API调用失败，使用本地用户信息');
         }
         
-        // 更新我的页面信息
-        if(document.getElementById('profile-username')) document.getElementById('profile-username').textContent = user.username;
+        // 更新我的页面信息，优先显示昵称，如果没有昵称则显示用户名
+        if(document.getElementById('profile-username')) document.getElementById('profile-username').textContent = user.nickname || user.username;
         if(document.getElementById('profile-id')) document.getElementById('profile-id').textContent = `ID: ${user.id.toString().padStart(6, '0')}`;
         
         // 显示子账号状态和父账号信息
         const isSubAccount = user.parent_id !== null && user.parent_id !== undefined;
         if(isSubAccount && user.parent_info) {
-            // 如果是子账号，显示子账号标识和父账号信息
-            let accountTypeText = `子账号 · ${user.parent_info.nickname || user.parent_info.username}`;
+            // 如果是子账号，显示父账号标识和父账号信息
+            let accountTypeText = `父账号 · ${user.parent_info.nickname || user.parent_info.username}`;
             if(document.getElementById('profile-account-type')) {
                 document.getElementById('profile-account-type').textContent = accountTypeText;
                 document.getElementById('profile-account-type').classList.remove('hidden');
