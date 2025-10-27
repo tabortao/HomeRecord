@@ -317,28 +317,29 @@ def register_routes(app):
                 # 增加金币，任务积分即为金币数量
                 user.total_gold += task.points
                 
-            # 创建任务所属用户的完成任务日志
-            task_user_log = OperationLog(
-                user_id=task.user_id,
-                user_nickname=user_nickname,
-                operation_type='任务完成',
-                operation_content=f'完成任务：{task.name}，获得{task.points}金币',
-                operation_time=datetime.now(),
-                operation_result='成功'
-            )
-            db.session.add(task_user_log)
-            
-            # 如果操作用户与任务所属用户不同（主账号操作子账号任务），添加主账号操作日志
+            # 如果有当前操作用户且与任务所属用户不同（子账号完成主账号任务）
             if current_user and current_user.id != task.user_id:
+                # 只为操作用户（子账号）创建日志：完成了用户{主账号昵称}的任务
                 operator_log = OperationLog(
                     user_id=current_user.id,
                     user_nickname=current_user_nickname,
                     operation_type='任务完成',
-                    operation_content=f'为用户{user_nickname}完成任务：{task.name}，获得{task.points}金币',
+                    operation_content=f'完成了用户{user_nickname}的任务：{task.name}，获得{task.points}金币',
                     operation_time=datetime.now(),
                     operation_result='成功'
                 )
                 db.session.add(operator_log)
+            else:
+                # 如果是任务所属用户自己完成任务，记录普通完成日志
+                task_user_log = OperationLog(
+                    user_id=task.user_id,
+                    user_nickname=user_nickname,
+                    operation_type='任务完成',
+                    operation_content=f'完成任务：{task.name}，获得{task.points}金币',
+                    operation_time=datetime.now(),
+                    operation_result='成功'
+                )
+                db.session.add(task_user_log)
                 
         elif was_completed and task.status == '未完成':
             # 任务从已完成变为未完成，需要撤销金币
@@ -346,52 +347,55 @@ def register_routes(app):
                 # 扣除金币，不允许金币变为负数
                 user.total_gold = max(0, user.total_gold - task.points)
             
-            # 创建任务所属用户的撤销任务日志
-            task_user_log = OperationLog(
-                user_id=task.user_id,
-                user_nickname=user_nickname,
-                operation_type='任务撤销',
-                operation_content=f'撤销完成任务：{task.name}，扣除{task.points}金币',
-                operation_time=datetime.now(),
-                operation_result='成功'
-            )
-            db.session.add(task_user_log)
-            
-            # 如果操作用户与任务所属用户不同（主账号操作子账号任务），添加主账号操作日志
+            # 如果有当前操作用户且与任务所属用户不同（子账号撤销主账号任务完成）
             if current_user and current_user.id != task.user_id:
+                # 只为操作用户（子账号）创建日志：撤销了用户{主账号昵称}的任务完成
                 operator_log = OperationLog(
                     user_id=current_user.id,
                     user_nickname=current_user_nickname,
                     operation_type='任务撤销',
-                    operation_content=f'为用户{user_nickname}撤销完成任务：{task.name}，扣除{task.points}金币',
+                    operation_content=f'撤销了用户{user_nickname}的任务完成：{task.name}，扣除{task.points}金币',
                     operation_time=datetime.now(),
                     operation_result='成功'
                 )
                 db.session.add(operator_log)
+            else:
+                # 如果是任务所属用户自己撤销任务，记录普通撤销日志
+                task_user_log = OperationLog(
+                    user_id=task.user_id,
+                    user_nickname=user_nickname,
+                    operation_type='任务撤销',
+                    operation_content=f'撤销完成任务：{task.name}，扣除{task.points}金币',
+                    operation_time=datetime.now(),
+                    operation_result='成功'
+                )
+                db.session.add(task_user_log)
                 
         else:
             # 其他状态变更，记录普通更新日志
-            task_user_log = OperationLog(
-                user_id=task.user_id,
-                user_nickname=user_nickname,
-                operation_type='更新任务',
-                operation_content=f'更新任务：{task.name}，状态变更为{data.get("status")}',
-                operation_time=datetime.now(),
-                operation_result='成功'
-            )
-            db.session.add(task_user_log)
-            
-            # 如果操作用户与任务所属用户不同，添加操作日志
+            # 如果有当前操作用户且与任务所属用户不同（子账号更新主账号任务）
             if current_user and current_user.id != task.user_id:
+                # 只为操作用户（子账号）创建日志：更新了用户{主账号昵称}的任务
                 operator_log = OperationLog(
                     user_id=current_user.id,
                     user_nickname=current_user_nickname,
                     operation_type='更新任务',
-                    operation_content=f'为用户{user_nickname}更新任务：{task.name}，状态变更为{data.get("status")}',
+                    operation_content=f'更新了用户{user_nickname}的任务：{task.name}，状态变更为{data.get("status")}',
                     operation_time=datetime.now(),
                     operation_result='成功'
                 )
                 db.session.add(operator_log)
+            else:
+                # 如果是任务所属用户自己更新任务，记录普通更新日志
+                task_user_log = OperationLog(
+                    user_id=task.user_id,
+                    user_nickname=user_nickname,
+                    operation_type='更新任务',
+                    operation_content=f'更新任务：{task.name}，状态变更为{data.get("status")}',
+                    operation_time=datetime.now(),
+                    operation_result='成功'
+                )
+                db.session.add(task_user_log)
         
         # 确保只提交一次，这样任务状态更新和金币变更会在同一个事务中完成
         db.session.commit()

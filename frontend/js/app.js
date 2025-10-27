@@ -2656,7 +2656,7 @@ async function handleTomatoFinish() {
                 status: '已完成', 
                 actual_time: actualMinutes, 
                 used_tomato: true 
-            });
+            }, appState.currentUser?.id);
         }
         // 刷新列表与统计
         await loadTasks();
