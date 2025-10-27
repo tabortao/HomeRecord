@@ -899,6 +899,10 @@ function switchPage(page) {
         document.getElementById('add-task-btn').style.display = 'none';
         // 初始化小心愿页面并显示添加按钮
         initWishPage();
+        // 确保权限设置正确应用
+        setTimeout(() => {
+            updateWishPagePermissions();
+        }, 100);
     } else {
         document.getElementById('add-task-btn').style.display = 'none';
         // 隐藏小心愿添加按钮
@@ -2746,7 +2750,13 @@ async function loadWishes() {
                 borderColor = 'border-indigo-200';
             }
             
-            wishElement.className = `bg-white rounded-2xl shadow-lg border ${borderColor} p-4 transform hover:scale-105 transition-all duration-300 mb-4 overflow-hidden relative`;
+            // 检查用户权限
+            const isMainAccount = !appState.currentUser.parent_id;
+            const permissions = appState.currentUser.permissions || {};
+            const viewOnly = !isMainAccount && permissions.view_only !== false;
+            
+            // 设置卡片样式
+            wishElement.className = `bg-white rounded-2xl shadow-lg border ${borderColor} p-4 ${viewOnly ? '' : 'transform hover:scale-105 transition-all duration-300'} mb-4 overflow-hidden relative`;
             wishElement.innerHTML = `
                 <div class="absolute -right-4 -top-4 w-16 h-16 ${bgColor} rounded-full opacity-30"></div>
                 <div class="flex justify-between items-start relative">
@@ -2774,44 +2784,62 @@ async function loadWishes() {
                     </p>
                 <div class="flex justify-between items-center mt-4">
                     <span class="text-xs text-gray-400">已兑换 ${wish.exchange_count || 0} 次</span>
-                    <button class="wish-exchange bg-yellow-500 text-white py-1 px-3 rounded-lg hover:shadow-sm transition-all duration-200 text-xs font-medium">
+                    <button class="wish-exchange ${viewOnly ? 'bg-gray-300 text-gray-600 py-1 px-3 rounded-lg cursor-not-allowed text-xs font-medium' : 'bg-yellow-500 text-white py-1 px-3 rounded-lg hover:shadow-sm transition-all duration-200 text-xs font-medium'}">
                         <i class="fa fa-gift mr-1"></i> 兑换
                     </button>
                 </div>
             `;
             
-            // 兑换按钮事件
-            wishElement.querySelector('.wish-exchange').addEventListener('click', () => {
-                handleExchangeWish(wish.id, wish.name, wish.cost);
-            });
-            
-            // 编辑按钮事件
-            const editBtn = wishElement.querySelector('.wish-edit');
-            if (editBtn) {
-                editBtn.addEventListener('click', (e) => {
-                    // 阻止事件冒泡，防止触发心愿卡片的点击事件
-                    e.stopPropagation();
-                    showEditWishModal(wish);
+            // 只有非只读权限时才绑定兑换事件
+            if (!viewOnly) {
+                wishElement.querySelector('.wish-exchange').addEventListener('click', () => {
+                    handleExchangeWish(wish.id, wish.name, wish.cost);
                 });
+            } else {
+                // 只读权限时禁用兑换按钮
+                wishElement.querySelector('.wish-exchange').disabled = true;
             }
             
-            // 添加心愿卡片点击事件，显示编辑按钮
-            wishElement.addEventListener('click', () => {
-                // 先隐藏所有其他编辑按钮
-                document.querySelectorAll('.wish-edit').forEach(btn => {
-                    btn.classList.add('hidden');
+            // 只有非只读权限时才处理编辑功能
+            if (!viewOnly) {
+                const editBtn = wishElement.querySelector('.wish-edit');
+                if (editBtn) {
+                    editBtn.addEventListener('click', (e) => {
+                        // 阻止事件冒泡，防止触发心愿卡片的点击事件
+                        e.stopPropagation();
+                        showEditWishModal(wish);
+                    });
+                }
+                
+                // 添加心愿卡片点击事件，显示编辑按钮
+                wishElement.addEventListener('click', () => {
+                    // 先隐藏所有其他编辑按钮
+                    document.querySelectorAll('.wish-edit').forEach(btn => {
+                        btn.classList.add('hidden');
+                    });
+                    // 显示当前心愿的编辑按钮
+                    editBtn.classList.remove('hidden');
                 });
-                // 显示当前心愿的编辑按钮
-                editBtn.classList.remove('hidden');
-            });
-            
-            // 为兑换按钮添加阻止冒泡，避免点击兑换时也触发显示编辑按钮
-            wishElement.querySelector('.wish-exchange').addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
+                
+                // 为兑换按钮添加阻止冒泡，避免点击兑换时也触发显示编辑按钮
+                wishElement.querySelector('.wish-exchange').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+            } else {
+                // 只读权限时隐藏编辑按钮
+                const editBtn = wishElement.querySelector('.wish-edit');
+                if (editBtn) {
+                    editBtn.classList.add('hidden');
+                }
+            }
             
             wishList.appendChild(wishElement);
         });
+        
+        // 延迟更新页面权限，确保所有元素都已渲染完成
+        setTimeout(() => {
+            updateWishPagePermissions();
+        }, 50);
     } catch (error) {
         console.error('加载心愿列表失败:', error);
         wishList.innerHTML = '<div class="col-span-2 text-center text-gray-500 py-10">加载失败，请稍后再试</div>';
@@ -3007,10 +3035,17 @@ async function loadExchangeHistory(page) {
                     const formattedTime = formatDateTime(record.operation_time);
                     
                     // 创建记录内容
+                    // 添加用户标识，如果是其他用户的记录，显示用户名
+                    let userInfo = '';
+                    if (record.user_id && record.user_id !== appState.currentUser.id) {
+                        // 如果有用户名信息则显示，否则显示用户ID
+                        userInfo = record.username ? `[${record.username}] ` : `[用户${record.user_id}] `;
+                    }
+                    
                     historyItem.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div>
-                                <p class="text-gray-600">${formattedTime}：使用${record.cost}金币可兑换了${record.exchange_info}</p>
+                                <p class="text-gray-600">${formattedTime}：${userInfo}使用${record.cost}金币兑换了${record.exchange_info}</p>
                             </div>
                             <span class="text-green-500">${record.operation_result}</span>
                         </div>
@@ -3199,6 +3234,9 @@ async function updateUserInfo() {
                 });
             }
         }
+        
+        // 更新小心愿页面权限
+        updateWishPagePermissions();
         
     } catch (error) {
         console.error('更新用户信息失败:', error);
@@ -3728,6 +3766,49 @@ function initWishPage() {
             // 确保按钮可见
             addWishBtn.style.display = 'inline-flex';
         }
+    }
+}
+
+// 更新小心愿页面权限控制
+function updateWishPagePermissions() {
+    const user = appState.currentUser;
+    if (!user) return;
+    
+    // 判断是否为主账号（没有parent_id的用户为主账号）
+    const isMainAccount = !user.parent_id;
+    // 子账号根据权限控制功能按钮
+    const permissions = user.permissions || {};
+    const viewOnly = !isMainAccount && permissions.view_only !== false;
+    
+    // 控制创建心愿按钮 - 确保按钮存在且样式应用正确
+    const addWishBtn = document.getElementById('add-wish-btn');
+    if (addWishBtn) {
+        // 先重置所有可能的样式类
+        addWishBtn.classList.remove('bg-yellow-500', 'hover:shadow-md', 'hover:-translate-y-0.5', 'cursor-pointer',
+                                  'bg-gray-300', 'text-gray-600', 'cursor-not-allowed', 'opacity-70',
+                                  'hidden', 'opacity-50');
+        
+        if (viewOnly) {
+            // 仅查看权限时按钮置灰禁用但不隐藏
+            addWishBtn.disabled = true;
+            addWishBtn.classList.add('bg-gray-300', 'text-gray-600', 'cursor-not-allowed', 'opacity-70');
+        } else {
+            // 有编辑权限时启用按钮
+            addWishBtn.disabled = false;
+            addWishBtn.classList.add('bg-yellow-500', 'text-white', 'py-1.5', 'px-4', 'rounded-full', 
+                                   'shadow-sm', 'transform', 'transition-all', 'duration-300', 
+                                   'hover:shadow-md', 'hover:-translate-y-0.5', 'text-sm', 'cursor-pointer');
+        }
+        // 确保按钮可见
+        addWishBtn.style.display = 'inline-flex';
+    }
+    
+    // 确保领取记录按钮始终可用
+    const exchangeHistoryBtn = document.getElementById('exchange-history');
+    if (exchangeHistoryBtn) {
+        exchangeHistoryBtn.disabled = false;
+        exchangeHistoryBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        exchangeHistoryBtn.classList.add('cursor-pointer');
     }
 }
 

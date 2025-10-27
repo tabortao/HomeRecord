@@ -993,17 +993,37 @@ def register_routes(app):
     
     @app.route('/api/exchange-history', methods=['GET'])
     def get_exchange_history():
-        user_id = request.args.get('user_id')
+        user_id = request.args.get('user_id', type=int)
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
         
         if not user_id:
             return jsonify({'success': False, 'message': '用户ID不能为空'})
         
+        # 获取用户信息，用于确定主账号和子账号关系
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': '用户不存在'})
+        
+        # 构建查询条件，支持主账号和子账号之间的双向可见性
+        # 获取用户及其关联账号（主账号和子账号）的所有兑换记录
+        related_user_ids = [user_id]
+        
+        # 如果是主账号，包含所有子账号的ID
+        if user.parent_id is None:
+            subaccounts = User.query.filter_by(parent_id=user_id).all()
+            related_user_ids.extend([sub.id for sub in subaccounts])
+        # 如果是子账号，包含主账号的ID
+        elif user.parent_id:
+            related_user_ids.append(user.parent_id)
+            # 同时包含其他兄弟子账号的ID
+            siblings = User.query.filter_by(parent_id=user.parent_id).filter(User.id != user_id).all()
+            related_user_ids.extend([sibling.id for sibling in siblings])
+        
         # 查询兑换心愿的操作日志，按时间倒序排列
-        logs = OperationLog.query.filter_by(
-            user_id=user_id,
-            operation_type='兑换心愿'
+        logs = OperationLog.query.filter(
+            OperationLog.user_id.in_(related_user_ids),
+            OperationLog.operation_type=='兑换心愿'
         ).order_by(OperationLog.operation_time.desc()).paginate(
             page=page,
             per_page=per_page,
@@ -1012,6 +1032,10 @@ def register_routes(app):
         
         result = []
         for log in logs.items:
+            # 获取用户信息
+            log_user = User.query.get(log.user_id)
+            username = log_user.username if log_user else f'用户{log.user_id}'
+            
             # 从操作内容中提取心愿名称、消耗金币和兑换数量信息
             content = log.operation_content
             
@@ -1029,6 +1053,8 @@ def register_routes(app):
             
             result.append({
                 'id': log.id,
+                'user_id': log.user_id,
+                'username': username,
                 'wish_name': wish_name,
                 'cost': cost,
                 'exchange_info': exchange_info,
