@@ -620,8 +620,19 @@
                 
                 <!-- 弹窗内容 - 可滚动区域 -->
                 <div class="p-6 flex flex-col flex-grow overflow-y-auto" style="max-height: calc(90vh - 120px);">
+                    <!-- 子账号列表 -->
+                    <div>
+                        <h4 class="text-lg font-semibold mb-4">子账号列表</h4>
+                        <div id="subaccount-list" class="space-y-3">
+                            <!-- 子账号列表将通过JS动态生成 -->
+                            <div class="text-center text-gray-500 py-6">
+                                暂无子账号
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- 创建子账号表单 -->
-                    <div class="bg-gray-50 p-5 rounded-lg mb-6">
+                    <div class="bg-gray-50 p-5 rounded-lg mt-6">
                         <h4 class="text-lg font-semibold mb-4">创建子账号</h4>
                         
                         <!-- 头像选择 -->
@@ -685,17 +696,6 @@
                         <button id="create-subaccount-btn" class="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
                             创建子账号
                         </button>
-                    </div>
-                    
-                    <!-- 子账号列表 -->
-                    <div>
-                        <h4 class="text-lg font-semibold mb-4">子账号列表</h4>
-                        <div id="subaccount-list" class="space-y-3">
-                            <!-- 子账号列表将通过JS动态生成 -->
-                            <div class="text-center text-gray-500 py-6">
-                                暂无子账号
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1201,6 +1201,65 @@
     <script type="module" src="js/app.js"></script>
     <script type="module" src="js/taskTabs.js"></script>
     <script type="module" src="js/subaccountManager.js"></script>
+
+    <!-- 修改子账号模态窗口 -->
+    <div id="edit-subaccount-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden overflow-y-auto">
+        <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col mx-4">
+            <!-- 弹窗头部 -->
+            <div class="bg-green-600 text-white p-5 flex justify-between items-center">
+                <h3 class="text-xl font-bold">修改子账号</h3>
+                <button id="close-edit-subaccount-modal" class="text-white hover:text-green-100 p-1 rounded-full hover:bg-green-700 transition-colors">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- 弹窗内容 -->
+            <div class="p-6 overflow-y-auto" style="max-height: calc(90vh - 80px);">
+                <input type="hidden" id="edit-subaccount-id">
+                
+                <!-- 昵称 -->
+                <div class="mb-4">
+                    <label for="edit-subaccount-nickname" class="block text-gray-700 font-medium mb-2">昵称</label>
+                    <input type="text" id="edit-subaccount-nickname" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                
+                <!-- 权限设置 -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">权限设置</label>
+                    <div class="flex space-x-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="edit-subaccount-permission" value="view" class="w-5 h-5 text-green-600 rounded border-gray-300 focus:ring-green-500">
+                            <span class="ml-2 text-gray-700">仅查看</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="edit-subaccount-permission" value="edit" class="w-5 h-5 text-green-600 rounded border-gray-300 focus:ring-green-500">
+                            <span class="ml-2 text-gray-700">可编辑</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 头像 -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-medium mb-2">头像</label>
+                    <div class="flex items-center">
+                        <div id="edit-subaccount-avatar-preview" class="w-16 h-16 rounded-full bg-gray-200 overflow-hidden mr-4 flex items-center justify-center">
+                            <i class="fa fa-user text-gray-400 text-2xl"></i>
+                        </div>
+                        <div>
+                            <button type="button" id="edit-subaccount-select-avatar" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors">选择头像</button>
+                            <input type="file" id="edit-subaccount-avatar-input" accept="image/*" class="hidden">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 按钮 -->
+                <div class="flex justify-end gap-3 mt-6">
+                    <button id="cancel-edit-subaccount" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">取消</button>
+                    <button id="save-edit-subaccount" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">保存修改</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 图片查看器弹窗 -->
     <div id="image-viewer-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex items-center justify-center">

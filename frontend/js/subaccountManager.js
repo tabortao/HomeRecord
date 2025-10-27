@@ -4,7 +4,10 @@ import { domUtils } from './utils.js';
 class SubaccountManager {
     constructor() {
         this.subaccountModal = document.getElementById('subaccount-management-modal');
+        this.editSubaccountModal = document.getElementById('edit-subaccount-modal');
         this.currentAvatar = null;
+        this.editCurrentAvatar = null;
+        this.currentEditingSubaccountId = null;
         this.bindEvents();
     }
 
@@ -20,6 +23,9 @@ class SubaccountManager {
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.hideModal());
         }
+        
+        // 绑定修改子账号模态窗口相关事件
+        this.bindEditSubaccountEvents();
         
         // 绑定窗口大小变化事件
         this.bindResizeEvent();
@@ -324,9 +330,14 @@ class SubaccountManager {
                                     <div class="text-xs text-green-600 mt-1">权限: ${subaccount.permissions === 'view' ? '仅查看' : '可编辑'}</div>
                                 </div>
                             </div>
-                            <button class="delete-subaccount-btn px-3 py-1 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors" data-id="${subaccount.id}">
-                                删除
-                            </button>
+                            <div class="flex space-x-2">
+                                <button class="edit-subaccount-btn px-3 py-1 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors" data-id="${subaccount.id}">
+                                    修改
+                                </button>
+                                <button class="delete-subaccount-btn px-3 py-1 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors" data-id="${subaccount.id}">
+                                    删除
+                                </button>
+                            </div>
                         </div>
                     `;
                 });
@@ -348,6 +359,15 @@ class SubaccountManager {
     }
 
     bindDeleteEvents() {
+        // 绑定修改按钮事件
+        document.querySelectorAll('.edit-subaccount-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const subaccountId = e.currentTarget.getAttribute('data-id');
+                this.openEditSubaccountModal(subaccountId);
+            });
+        });
+        
+        // 绑定删除按钮事件
         document.querySelectorAll('.delete-subaccount-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const subaccountId = e.currentTarget.getAttribute('data-id');
@@ -379,6 +399,166 @@ class SubaccountManager {
                 // 用户取消删除，无需操作
             }
         );
+    }
+    
+    // 绑定修改子账号模态窗口相关事件
+    bindEditSubaccountEvents() {
+        // 绑定关闭按钮点击事件
+        const closeBtn = document.getElementById('close-edit-subaccount-modal');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.hideEditModal());
+        }
+        
+        // 绑定取消按钮点击事件
+        const cancelBtn = document.getElementById('cancel-edit-subaccount');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.hideEditModal());
+        }
+        
+        // 绑定保存按钮点击事件
+        const saveBtn = document.getElementById('save-edit-subaccount');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveSubaccountChanges());
+        }
+        
+        // 绑定头像选择事件
+        const selectAvatarBtn = document.getElementById('edit-subaccount-select-avatar');
+        const avatarInput = document.getElementById('edit-subaccount-avatar-input');
+        if (selectAvatarBtn && avatarInput) {
+            selectAvatarBtn.addEventListener('click', () => avatarInput.click());
+            avatarInput.addEventListener('change', (e) => this.handleEditAvatarSelection(e));
+        }
+        
+        // 点击模态窗口外部关闭
+        if (this.editSubaccountModal) {
+            this.editSubaccountModal.addEventListener('click', (e) => {
+                if (e.target === this.editSubaccountModal) {
+                    this.hideEditModal();
+                }
+            });
+        }
+    }
+    
+    // 打开修改子账号模态窗口
+    openEditSubaccountModal(subaccountId) {
+        this.currentEditingSubaccountId = subaccountId;
+        // 显示模态窗口
+        this.editSubaccountModal.classList.remove('hidden');
+        
+        // 加载子账号信息
+        this.loadSubaccountInfo(subaccountId);
+    }
+    
+    // 隐藏修改子账号模态窗口
+    hideEditModal() {
+        // 隐藏模态窗口
+        this.editSubaccountModal.classList.add('hidden');
+        // 重置当前编辑的子账号ID和头像
+        this.currentEditingSubaccountId = null;
+        this.editCurrentAvatar = null;
+    }
+    
+    // 处理修改子账号头像选择
+    handleEditAvatarSelection(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = document.getElementById('edit-subaccount-avatar-preview');
+                if (preview) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="头像预览" class="w-full h-full object-cover">`;
+                }
+                this.editCurrentAvatar = file;
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+    
+    // 加载子账号信息
+    async loadSubaccountInfo(subaccountId) {
+        try {
+            // 获取子账号详细信息
+            const result = await api.userAPI.getUserInfo(subaccountId);
+            if (result.success) {
+                const userInfo = result.user;
+                
+                // 填充表单数据
+                document.getElementById('edit-subaccount-id').value = subaccountId;
+                document.getElementById('edit-subaccount-nickname').value = userInfo.nickname || '';
+                
+                // 设置权限单选按钮
+                document.querySelector(`input[name="edit-subaccount-permission"][value="${userInfo.permissions || 'view'}"]`).checked = true;
+                
+                // 设置头像预览
+                const avatarUrl = userInfo.avatar ? 
+                    `http://localhost:5000/api/avatars/${userInfo.avatar}` : 
+                    'static/images/avatars/default.svg';
+                const avatarPreview = document.getElementById('edit-subaccount-avatar-preview');
+                if (avatarPreview) {
+                    avatarPreview.innerHTML = `<img src="${avatarUrl}" alt="${userInfo.nickname || userInfo.username}" class="w-full h-full object-cover" onError="this.onerror=null;this.src='static/images/avatars/default.svg';">`;
+                }
+            }
+        } catch (error) {
+            console.error('加载子账号信息失败:', error);
+            domUtils.showToast('加载子账号信息失败', 'error');
+        }
+    }
+    
+    // 保存子账号修改
+    async saveSubaccountChanges() {
+        try {
+            const subaccountId = this.currentEditingSubaccountId;
+            const nickname = document.getElementById('edit-subaccount-nickname').value.trim();
+            const permission = document.querySelector('input[name="edit-subaccount-permission"]:checked').value;
+            
+            // 验证必填字段
+            if (!nickname) {
+                domUtils.showToast('昵称不能为空', 'error');
+                return;
+            }
+            
+            // 构建更新数据
+            const updateData = {
+                nickname,
+                permissions: permission
+            };
+            
+            // 更新子账号基本信息
+            const updateResult = await api.userAPI.updateUserInfo(subaccountId, updateData);
+            
+            if (!updateResult.success) {
+                domUtils.showToast('更新失败: ' + updateResult.message, 'error');
+                return;
+            }
+            
+            // 如果有新的头像文件，上传头像
+            if (this.editCurrentAvatar) {
+                try {
+                    // 上传头像
+                    const avatarResult = await api.userAPI.uploadAvatar(subaccountId, this.editCurrentAvatar);
+                    
+                    // 更新头像路径
+                    await api.userAPI.updateUserInfo(subaccountId, {
+                        avatar: avatarResult.filename
+                    });
+                } catch (avatarError) {
+                    console.error('上传头像失败:', avatarError);
+                    domUtils.showToast('基本信息更新成功，但头像上传失败', 'warning');
+                }
+            }
+            
+            // 显示成功提示
+            domUtils.showToast('子账号信息更新成功', 'success');
+            
+            // 关闭模态窗口
+            this.hideEditModal();
+            
+            // 重新加载子账号列表
+            this.loadSubaccounts();
+        } catch (error) {
+            console.error('保存子账号修改失败:', error);
+            domUtils.showToast('保存修改失败，请重试', 'error');
+        }
     }
 
     resetForm() {
