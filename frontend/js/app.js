@@ -4545,8 +4545,10 @@ function hideHonorWall() {
 // 渲染荣誉墙内容
 async function renderHonorWall() {
     try {
-        const userHonors = await api.honorAPI.getUserHonors(appState.currentUser.id);
-        const allHonors = await api.honorAPI.getAllHonors(appState.currentUser.id);
+        // 检查是否为子账号，如果是则使用主账号ID
+        const userId = appState.currentUser.parent_id || appState.currentUser.id;
+        const userHonors = await api.honorAPI.getUserHonors(userId);
+        const allHonors = await api.honorAPI.getAllHonors(userId);
         
         const honorWallContent = document.getElementById('honor-wall-content');
         honorWallContent.innerHTML = '';
@@ -4603,16 +4605,16 @@ function renderSingleHonor(honor, userHonor, container) {
     
     const honorCard = document.createElement('div');
     // 优化卡片样式，使其更紧凑地适应移动设备的多列布局
-    honorCard.className = `honor-card ${isObtained ? cardBg : 'bg-white'} rounded-lg border ${borderColor} p-2 transform transition-all duration-300 hover:scale-105 cursor-pointer w-full min-h-[150px] flex flex-col`;
+    honorCard.className = `honor-card ${isObtained ? cardBg : 'bg-white'} rounded-lg border ${borderColor} p-2 transform transition-all duration-300 hover:scale-105 cursor-pointer w-full min-h-[150px] flex flex-col relative`;
     honorCard.dataset.obtained = isObtained;
     honorCard.innerHTML = `
+        ${isObtained ? '<div class="absolute top-2 right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm border border-yellow-200 z-10">' +
+            `<span class="text-[10px] font-bold ${iconColor}">${userHonor.obtained_count}</span></div>` : ''}
         <div class="text-center flex flex-col items-center justify-between h-full">
             <!-- 减小图标容器大小 -->
             <div class="w-14 h-14 mx-auto ${isObtained ? bgColor : 'bg-gray-100'} rounded-full flex items-center justify-center mb-2 shadow-sm relative overflow-hidden">
                 ${honor.icon ? `<img src="/static/images/honors/${honor.icon}" alt="${honor.name}" class="w-8 h-8 object-contain ${isObtained ? '' : 'opacity-50'}">` : `<i class="fa fa-trophy ${isObtained ? iconColor : 'text-gray-400'} text-xl"></i>`}
                 <div class="absolute inset-0 bg-white opacity-20 rounded-full"></div>
-                ${isObtained ? '<div class="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm border border-yellow-200">' +
-                    `<span class="text-[10px] font-bold ${iconColor}">${userHonor.obtained_count}</span></div>` : ''}
             </div>
             <!-- 调整字体大小和间距 -->
             <h4 class="font-bold text-gray-800 mb-1 text-[11px]">${honor.name}</h4>
