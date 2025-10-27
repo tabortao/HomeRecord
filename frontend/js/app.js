@@ -1395,9 +1395,9 @@ async function toggleTaskStatus(taskId, currentStatus) {
                     status: newStatus,
                     actual_time: task.planned_time, // 直接使用计划时间
                     used_tomato: false // 标记未使用番茄钟
-                });
+                }, appState.currentUser.id); // 传递当前用户ID
             } else {
-                await api.taskAPI.updateTask(taskId, { status: newStatus });
+                await api.taskAPI.updateTask(taskId, { status: newStatus }, appState.currentUser.id); // 传递当前用户ID
             }
         } else {
             // 从 已完成 -> 未完成：金币扣除逻辑已在后端update_task中处理
@@ -1416,7 +1416,7 @@ async function toggleTaskStatus(taskId, currentStatus) {
                 }
             }
             // 直接更新任务状态，后端会自动处理金币扣除
-            await api.taskAPI.updateTask(taskId, { status: newStatus });
+            await api.taskAPI.updateTask(taskId, { status: newStatus }, appState.currentUser.id); // 传递当前用户ID
         }
         
         // 直接更新DOM中任务卡片的状态，而不是重新加载整个任务列表

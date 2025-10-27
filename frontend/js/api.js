@@ -160,8 +160,14 @@ const taskAPI = {
     },
 
     // 更新任务
-    updateTask: async (taskId, taskData) => {
-        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+    updateTask: async (taskId, taskData, currentUserId) => {
+        // 构建URL，添加current_user_id查询参数
+        let url = `${API_BASE_URL}/tasks/${taskId}`;
+        if (currentUserId) {
+            url += `?current_user_id=${currentUserId}`;
+        }
+        
+        const response = await fetch(url, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
