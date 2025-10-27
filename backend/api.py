@@ -94,7 +94,7 @@ def register_routes(app):
         # 记录操作日志
         log = OperationLog(
             user_id=user_id,
-            operator_name=user.username,
+            user_nickname=user.nickname or user.username,  # 使用昵称，如果没有则使用用户名
             operation_type='更新个人信息',
             operation_content='更新用户个人信息',
             operation_time=datetime.now(),
@@ -138,6 +138,7 @@ def register_routes(app):
         # 记录操作日志
         log = OperationLog(
             user_id=user_id,
+            user_nickname=user.nickname or user.username,  # 使用昵称，如果没有则使用用户名
             operation_type='更新金币数量',
             operation_content=f'金币从{old_gold}修改为{new_gold}，原因：{reason}',
             operation_time=datetime.now(),
@@ -184,6 +185,7 @@ def register_routes(app):
             # 记录操作日志
             log = OperationLog(
                 user_id=user_id,
+                user_nickname=user.nickname or user.username,  # 使用昵称，如果没有则使用用户名
                 operation_type='上传头像',
                 operation_content=f'上传新头像：{filename}',
                 operation_time=datetime.now(),
@@ -310,7 +312,7 @@ def register_routes(app):
             # 记录完成任务的操作日志
             log = OperationLog(
                 user_id=task.user_id,
-                operator_name=operator_name,
+                user_nickname=user.nickname or user.username if user else '系统',  # 使用用户昵称或用户名
                 operation_type='任务完成',
                 operation_content=f'完成任务：{task.name}，获得{task.points}金币',
                 operation_time=datetime.now(),
@@ -326,7 +328,7 @@ def register_routes(app):
             # 记录撤销任务的操作日志
             log = OperationLog(
                 user_id=task.user_id,
-                operator_name=operator_name,
+                user_nickname=user.nickname or user.username if user else '系统',  # 使用用户昵称或用户名
                 operation_type='任务撤销',
                 operation_content=f'撤销完成任务：{task.name}，扣除{task.points}金币',
                 operation_time=datetime.now(),
@@ -336,7 +338,7 @@ def register_routes(app):
             # 其他状态变更，记录普通更新日志
             log = OperationLog(
                 user_id=task.user_id,
-                operator_name=operator_name,
+                user_nickname=user.nickname or user.username if user else '系统',  # 使用用户昵称或用户名
                 operation_type='更新任务',
                 operation_content=f'更新任务：{task.name}，状态变更为{data.get("status")}',
                 operation_time=datetime.now(),
@@ -461,7 +463,7 @@ def register_routes(app):
                 # 记录金币扣除日志
                 gold_log = OperationLog(
                     user_id=user_id,
-                    operator_name=operator_name,
+                    user_nickname=current_user.nickname or current_user.username if current_user else '系统',  # 使用昵称或用户名
                     operation_type='修改金币',
                     operation_content=f'删除已完成任务：{task_name}，扣除{task_points}金币',
                     operation_time=datetime.now(),
@@ -530,12 +532,11 @@ def register_routes(app):
         
         # 获取当前操作用户信息
         current_user = User.query.get(task.user_id)
-        operator_name = current_user.username if current_user else '未知用户'
         
         # 记录操作日志
         log = OperationLog(
             user_id=task.user_id,
-            operator_name=operator_name,
+            user_nickname=current_user.nickname or current_user.username if current_user else '未知用户',  # 使用昵称或用户名
             operation_type='上传任务图片',
             operation_content=f'为任务{task.name}上传图片',
             operation_time=datetime.now(),
@@ -656,7 +657,7 @@ def register_routes(app):
                 # 记录金币扣除日志
                 gold_log = OperationLog(
                     user_id=user_id,
-                    operator_name=operator_name,
+                    user_nickname=current_user.nickname or current_user.username if current_user else '未知用户',  # 使用昵称或用户名
                     operation_type='修改金币',
                     operation_content=f'删除任务系列中的已完成任务：{task.name}，扣除{task.points}金币',
                     operation_time=datetime.now(),
@@ -678,7 +679,7 @@ def register_routes(app):
         # 记录操作日志
         log = OperationLog(
             user_id=user_id,
-            operator_name=operator_name,
+            user_nickname=current_user.nickname or current_user.username if current_user else '未知用户',  # 使用昵称或用户名
             operation_type='删除任务系列',
             operation_content=f'删除任务系列：{series_id}',
             operation_time=datetime.now(),
@@ -925,11 +926,10 @@ def register_routes(app):
             
         # 获取当前操作用户信息
         current_user = User.query.get(user_id)
-        operator_name = current_user.username if current_user else '未知用户'
         
         log = OperationLog(
             user_id=user_id,
-            operator_name=operator_name,
+            user_nickname=current_user.nickname or current_user.username if current_user else '未知用户',  # 使用昵称或用户名
             operation_type='兑换心愿',
             operation_content=f'兑换心愿：{wish.name}，消耗{total_cost}金币，兑换{unit_info}',
             operation_time=datetime.now(),
@@ -1012,8 +1012,11 @@ def register_routes(app):
         db.session.commit()
         
         # 记录操作日志
+        # 获取用户信息以设置昵称
+        current_user = User.query.get(user_id)
         log = OperationLog(
             user_id=user_id,
+            user_nickname=current_user.nickname or current_user.username if current_user else '系统',  # 使用昵称或用户名
             operation_type='修改金币',
             operation_content=f'修改金币：{amount}，原因：{reason}',
             operation_time=datetime.now(),
@@ -1029,12 +1032,35 @@ def register_routes(app):
     # 操作记录路由
     @app.route('/api/logs', methods=['GET'])
     def get_operation_logs():
-        user_id = request.args.get('user_id')
+        user_id = request.args.get('user_id', type=int)
         start_time_str = request.args.get('start_time')
         end_time_str = request.args.get('end_time')
         
-        # 构建查询条件
-        query = OperationLog.query.filter(OperationLog.user_id == user_id)
+        if not user_id:
+            return jsonify({'success': False, 'message': '缺少user_id参数'})
+        
+        # 获取用户信息，用于确定主账号和子账号关系
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': '用户不存在'})
+        
+        # 构建查询条件，支持主账号和子账号之间的双向可见性
+        # 获取用户及其关联账号（主账号和子账号）的所有操作记录
+        related_user_ids = [user_id]
+        
+        # 如果是主账号，包含所有子账号的ID
+        if user.parent_id is None:
+            subaccounts = User.query.filter_by(parent_id=user_id).all()
+            related_user_ids.extend([sub.id for sub in subaccounts])
+        # 如果是子账号，包含主账号的ID
+        elif user.parent_id:
+            related_user_ids.append(user.parent_id)
+            # 同时包含其他兄弟子账号的ID
+            siblings = User.query.filter_by(parent_id=user.parent_id).filter(User.id != user_id).all()
+            related_user_ids.extend([sibling.id for sibling in siblings])
+        
+        # 构建查询条件，查询所有相关用户的操作记录
+        query = OperationLog.query.filter(OperationLog.user_id.in_(related_user_ids))
         
         # 添加时间范围过滤
         if start_time_str:
@@ -1075,11 +1101,12 @@ def register_routes(app):
         for log in logs:
             result.append({
                 'id': log.id,
-                'operator_name': log.operator_name,
+                'user_nickname': log.user_nickname,  # 使用用户昵称代替操作人
                 'operation_type': log.operation_type,
                 'operation_content': log.operation_content,
                 'operation_time': log.operation_time.strftime('%Y-%m-%d %H:%M:%S'),
-                'operation_result': log.operation_result
+                'operation_result': log.operation_result,
+                'user_id': log.user_id  # 添加用户ID以便前端识别操作来源
             })
         
         return jsonify({
@@ -1693,8 +1720,11 @@ def register_routes(app):
             db.session.commit()
             
             # 记录操作日志
+            # 获取主账号信息以设置昵称
+            parent_user = User.query.get(parent_id)
             log = OperationLog(
                 user_id=parent_id,
+                user_nickname=parent_user.nickname or parent_user.username if parent_user else '未知用户',  # 使用昵称或用户名
                 operation_type='创建子账号',
                 operation_content=f'创建子账号：{data["username"]}，权限：{permission}',
                 operation_time=datetime.now(),
@@ -1778,6 +1808,7 @@ def register_routes(app):
             # 记录操作日志
             log = OperationLog(
                 user_id=parent_id,
+                user_nickname=parent_user.nickname or parent_user.username if parent_user else '未知用户',  # 使用昵称或用户名
                 operation_type='删除子账号',
                 operation_content=f'删除子账号：{username}',
                 operation_time=datetime.now(),

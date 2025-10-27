@@ -4279,7 +4279,7 @@ async function loadOperationLogs(page) {
                             <p class="text-gray-600 mt-2 text-sm leading-relaxed pl-6">${log.operation_content}</p>
                             <div class="flex justify-between items-center mt-2">
                                 <p class="text-gray-500 text-xs flex items-center">
-                                    <i class="fa fa-user-circle-o mr-1"></i>${log.operator_name || '未知用户'}
+                                    <i class="fa fa-user-circle-o mr-1"></i>${log.user_nickname || '未知用户'}
                                 </p>
                                 <p class="text-gray-500 text-xs flex items-center">
                                     <i class="fa fa-clock-o mr-1"></i>${formattedTime}

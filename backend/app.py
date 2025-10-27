@@ -406,9 +406,13 @@ def add_task():
     # 添加任务到会话
     db.session.add(task)
     
+    # 获取用户信息以设置昵称
+    user = User.query.get(user_id)
+    
     # 记录操作日志
     log = OperationLog(
         user_id=user_id,
+        user_nickname=user.nickname or user.username if user else '未知用户',  # 使用用户昵称，优先昵称，其次用户名
         operation_type='添加任务',
         operation_content=f'添加任务：{task.name}',
         operation_time=datetime.now(),
