@@ -84,6 +84,7 @@ class Wish(db.Model):
 class OperationLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    operator_name = db.Column(db.String(50), nullable=False)  # 操作人用户名
     operation_type = db.Column(db.String(50), nullable=False)
     operation_content = db.Column(db.Text, nullable=False)
     operation_time = db.Column(db.DateTime, default=datetime.now)

@@ -1400,11 +1400,11 @@ async function toggleTaskStatus(taskId, currentStatus) {
                 await api.taskAPI.updateTask(taskId, { status: newStatus });
             }
         } else {
-            // 从 已完成 -> 未完成：需要撤销已发放的金币（如果有）
+            // 从 已完成 -> 未完成：金币扣除逻辑已在后端update_task中处理
+            // 先在UI上显示临时扣除，提升响应感
             if (currentStatus === '已完成' && task) {
                 const deduct = -(task.points || 0);
                 if (deduct !== 0) {
-                    // 在UI上先显示临时扣除，提升响应感
                     try {
                         const dayEl = document.getElementById('day-gold');
                         const totalEl = document.getElementById('total-gold');
@@ -1413,17 +1413,9 @@ async function toggleTaskStatus(taskId, currentStatus) {
                     } catch (e) {
                         // ignore formatting errors
                     }
-
-                    // 调用后端接口撤销金币
-                    try {
-                        await api.goldAPI.updateGold(appState.currentUser.id, deduct, 'revoke_task');
-                    } catch (err) {
-                        console.error('撤销金币请求失败', err);
-                        // 失败则继续，但后续的 loadStatistics/updateUserInfo 会修正显示
-                    }
                 }
             }
-            // 最后更新任务状态
+            // 直接更新任务状态，后端会自动处理金币扣除
             await api.taskAPI.updateTask(taskId, { status: newStatus });
         }
         
@@ -3171,25 +3163,41 @@ async function updateUserInfo() {
         if(document.getElementById('total-gold-stats')) document.getElementById('total-gold-stats').textContent = goldValue;
         if(document.getElementById('wish-gold')) document.getElementById('wish-gold').textContent = goldValue;
         
-        // 根据子账号权限控制功能按钮
-        const permissions = user.permissions || {};
-        const viewOnly = permissions.view_only !== false;
+        // 判断是否为主账号（没有parent_id的用户为主账号）
+        const isMainAccount = !user.parent_id;
         
-        // 控制添加任务按钮
-        if(viewOnly) {
-            // 仅查看权限时禁用添加任务按钮
-            const addTaskButtons = document.querySelectorAll('#add-task-btn, #task-page-add-btn');
-            addTaskButtons.forEach(btn => {
-                btn.disabled = true;
-                btn.classList.add('opacity-50', 'cursor-not-allowed');
-            });
-        } else {
-            // 可编辑权限时启用添加任务按钮
+        // 主账号总是有完整权限
+        if(isMainAccount) {
+            // 主账号启用并显示添加任务按钮
             const addTaskButtons = document.querySelectorAll('#add-task-btn, #task-page-add-btn');
             addTaskButtons.forEach(btn => {
                 btn.disabled = false;
-                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'hidden');
+                btn.classList.add('flex');
             });
+        } else {
+            // 子账号根据权限控制功能按钮
+            const permissions = user.permissions || {};
+            const viewOnly = permissions.view_only !== false;
+            
+            // 控制添加任务按钮
+            if(viewOnly) {
+                // 仅查看权限时隐藏添加任务按钮
+                const addTaskButtons = document.querySelectorAll('#add-task-btn, #task-page-add-btn');
+                addTaskButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('hidden');
+                    btn.classList.remove('flex');
+                });
+            } else {
+                // 可编辑权限时启用添加任务按钮
+                const addTaskButtons = document.querySelectorAll('#add-task-btn, #task-page-add-btn');
+                addTaskButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed', 'hidden');
+                    btn.classList.add('flex');
+                });
+            }
         }
         
     } catch (error) {
@@ -4269,7 +4277,10 @@ async function loadOperationLogs(page) {
                                 </span>
                             </div>
                             <p class="text-gray-600 mt-2 text-sm leading-relaxed pl-6">${log.operation_content}</p>
-                            <div class="flex justify-end mt-2">
+                            <div class="flex justify-between items-center mt-2">
+                                <p class="text-gray-500 text-xs flex items-center">
+                                    <i class="fa fa-user-circle-o mr-1"></i>${log.operator_name || '未知用户'}
+                                </p>
                                 <p class="text-gray-500 text-xs flex items-center">
                                     <i class="fa fa-clock-o mr-1"></i>${formattedTime}
                                 </p>

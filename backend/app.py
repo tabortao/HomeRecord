@@ -403,8 +403,8 @@ def add_task():
             # 日期格式不正确时忽略重复创建
             pass
     
+    # 添加任务到会话
     db.session.add(task)
-    db.session.commit()
     
     # 记录操作日志
     log = OperationLog(
@@ -415,6 +415,8 @@ def add_task():
         operation_result='成功'
     )
     db.session.add(log)
+    
+    # 合并为一次提交，确保任务和日志在同一个事务中完成
     db.session.commit()
     
     return jsonify({'success': True, 'task_id': task.id})

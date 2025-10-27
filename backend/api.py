@@ -94,6 +94,7 @@ def register_routes(app):
         # 记录操作日志
         log = OperationLog(
             user_id=user_id,
+            operator_name=user.username,
             operation_type='更新个人信息',
             operation_content='更新用户个人信息',
             operation_time=datetime.now(),
@@ -280,10 +281,10 @@ def register_routes(app):
         if not task:
             return jsonify({'success': False, 'message': '任务不存在'})
         
-        # 检查任务状态是否从非已完成变为已完成
+        # 检查任务状态是否从非已完成变为已完成或从未完成变为已完成
         was_completed = task.status == '已完成'
         
-            # 更新任务信息
+        # 更新任务信息
         for key, value in data.items():
             if hasattr(task, key) and key != 'id' and key != 'user_id':
                 if key == 'images':
@@ -294,34 +295,56 @@ def register_routes(app):
         
         task.updated_at = datetime.now()
         
-        # 如果任务状态从非已完成变为已完成，增加用户金币
+        # 使用任务的用户ID作为操作用户
+        operator_name = '系统'  # 或使用任务创建者的用户名
+        # 也可以从请求参数中获取操作人信息（如果前端能传递的话）
+        
+        # 记录操作日志，根据任务状态变更决定日志类型和内容
         if not was_completed and task.status == '已完成':
+            # 任务从不完成变为已完成
             user = User.query.get(task.user_id)
             if user:
                 # 增加金币，任务积分即为金币数量
                 user.total_gold += task.points
                 
-                # 记录金币增加日志
-                gold_log = OperationLog(
-                    user_id=task.user_id,
-                    operation_type='任务完成',
-                    operation_content=f'完成任务：{task.name}，获得{task.points}金币',
-                    operation_time=datetime.now(),
-                    operation_result='成功'
-                )
-                db.session.add(gold_log)
+            # 记录完成任务的操作日志
+            log = OperationLog(
+                user_id=task.user_id,
+                operator_name=operator_name,
+                operation_type='任务完成',
+                operation_content=f'完成任务：{task.name}，获得{task.points}金币',
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
+        elif was_completed and task.status == '未完成':
+            # 任务从已完成变为未完成，需要撤销金币
+            user = User.query.get(task.user_id)
+            if user:
+                # 扣除金币，不允许金币变为负数
+                user.total_gold = max(0, user.total_gold - task.points)
+            
+            # 记录撤销任务的操作日志
+            log = OperationLog(
+                user_id=task.user_id,
+                operator_name=operator_name,
+                operation_type='任务撤销',
+                operation_content=f'撤销完成任务：{task.name}，扣除{task.points}金币',
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
+        else:
+            # 其他状态变更，记录普通更新日志
+            log = OperationLog(
+                user_id=task.user_id,
+                operator_name=operator_name,
+                operation_type='更新任务',
+                operation_content=f'更新任务：{task.name}，状态变更为{data.get("status")}',
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
         
-        db.session.commit()
-        
-        # 记录操作日志
-        log = OperationLog(
-            user_id=task.user_id,
-            operation_type='更新任务',
-            operation_content=f'更新任务：{task.name}',
-            operation_time=datetime.now(),
-            operation_result='成功'
-        )
         db.session.add(log)
+        # 确保只提交一次，这样任务状态更新和金币变更会在同一个事务中完成
         db.session.commit()
         
         return jsonify({'success': True})
@@ -336,6 +359,9 @@ def register_routes(app):
         task_name = task.name
         task_points = task.points
         task_status = task.status
+        
+        # 初始化操作者名称，避免未定义的情况
+        operator_name = '系统'
         
         # 删除任务相关的图片文件
         if task.images:
@@ -425,9 +451,17 @@ def register_routes(app):
                 # 扣除金币
                 user.total_gold = max(0, user.total_gold - task_points)
                 
+                # 获取操作用户信息
+                # 注意：这里使用任务所属用户作为操作者
+                # 实际项目中应该从认证信息中获取当前登录用户
+                current_user = User.query.get(user_id)
+                if current_user:
+                    operator_name = current_user.username
+                
                 # 记录金币扣除日志
                 gold_log = OperationLog(
                     user_id=user_id,
+                    operator_name=operator_name,
                     operation_type='修改金币',
                     operation_content=f'删除已完成任务：{task_name}，扣除{task_points}金币',
                     operation_time=datetime.now(),
@@ -437,17 +471,19 @@ def register_routes(app):
         
         # 删除任务记录
         db.session.delete(task)
-        db.session.commit()
         
         # 记录操作日志
         log = OperationLog(
             user_id=user_id,
+            operator_name=operator_name,
             operation_type='删除任务',
             operation_content=f'删除任务：{task_name}',
             operation_time=datetime.now(),
             operation_result='成功'
         )
         db.session.add(log)
+        
+        # 合并为一次提交，确保任务删除和日志记录在同一个事务中完成
         db.session.commit()
         
         return jsonify({'success': True})
@@ -492,9 +528,14 @@ def register_routes(app):
         task.images = json.dumps(images)
         db.session.commit()
         
+        # 获取当前操作用户信息
+        current_user = User.query.get(task.user_id)
+        operator_name = current_user.username if current_user else '未知用户'
+        
         # 记录操作日志
         log = OperationLog(
             user_id=task.user_id,
+            operator_name=operator_name,
             operation_type='上传任务图片',
             operation_content=f'为任务{task.name}上传图片',
             operation_time=datetime.now(),
@@ -608,9 +649,14 @@ def register_routes(app):
             if task.status == '已完成' and task.points > 0:
                 total_deducted_points += task.points
                 
+                # 获取当前操作用户信息
+                current_user = User.query.get(user_id)
+                operator_name = current_user.username if current_user else '未知用户'
+                
                 # 记录金币扣除日志
                 gold_log = OperationLog(
                     user_id=user_id,
+                    operator_name=operator_name,
                     operation_type='修改金币',
                     operation_content=f'删除任务系列中的已完成任务：{task.name}，扣除{task.points}金币',
                     operation_time=datetime.now(),
@@ -632,6 +678,7 @@ def register_routes(app):
         # 记录操作日志
         log = OperationLog(
             user_id=user_id,
+            operator_name=operator_name,
             operation_type='删除任务系列',
             operation_content=f'删除任务系列：{series_id}',
             operation_time=datetime.now(),
@@ -876,8 +923,13 @@ def register_routes(app):
         else:
             unit_info = str(quantity)
             
+        # 获取当前操作用户信息
+        current_user = User.query.get(user_id)
+        operator_name = current_user.username if current_user else '未知用户'
+        
         log = OperationLog(
             user_id=user_id,
+            operator_name=operator_name,
             operation_type='兑换心愿',
             operation_content=f'兑换心愿：{wish.name}，消耗{total_cost}金币，兑换{unit_info}',
             operation_time=datetime.now(),
@@ -1023,6 +1075,7 @@ def register_routes(app):
         for log in logs:
             result.append({
                 'id': log.id,
+                'operator_name': log.operator_name,
                 'operation_type': log.operation_type,
                 'operation_content': log.operation_content,
                 'operation_time': log.operation_time.strftime('%Y-%m-%d %H:%M:%S'),
