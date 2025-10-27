@@ -14,12 +14,21 @@ class User(db.Model):
     phone = db.Column(db.String(20))  # 手机号
     avatar = db.Column(db.String(100), default='default.svg')  # 头像
     
-    # 已在文件开头定义了set_password和check_password方法，这里不再重复
+    # 密码加密方法
+    def set_password(self, password):
+        # 使用SHA256加密密码
+        self.password = hashlib.sha256(password.encode()).hexdigest()
+    
+    # 密码验证方法
+    def check_password(self, password):
+        # 验证密码是否正确
+        return self.password == hashlib.sha256(password.encode()).hexdigest()
     role = db.Column(db.String(20), default='user')  # admin或user
     permissions = db.Column(db.Text, default='{}')  # JSON格式存储权限设置
     total_gold = db.Column(db.Integer, default=0)
     total_tomato = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.now)
+    parent_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # 父账号ID，主账号为None
     
     # 关系定义
     tasks = db.relationship('Task', backref='user', lazy=True)
@@ -27,6 +36,7 @@ class User(db.Model):
     wishes = db.relationship('Wish', backref='user', lazy=True)
     logs = db.relationship('OperationLog', backref='user', lazy=True)
     honors = db.relationship('UserHonor', backref='user', lazy=True)
+    subaccounts = db.relationship('User', backref=db.backref('parent', remote_side=[id]), lazy=True)  # 子账号关系
 
 # 任务表
 class Task(db.Model):

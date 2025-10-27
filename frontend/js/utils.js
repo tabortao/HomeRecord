@@ -157,13 +157,20 @@ const domUtils = {
         }
 
         const confirmHtml = `
-            <div class="confirm-dialog fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white rounded-lg w-full max-w-sm p-6">
-                    <h3 class="text-lg font-bold text-gray-800 mb-2">${title}</h3>
-                    <p class="text-gray-600 mb-4">${message}</p>
+            <div class="confirm-dialog fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300">
+                <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl transform transition-transform duration-300">
+                    <div class="text-center mb-4">
+                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">${title}</h3>
+                        <p class="text-gray-600">${message}</p>
+                    </div>
                     <div class="flex space-x-4">
-                        <button class="confirm-cancel flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700">取消</button>
-                        <button class="confirm-ok flex-1 px-4 py-2 bg-green-600 text-white rounded-lg">确定</button>
+                        <button class="confirm-cancel flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-200">取消</button>
+                        <button class="confirm-ok flex-1 px-4 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400">确定</button>
                     </div>
                 </div>
             </div>
@@ -175,15 +182,39 @@ const domUtils = {
         
         document.body.appendChild(confirmDialog);
         
+        // 添加淡入动画效果
+        setTimeout(() => {
+            confirmDialog.style.opacity = '1';
+            confirmDialog.querySelector('.bg-white').style.transform = 'scale(1)';
+        }, 10);
+        
         // 绑定事件
-        confirmDialog.querySelector('.confirm-cancel').addEventListener('click', () => {
-            confirmDialog.remove();
-            if (onCancel) onCancel();
+        const cancelBtn = confirmDialog.querySelector('.confirm-cancel');
+        const okBtn = confirmDialog.querySelector('.confirm-ok');
+        
+        cancelBtn.addEventListener('click', () => {
+            confirmDialog.style.opacity = '0';
+            confirmDialog.querySelector('.bg-white').style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                confirmDialog.remove();
+                if (onCancel) onCancel();
+            }, 200);
         });
         
-        confirmDialog.querySelector('.confirm-ok').addEventListener('click', () => {
-            confirmDialog.remove();
-            if (onConfirm) onConfirm();
+        okBtn.addEventListener('click', () => {
+            confirmDialog.style.opacity = '0';
+            confirmDialog.querySelector('.bg-white').style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                confirmDialog.remove();
+                if (onConfirm) onConfirm();
+            }, 200);
+        });
+        
+        // 点击背景关闭（可选）
+        confirmDialog.addEventListener('click', (e) => {
+            if (e.target === confirmDialog) {
+                cancelBtn.click();
+            }
         });
     },
 

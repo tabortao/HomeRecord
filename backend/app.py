@@ -24,17 +24,16 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-CORS(app)
+# 配置CORS，允许所有来源访问所有路由，特别是静态资源路由
+CORS(app, resources={
+    r"/api/*": {"origins": "*"},
+    r"/uploads/*": {"origins": "*"}
+})
 db.init_app(app)
 
 # 初始化数据库
 with app.app_context():
     db.create_all()
-    # 检查是否已有管理员用户，如果没有则创建
-    if not User.query.first():
-        admin = User(username='admin', password='123456', role='admin', total_gold=0, total_tomato=0)
-        db.session.add(admin)
-        db.session.commit()
     
     # 初始化内置任务分类
     # 使用try-except块确保事务安全
@@ -123,7 +122,7 @@ def login():
     password = data.get('password')
     
     user = User.query.filter_by(username=username).first()
-    if user and user.password == password:
+    if user and user.check_password(password):
         return jsonify({'success': True, 'user': {
             'id': user.id,
             'username': user.username,
@@ -150,7 +149,8 @@ def register():
     else:
         role = 'user'
     
-    new_user = User(username=username, password=password, role=role, total_gold=0, total_tomato=0)
+    new_user = User(username=username, role=role, total_gold=0, total_tomato=0)
+    new_user.set_password(password)
     db.session.add(new_user)
     db.session.commit()
     

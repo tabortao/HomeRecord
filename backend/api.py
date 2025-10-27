@@ -9,10 +9,10 @@ import re
 from werkzeug.utils import secure_filename
 
 def register_routes(app):
-    # 确保头像上传目录存在
-    UPLOAD_FOLDER = 'uploads/avatars'
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    # 确保头像上传根目录存在
+    AVATAR_ROOT_FOLDER = 'uploads/avatars'
+    if not os.path.exists(AVATAR_ROOT_FOLDER):
+        os.makedirs(AVATAR_ROOT_FOLDER, exist_ok=True)
     
     # 允许的文件扩展名
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
@@ -140,15 +140,20 @@ def register_routes(app):
             return jsonify({'success': False, 'message': '没有选择文件'})
         
         if file and allowed_file(file.filename):
-            # 生成唯一文件名
+            # 确保头像根目录存在
+            if not os.path.exists(AVATAR_ROOT_FOLDER):
+                os.makedirs(AVATAR_ROOT_FOLDER, exist_ok=True)
+            
+            # 生成唯一文件名，格式为：用户ID-avatars-图像名
             ext = file.filename.rsplit('.', 1)[1].lower()
-            filename = f"{uuid.uuid4()}.{ext}"
-            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            unique_id = uuid.uuid4()
+            filename = f"{user_id}-avatars-{unique_id}.{ext}"
+            file_path = os.path.join(AVATAR_ROOT_FOLDER, filename)
             
             # 保存文件
             file.save(file_path)
             
-            # 更新用户头像信息
+            # 更新用户头像信息，直接存储文件名
             user.avatar = filename
             db.session.commit()
             
@@ -167,10 +172,24 @@ def register_routes(app):
         
         return jsonify({'success': False, 'message': '不支持的文件类型'})
     
-    # 获取头像路由
-    @app.route('/api/avatars/<filename>', methods=['GET'])
-    def get_avatar(filename):
-        return send_from_directory(UPLOAD_FOLDER, filename)
+    # 获取头像路由 - 支持直接文件名格式
+    @app.route('/api/avatars/<path:avatar_path>', methods=['GET'])
+    def get_avatar(avatar_path):
+        # 验证路径安全性，防止路径遍历攻击
+        if '..' in avatar_path or '\\' in avatar_path:
+            return jsonify({'success': False, 'message': '无效的文件路径'}), 400
+        
+        # 确保文件存在（直接在AVATAR_ROOT_FOLDER中查找）
+        full_path = os.path.join(AVATAR_ROOT_FOLDER, avatar_path)
+        if not os.path.exists(full_path):
+            # 尝试检查是否是旧的路径格式（包含子目录）
+            legacy_path = os.path.join(AVATAR_ROOT_FOLDER, avatar_path)
+            if not os.path.exists(legacy_path):
+                return jsonify({'success': False, 'message': '文件不存在'}), 404
+            full_path = legacy_path
+        
+        # 直接从根目录发送文件
+        return send_from_directory(AVATAR_ROOT_FOLDER, avatar_path)
     
     # 任务相关路由
     # 获取任务列表
@@ -1499,3 +1518,200 @@ def register_routes(app):
             'completion_rate': round(completion_rate, 1),
             'total_gold': user.total_gold
         })
+    
+    # 检查用户名是否可用
+    @app.route('/api/check-username', methods=['GET'])
+    def check_username_available():
+        username = request.args.get('username')
+        if not username:
+            return jsonify({'available': False, 'message': '用户名不能为空'})
+        
+        # 验证用户名格式（只允许字母和数字，不少于5个字符）
+        if not re.match(r'^[a-zA-Z0-9]{5,}$', username):
+            return jsonify({'available': False, 'message': '用户名必须为字母和数字，且长度不少于5个字符'})
+        
+        # 检查用户名是否已存在
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            return jsonify({'available': False, 'message': '用户名已被使用'})
+        
+        return jsonify({'available': True, 'message': '用户名可用'})
+    
+    # 创建子账号
+    @app.route('/api/users/<int:parent_id>/subaccounts', methods=['POST'])
+    def create_subaccount(parent_id):
+        try:
+            # 验证父账号是否存在
+            parent_user = User.query.get(parent_id)
+            if not parent_user:
+                return jsonify({'success': False, 'message': '父账号不存在'})
+            
+            # 验证是否为主账号（没有父账号）
+            if parent_user.parent_id is not None:
+                return jsonify({'success': False, 'message': '只有主账号可以创建子账号'})
+            
+            # 获取请求数据
+            data = request.json
+            required_fields = ['username', 'password', 'password_confirm', 'nickname']
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({'success': False, 'message': f'缺少必要参数：{field}'})
+            
+            # 验证用户名格式
+            if not re.match(r'^[a-zA-Z0-9]{5,}$', data['username']):
+                return jsonify({'success': False, 'message': '用户名必须为字母和数字，且长度不少于5个字符'})
+            
+            # 验证用户名是否已存在
+            existing_user = User.query.filter_by(username=data['username']).first()
+            if existing_user:
+                return jsonify({'success': False, 'message': '用户名已被使用'})
+            
+            # 验证密码一致性
+            if data['password'] != data['password_confirm']:
+                return jsonify({'success': False, 'message': '两次输入的密码不一致'})
+            
+            # 创建子账号
+            # 注意：前端传递的是permission字段，后端使用permissions字段
+            permission = data.get('permission', 'view')
+            
+            new_subaccount = User(
+                username=data['username'],
+                nickname=data['nickname'],
+                parent_id=parent_id,
+                role='subaccount',
+                permissions=json.dumps(permission)  # 直接存储权限值
+            )
+            new_subaccount.set_password(data['password'])
+            
+            # 如果有头像，设置头像
+            if 'avatar' in data:
+                new_subaccount.avatar = data['avatar']
+            
+            db.session.add(new_subaccount)
+            db.session.commit()
+            
+            # 记录操作日志
+            log = OperationLog(
+                user_id=parent_id,
+                operation_type='创建子账号',
+                operation_content=f'创建子账号：{data["username"]}，权限：{permission}',
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
+            db.session.add(log)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': '子账号创建成功',
+                'subaccount': {
+                    'id': new_subaccount.id,
+                    'username': new_subaccount.username,
+                    'nickname': new_subaccount.nickname,
+                    'avatar': new_subaccount.avatar,
+                    'permission': permission  # 返回permission而不是permissions
+                }
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'创建子账号失败：{str(e)}'})
+    
+    # 获取子账号列表
+    @app.route('/api/users/<int:parent_id>/subaccounts', methods=['GET'])
+    def get_subaccounts(parent_id):
+        try:
+            # 验证父账号是否存在
+            parent_user = User.query.get(parent_id)
+            if not parent_user:
+                return jsonify({'success': False, 'message': '父账号不存在'})
+            
+            # 验证是否为主账号
+            if parent_user.parent_id is not None:
+                return jsonify({'success': False, 'message': '只有主账号可以查看子账号列表'})
+            
+            # 获取子账号列表
+            subaccounts = User.query.filter_by(parent_id=parent_id).all()
+            subaccounts_list = []
+            
+            for subaccount in subaccounts:
+                subaccounts_list.append({
+                    'id': subaccount.id,
+                    'username': subaccount.username,
+                    'nickname': subaccount.nickname,
+                    'avatar': subaccount.avatar,
+                    'permissions': json.loads(subaccount.permissions),
+                    'created_at': subaccount.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                })
+            
+            return jsonify({
+                'success': True,
+                'subaccounts': subaccounts_list
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'message': f'获取子账号列表失败：{str(e)}'})
+    
+    # 删除子账号
+    @app.route('/api/users/<int:parent_id>/subaccounts/<int:subaccount_id>', methods=['DELETE'])
+    def delete_subaccount(parent_id, subaccount_id):
+        try:
+            # 验证父账号是否存在
+            parent_user = User.query.get(parent_id)
+            if not parent_user:
+                return jsonify({'success': False, 'message': '父账号不存在'})
+            
+            # 验证是否为主账号
+            if parent_user.parent_id is not None:
+                return jsonify({'success': False, 'message': '只有主账号可以删除子账号'})
+            
+            # 查找子账号
+            subaccount = User.query.filter_by(id=subaccount_id, parent_id=parent_id).first()
+            if not subaccount:
+                return jsonify({'success': False, 'message': '子账号不存在或无权删除'})
+            
+            # 删除子账号
+            username = subaccount.username
+            db.session.delete(subaccount)
+            db.session.commit()
+            
+            # 记录操作日志
+            log = OperationLog(
+                user_id=parent_id,
+                operation_type='删除子账号',
+                operation_content=f'删除子账号：{username}',
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
+            db.session.add(log)
+            db.session.commit()
+            
+            return jsonify({'success': True, 'message': '子账号删除成功'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'删除子账号失败：{str(e)}'})
+    
+    # 权限控制装饰器
+    def check_permissions(func):
+        def wrapper(*args, **kwargs):
+            # 从请求中获取用户ID
+            user_id = request.args.get('user_id') or request.json.get('user_id')
+            if not user_id:
+                return jsonify({'success': False, 'message': '缺少用户ID'})
+            
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'success': False, 'message': '用户不存在'})
+            
+            # 对于子账号，检查权限
+            if user.role == 'subaccount' and user.permissions:
+                permissions = json.loads(user.permissions)
+                # 根据当前请求的URL和方法判断需要的权限
+                endpoint = request.endpoint
+                method = request.method
+                
+                # 如果是只读权限，禁用添加、编辑、删除功能
+                if permissions.get('type') == 'view_only':
+                    if method in ['POST', 'PUT', 'DELETE']:
+                        return jsonify({'success': False, 'message': '权限不足，只读账号无法执行此操作'})
+            
+            return func(*args, **kwargs)
+        return wrapper

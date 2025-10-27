@@ -1,10 +1,17 @@
 import sqlite3
 import os
 
-# 使用正确的数据库路径
-db_path = os.path.join(os.path.dirname(__file__), 'instance', 'homerecord.db')
+# 使用正确的数据库路径 - 向上一级找到instance目录
+db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'instance', 'homerecord.db')
+print(f"数据库路径: {db_path}")
 
 try:
+    # 确保instance目录存在
+    instance_dir = os.path.dirname(db_path)
+    if not os.path.exists(instance_dir):
+        os.makedirs(instance_dir)
+        print(f"创建instance目录: {instance_dir}")
+    
     # 连接到正确的数据库
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -29,9 +36,24 @@ try:
         cursor.execute("ALTER TABLE user ADD COLUMN avatar TEXT DEFAULT 'default.svg'")
         print("添加avatar字段成功")
     
+    # 添加子账号相关字段
+    if 'parent_id' not in columns:
+        cursor.execute("ALTER TABLE user ADD COLUMN parent_id INTEGER REFERENCES user(id)")
+        print("添加parent_id字段成功")
+    
+    if 'role' not in columns:
+        cursor.execute("ALTER TABLE user ADD COLUMN role TEXT DEFAULT 'user'")
+        print("添加role字段成功")
+    
+    if 'permissions' not in columns:
+        cursor.execute("ALTER TABLE user ADD COLUMN permissions TEXT DEFAULT '{}'")
+        print("添加permissions字段成功")
+    
     # 为现有记录设置默认值
     cursor.execute("UPDATE user SET nickname = username WHERE nickname IS NULL")
     cursor.execute("UPDATE user SET avatar = 'default.svg' WHERE avatar IS NULL")
+    cursor.execute("UPDATE user SET role = 'user' WHERE role IS NULL")
+    cursor.execute("UPDATE user SET permissions = '{}' WHERE permissions IS NULL")
     print("更新用户表现有记录默认值成功")
     
     # 检查并更新wish表，添加exchange_amount字段
@@ -49,6 +71,13 @@ try:
     
     # 提交更改
     conn.commit()
+    
+    # 创建索引以提高查询性能
+    try:
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_parent_id ON user(parent_id)")
+        print("创建parent_id索引成功")
+    except Exception as e:
+        print(f"创建索引时出错: {str(e)}")
     
     # 验证更新后的user表结构
     cursor.execute("PRAGMA table_info(user)")
@@ -105,7 +134,10 @@ try:
     print("\n数据库迁移完成！")
     
 finally:
-    # 关闭连接
-    if conn:
-        conn.close()
-        print("数据库连接已关闭")
+    # 关闭数据库连接
+    try:
+        if 'conn' in locals() and conn:
+            conn.close()
+            print("数据库连接已关闭")
+    except:
+        print("关闭数据库连接时出错")

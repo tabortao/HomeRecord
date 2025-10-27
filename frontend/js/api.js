@@ -1,5 +1,5 @@
 // API基础URL
-const API_BASE_URL = 'http://localhost:5000/api';
+export const API_BASE_URL = 'http://localhost:5000/api';
 
 // 用户相关API
 const userAPI = {
@@ -66,6 +66,41 @@ const userAPI = {
             },
             body: JSON.stringify({ gold: data.gold, reason: data.reason })
         });
+        return await response.json();
+    }
+};
+
+// 子账号管理API
+const subaccountAPI = {
+    // 创建子账号
+    createSubaccount: async (parentId, subaccountData) => {
+        const response = await fetch(`${API_BASE_URL}/users/${parentId}/subaccounts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(subaccountData)
+        });
+        return await response.json();
+    },
+    
+    // 获取子账号列表
+    getSubaccounts: async (parentId) => {
+        const response = await fetch(`${API_BASE_URL}/users/${parentId}/subaccounts`);
+        return await response.json();
+    },
+    
+    // 删除子账号
+    deleteSubaccount: async (parentId, subaccountId) => {
+        const response = await fetch(`${API_BASE_URL}/users/${parentId}/subaccounts/${subaccountId}`, {
+            method: 'DELETE'
+        });
+        return await response.json();
+    },
+    
+    // 验证用户名是否可用
+    checkUsernameAvailable: async (username) => {
+        const response = await fetch(`${API_BASE_URL}/check-username?username=${encodeURIComponent(username)}`);
         return await response.json();
     }
 };
@@ -594,9 +629,10 @@ const api = {
     goldAPI,
     statisticsAPI,
     operationLogAPI,
-    honorAPI
+    honorAPI,
+    subaccountAPI
 };
 
 // 支持默认导出和命名导出
 export default api;
-export { userAPI, taskAPI, categoryAPI, wishAPI, goldAPI, statisticsAPI, operationLogAPI, honorAPI };
+export { userAPI, taskAPI, categoryAPI, wishAPI, goldAPI, statisticsAPI, operationLogAPI, honorAPI, subaccountAPI };
