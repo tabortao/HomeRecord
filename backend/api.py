@@ -1650,11 +1650,27 @@ def register_routes(app):
             
             # 如果达成条件
             if is_achieved:
+                today = datetime.now().date()
                 # 检查是否已经获得过该荣誉
                 if honor.id in user_honors_map:
-                    # 增加获得次数
-                    user_honors_map[honor.id].obtained_count += 1
-                    user_honors_map[honor.id].obtained_at = datetime.now()
+                    # 对于"全能选手"和"学科之星"荣誉，检查今天是否已经获得过
+                    if honor.name == '全能选手' or honor.name == '学科之星':
+                        last_obtained_date = user_honors_map[honor.id].obtained_at.date()
+                        # 只有当上次获得日期不是今天时，才增加计数
+                        if last_obtained_date != today:
+                            user_honors_map[honor.id].obtained_count += 1
+                            user_honors_map[honor.id].obtained_at = datetime.now()
+                            # 添加到新获得的荣誉列表
+                            newly_obtained_honors.append({
+                                'id': honor.id,
+                                'name': honor.name,
+                                'description': honor.description,
+                                'icon': honor.icon
+                            })
+                    else:
+                        # 其他荣誉保持原有逻辑
+                        user_honors_map[honor.id].obtained_count += 1
+                        user_honors_map[honor.id].obtained_at = datetime.now()
                 else:
                     # 创建新的用户荣誉记录
                     new_user_honor = UserHonor(
