@@ -740,7 +740,10 @@ function bindEvents() {
     if(tomatoModal) {
         tomatoModal.addEventListener('click', function(e) {
             if (e.target === tomatoModal) {
-                hideTomatoModal();
+                // 固定页面模式下，无论番茄钟是在计时状态还是暂停状态，都不允许点击外部区域关闭
+                if (!appState.fixedTomatoPage) {
+                    hideTomatoModal();
+                }
             }
         });
     }
@@ -2482,7 +2485,13 @@ function handleTomatoPause() {
         // 当前正在计时，需要暂停
         clearInterval(appState.tomatoTimer);
         appState.tomatoTimer = null;
-        if (pauseBtn) pauseBtn.textContent = '继续';
+        if (pauseBtn) {
+            pauseBtn.textContent = '继续';
+            // 暂停状态下，设置不同的样式颜色（蓝色系）
+            pauseBtn.style.background = 'linear-gradient(135deg, #60a5fa, #3b82f6)';
+            pauseBtn.style.color = '#fff';
+            pauseBtn.style.border = 'none';
+        }
         // 暂停水位动画
         if (appState._waterRaf) {
             cancelAnimationFrame(appState._waterRaf);
@@ -2498,7 +2507,13 @@ function handleTomatoPause() {
                 if (appState.tomatoTimeLeft <= 0) {
                     clearInterval(appState.tomatoTimer);
                     appState.tomatoTimer = null;
-                    if (pauseBtn) pauseBtn.textContent = '暂停';
+                    if (pauseBtn) {
+                        pauseBtn.textContent = '暂停';
+                        // 恢复默认样式
+                        pauseBtn.style.background = '#fff';
+                        pauseBtn.style.border = '2px solid rgba(255,105,135,0.2)';
+                        pauseBtn.style.color = '#ff6b6b';
+                    }
                     handleTomatoFinish();
                     return;
                 }
@@ -2512,12 +2527,26 @@ function handleTomatoPause() {
             }, 1000);
         }
         
-        if (pauseBtn) pauseBtn.textContent = '暂停';
+        if (pauseBtn) {
+            pauseBtn.textContent = '暂停';
+            // 恢复默认样式
+            pauseBtn.style.background = '#fff';
+            pauseBtn.style.border = '2px solid rgba(255,105,135,0.2)';
+            pauseBtn.style.color = '#ff6b6b';
+        }
         // 重新启动水位动画
         startWaterFillAnimation();
         
-        // 确保悬浮球显示（如果在计时中）
-        ensureTomatoBubbleHidden();
+        // 根据固定页面设置决定显示方式
+        if (!appState.fixedTomatoPage) {
+            // 非固定页面模式下，显示悬浮球并隐藏番茄钟页面
+            ensureTomatoBubbleHidden();
+            hideTomatoModal();
+        } else {
+            // 固定页面模式下，隐藏悬浮球，保持番茄钟页面显示
+            const bubble = document.getElementById('tomato-bubble');
+            if (bubble) bubble.classList.add('hidden');
+        }
     }
 }
 
@@ -2528,9 +2557,15 @@ async function handleTomatoFinish() {
         appState.tomatoTimer = null;
     }
     
-    // 重置暂停按钮文本为"暂停"
+    // 重置暂停按钮文本和样式为默认状态
     const pauseBtn = document.getElementById('tomato-pause');
-    if (pauseBtn) pauseBtn.textContent = '暂停';
+    if (pauseBtn) {
+        pauseBtn.textContent = '暂停';
+        // 恢复默认样式
+        pauseBtn.style.background = '#fff';
+        pauseBtn.style.border = '2px solid rgba(255,105,135,0.2)';
+        pauseBtn.style.color = '#ff6b6b';
+    }
     
     // 隐藏UI
     const bubble = document.getElementById('tomato-bubble');
