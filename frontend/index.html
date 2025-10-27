@@ -429,6 +429,17 @@
                         </div>
                         <i class="fa fa-chevron-right text-gray-400"></i>
                     </button>
+                    
+                    <!-- 金币设置 -->
+                    <button id="gold-settings-btn" class="w-full p-2.5 rounded-lg hover:bg-yellow-50 transition-colors duration-200 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center mr-2.5">
+                                <i class="fa fa-coins text-yellow-600"></i>
+                            </div>
+                            <span class="font-medium">金币设置</span>
+                        </div>
+                        <i class="fa fa-chevron-right text-gray-400"></i>
+                    </button>
                 </div>
             </div>
                 </div>
@@ -453,6 +464,49 @@
                             </label>
                             <p class="text-sm text-gray-500 mt-1 ml-7">勾选后，番茄钟将保持全屏显示，不会缩小为悬浮球</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 金币设置模态窗口 -->
+        <div id="gold-settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-lg w-5/6 max-w-md p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">金币设置</h3>
+                    <button id="close-gold-settings" class="text-gray-400 hover:text-gray-600">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-6">
+                    <!-- 当前金币数量 -->
+                    <div class="space-y-2">
+                        <label class="block text-gray-700 font-medium">当前总金币</label>
+                        <div id="current-gold-display" class="p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-center text-yellow-600 font-bold text-xl">
+                            0
+                        </div>
+                    </div>
+                    
+                    <!-- 新金币数量输入 -->
+                    <div class="space-y-2">
+                        <label for="new-gold-input" class="block text-gray-700 font-medium">设置新金币数量</label>
+                        <input type="number" id="new-gold-input" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    </div>
+                    
+                    <!-- 修改原因 -->
+                    <div class="space-y-2">
+                        <label for="gold-reason-input" class="block text-gray-700 font-medium">修改原因 <span class="text-red-500">*</span></label>
+                        <textarea id="gold-reason-input" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500" placeholder="请输入修改原因，至少2个字符"></textarea>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <div class="flex space-x-3 pt-4">
+                        <button id="cancel-gold-settings" class="flex-1 py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            取消
+                        </button>
+                        <button id="save-gold-settings" class="flex-1 py-2 px-4 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                            保存修改
+                        </button>
                     </div>
                 </div>
             </div>

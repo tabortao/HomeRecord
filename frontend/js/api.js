@@ -55,6 +55,18 @@ const userAPI = {
             body: formData
         });
         return await response.json();
+    },
+    
+    // 更新用户金币数量
+    updateUserGold: async (data) => {
+        const response = await fetch(`${API_BASE_URL}/users/${data.user_id}/gold`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ gold: data.gold, reason: data.reason })
+        });
+        return await response.json();
     }
 };
 

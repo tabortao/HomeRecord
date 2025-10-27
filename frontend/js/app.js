@@ -2920,12 +2920,14 @@ async function updateUserInfo() {
         try {
             const userInfo = await api.userAPI.getUserInfo(appState.currentUser.id);
             // 只使用API返回的用户ID、金币和头像等需要后端维护的字段，其他使用本地更新的值
-            if (userInfo.user) {
-                user = { ...user, id: userInfo.user.id, total_gold: userInfo.user.total_gold, avatar: userInfo.user.avatar };
-                // 同步更新appState和本地存储中的头像信息
-                appState.currentUser.avatar = userInfo.user.avatar;
-                storageUtils.saveUser(appState.currentUser);
-            }
+                if (userInfo.user) {
+                    user = { ...user, id: userInfo.user.id, total_gold: userInfo.user.total_gold, avatar: userInfo.user.avatar };
+                    // 同步更新appState中的信息
+                    appState.currentUser.total_gold = userInfo.user.total_gold;
+                    appState.currentUser.avatar = userInfo.user.avatar;
+                    // 保存到本地存储
+                    storageUtils.saveUser(appState.currentUser);
+                }
         } catch (apiError) {
             // API调用失败不影响本地信息的更新显示
             console.log('API调用失败，使用本地用户信息');
@@ -4304,6 +4306,94 @@ function createCelebrationConfetti() {
         requestAnimationFrame(animate);
     }
 }
+
+// 显示金币设置模态窗口
+async function showGoldSettingsModal() {
+    try {
+        // 获取最新的用户信息，确保金币数量是最新的
+        const userInfo = await api.userAPI.getUserInfo(appState.currentUser.id);
+        if (userInfo.user) {
+            // 更新appState中的用户信息
+            appState.currentUser = { ...appState.currentUser, ...userInfo.user };
+            // 显示最新的金币数量
+            document.getElementById('current-gold-display').textContent = userInfo.user.total_gold || 0;
+        }
+    } catch (error) {
+        console.error('获取用户信息失败:', error);
+        // 如果获取失败，使用本地缓存的数据
+        if (appState.currentUser) {
+            document.getElementById('current-gold-display').textContent = appState.currentUser.total_gold || 0;
+        }
+    }
+    
+    // 清空输入框
+    document.getElementById('new-gold-input').value = '';
+    document.getElementById('gold-reason-input').value = '';
+    
+    // 显示模态窗口
+    document.getElementById('gold-settings-modal').classList.remove('hidden');
+}
+
+// 隐藏金币设置模态窗口
+function hideGoldSettingsModal() {
+    document.getElementById('gold-settings-modal').classList.add('hidden');
+}
+
+// 保存金币设置
+async function saveGoldSettings() {
+    const newGold = document.getElementById('new-gold-input').value.trim();
+    const reason = document.getElementById('gold-reason-input').value.trim();
+    
+    // 验证输入
+    if (!newGold || isNaN(newGold) || parseInt(newGold) < 0) {
+        domUtils.showToast('请输入有效的金币数量', 'error');
+        return;
+    }
+    
+    if (!reason || reason.length < 2) {
+        domUtils.showToast('修改原因至少需要2个字符', 'error');
+        return;
+    }
+    
+    try {
+        // 调用API更新金币数量
+        const response = await api.userAPI.updateUserGold({
+            user_id: appState.currentUser.id,
+            gold: parseInt(newGold),
+            reason: reason
+        });
+        
+        if (response.success) {
+            // 更新本地用户信息
+            appState.currentUser.total_gold = parseInt(newGold);
+            storageUtils.saveUser(appState.currentUser);
+            
+            // 更新界面显示
+            document.getElementById('current-gold-display').textContent = newGold;
+            updateUserInfo(); // 更新用户信息显示
+            
+            // 显示成功提示
+            domUtils.showToast('金币数量更新成功', 'success');
+            
+            // 隐藏模态窗口
+            hideGoldSettingsModal();
+        } else {
+            domUtils.showToast(response.message || '更新失败', 'error');
+        }
+    } catch (error) {
+        console.error('更新金币数量失败:', error);
+        domUtils.showToast('网络错误，请稍后重试', 'error');
+    }
+}
+
+// 添加金币设置相关的事件监听器
+document.addEventListener('DOMContentLoaded', function() {
+    // 金币设置事件
+    document.getElementById('gold-settings-btn')?.addEventListener('click', showGoldSettingsModal);
+    document.getElementById('close-gold-settings')?.addEventListener('click', hideGoldSettingsModal);
+    document.getElementById('cancel-gold-settings')?.addEventListener('click', hideGoldSettingsModal);
+    document.getElementById('save-gold-settings')?.addEventListener('click', saveGoldSettings);
+});
 
 // 启动应用
 initApp();

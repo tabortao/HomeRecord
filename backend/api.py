@@ -81,6 +81,49 @@ def register_routes(app):
         
         return jsonify({'success': True, 'message': '个人信息更新成功'})
     
+    # 更新用户金币数量路由
+    @app.route('/api/users/<int:user_id>/gold', methods=['PUT'])
+    def update_user_gold(user_id):
+        data = request.json
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': '用户不存在'})
+        
+        # 验证输入数据
+        if 'gold' not in data or 'reason' not in data:
+            return jsonify({'success': False, 'message': '缺少必要参数'})
+        
+        try:
+            new_gold = int(data['gold'])
+            if new_gold < 0:
+                return jsonify({'success': False, 'message': '金币数量不能为负数'})
+        except ValueError:
+            return jsonify({'success': False, 'message': '金币数量必须是整数'})
+        
+        reason = data['reason'].strip()
+        if len(reason) < 2:
+            return jsonify({'success': False, 'message': '修改原因至少需要2个字符'})
+        
+        # 保存旧的金币数量用于日志
+        old_gold = user.total_gold
+        
+        # 更新金币数量
+        user.total_gold = new_gold
+        db.session.commit()
+        
+        # 记录操作日志
+        log = OperationLog(
+            user_id=user_id,
+            operation_type='更新金币数量',
+            operation_content=f'金币从{old_gold}修改为{new_gold}，原因：{reason}',
+            operation_time=datetime.now(),
+            operation_result='成功'
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '金币数量更新成功'})
+    
     # 上传头像路由
     @app.route('/api/users/<int:user_id>/avatar', methods=['POST'])
     def upload_avatar(user_id):

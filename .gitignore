@@ -56,7 +56,7 @@ cover/
 # Translations
 *.mo
 *.pot
-
+instance/
 # Django stuff:
 *.log
 local_settings.py
@@ -216,3 +216,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+backend/instance/homerecord.db
