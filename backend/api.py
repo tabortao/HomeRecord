@@ -1209,7 +1209,11 @@ def register_routes(app):
     # 荣誉系统路由
     @app.route('/api/honors/user/<int:user_id>', methods=['GET'])
     def get_user_honors(user_id):
-        user_honors = UserHonor.query.filter_by(user_id=user_id).all()
+        # 检查用户是否为子账号，如果是则使用父账号ID
+        user = User.query.get(user_id)
+        effective_user_id = user.parent_id if user and user.parent_id else user_id
+        
+        user_honors = UserHonor.query.filter_by(user_id=effective_user_id).all()
         
         result = []
         for uh in user_honors:
@@ -1232,7 +1236,11 @@ def register_routes(app):
         
         # 如果提供了user_id，获取用户的荣誉信息
         if user_id:
-            user_honors = UserHonor.query.filter_by(user_id=user_id).all()
+            # 检查用户是否为子账号，如果是则使用父账号ID
+            user = User.query.get(user_id)
+            effective_user_id = user.parent_id if user and user.parent_id else user_id
+            
+            user_honors = UserHonor.query.filter_by(user_id=effective_user_id).all()
             for uh in user_honors:
                 user_honors_map[uh.honor_id] = {
                     'obtained_count': uh.obtained_count,
@@ -1274,9 +1282,13 @@ def register_routes(app):
         if not user:
             return jsonify({'success': False, 'message': '用户不存在'}), 404
         
+        # 检查用户是否为子账号，如果是则使用父账号ID
+        effective_user_id = user.parent_id if user.parent_id else user_id
+        effective_user = User.query.get(effective_user_id)
+        
         # 获取所有荣誉和用户已获得的荣誉
         all_honors = Honor.query.all()
-        user_honors = UserHonor.query.filter_by(user_id=user_id).all()
+        user_honors = UserHonor.query.filter_by(user_id=effective_user_id).all()
         user_honors_map = {uh.honor_id: uh for uh in user_honors}
         
         # 新获得的荣誉列表
@@ -1301,7 +1313,7 @@ def register_routes(app):
                     
                     # 检查该日期是否有完成的任务
                     tasks = Task.query.filter_by(
-                        user_id=user_id,
+                        user_id=effective_user_id,
                         start_date=check_date_str,
                         status='已完成'
                     ).all()
@@ -1317,7 +1329,7 @@ def register_routes(app):
                 # 检查单日学习时长超过3小时（180分钟）
                 today = datetime.now().date().strftime('%Y-%m-%d')
                 today_tasks = Task.query.filter_by(
-                    user_id=user_id,
+                    user_id=effective_user_id,
                     start_date=today,
                     status='已完成'
                 ).all()
@@ -1328,7 +1340,7 @@ def register_routes(app):
             elif honor.name == '专注达人':
                 # 检查单次学习时长超过1小时
                 completed_tasks = Task.query.filter_by(
-                    user_id=user_id,
+                    user_id=effective_user_id,
                     status='已完成'
                 ).all()
                 
@@ -1340,14 +1352,14 @@ def register_routes(app):
                 today = datetime.now().date().strftime('%Y-%m-%d')
                 
                 # 获取所有学科
-                all_subjects = db.session.query(Task.category).filter_by(user_id=user_id).distinct().all()
+                all_subjects = db.session.query(Task.category).filter_by(user_id=effective_user_id).distinct().all()
                 all_subjects = [s[0] for s in all_subjects if s[0]]
                 
                 # 检查每个学科今天是否都有完成的任务
                 all_completed = True
                 for subject in all_subjects:
                     subject_tasks = Task.query.filter_by(
-                        user_id=user_id,
+                        user_id=effective_user_id,
                         start_date=today,
                         category=subject,
                         status='已完成'
@@ -1361,13 +1373,13 @@ def register_routes(app):
             
             elif honor.name == '积分富翁':
                 # 检查累计获得积分超过1000
-                is_achieved = user.total_gold >= 1000
+                is_achieved = effective_user.total_gold >= 1000
             
             elif honor.name == '任务高手':
                 # 检查单日完成任务数量超过15个
                 today = datetime.now().date().strftime('%Y-%m-%d')
                 completed_tasks = Task.query.filter_by(
-                    user_id=user_id,
+                    user_id=effective_user_id,
                     start_date=today,
                     status='已完成'
                 ).count()
