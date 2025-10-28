@@ -158,6 +158,26 @@ const taskAPI = {
         });
         return await response.json();
     },
+    
+    // 批量添加任务
+    addTasksBatch: async (tasksData, userId) => {
+        const response = await fetch(`${API_BASE_URL}/tasks/batch`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                tasks: tasksData,
+                user_id: userId
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`批量添加任务API调用失败，状态码: ${response.status}`);
+        }
+        
+        return await response.json();
+    },
 
     // 更新任务
     updateTask: async (taskId, taskData, currentUserId) => {

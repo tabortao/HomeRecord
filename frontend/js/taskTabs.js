@@ -358,82 +358,135 @@ class TaskTabsManager {
             return;
         }
 
+        console.log('addSelectedTasks 方法开始执行');
+        console.log('选中的任务:', selectedTasks);
+        
         // 显示批量添加任务的加载提示
         this.showNotification('正在批量添加任务，请稍后……', 'info');
 
         try {
-                console.log('开始添加选中的任务，共', selectedTasks.length, '个');
-                // 获取当前日期
-                const today = new Date();
-                const formattedDate = today.toISOString().split('T')[0];
-                console.log('当前日期:', formattedDate);
+            console.log('开始添加选中的任务，共', selectedTasks.length, '个');
+            // 获取当前日期
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            console.log('当前日期:', formattedDate);
+            
+            // 从localStorage获取用户ID，确保使用正确的key
+            let userId = localStorage.getItem('user_id') || localStorage.getItem('current_user_id') || '1'; 
+            // 保存用户ID到localStorage，确保后续请求使用正确的ID
+            localStorage.setItem('user_id', userId);
+            console.log('批量添加任务时的用户ID:', userId);
+            console.log('localStorage中的用户ID:', localStorage.getItem('user_id'));
+            console.log('localStorage中的current_user_id:', localStorage.getItem('current_user_id'));
+            
+            // 准备批量任务数据
+            const tasksData = selectedTasks.map(task => {
+                // 确保所有必要字段都有值
+                const taskName = task.name || '未命名任务';
+                const taskCategory = task.category || '其他';
+                const taskTime = task.time || 10;
+                const taskPoints = task.points || 1;
                 
-                // 逐个添加任务
-                for (const task of selectedTasks) {
-                    console.log('正在处理任务:', task.name);
-                    // 从localStorage获取用户ID，如果不存在则使用测试账号ID 2
-                    let userId = localStorage.getItem('user_id');
-                    // 如果localStorage中没有user_id，使用默认值2（测试账号ID）
-                    if (!userId) {
-                        userId = '2';
-                        console.log('localStorage中未找到user_id，使用默认值2');
-                    }
-                    console.log('用户ID:', userId);
-                    
-                    // 确保所有必要字段都有值
-                    const taskName = task.name || '未命名任务';
-                    const taskCategory = task.category || '其他';
-                    const taskTime = task.time || 10;
-                    const taskPoints = task.points || 1;
-                    
-                    const taskData = {
-                        user_id: userId,
-                        name: taskName,
-                        description: task.description || '',
-                        icon: 'default.png',
-                        category: taskCategory,
-                        planned_time: taskTime,
-                        actual_time: 0,
-                        points: taskPoints,
-                        start_date: formattedDate,
-                        date: formattedDate,
-                        end_date: formattedDate,
-                        status: '未完成',
-                        repeat_setting: '无'
-                    };
-                    
-                    console.log('准备添加任务数据:', taskData);
-                    try {
-                        console.log('开始调用taskAPI.addTask');
-                        const response = await taskAPI.addTask(taskData);
-                        console.log('任务添加成功，响应:', response);
-                    } catch (error) {
-                        console.error('单个任务添加失败:', error);
-                        console.error('错误详情:', error.message);
-                        // 继续添加其他任务，不中断整个流程
-                    }
-                }
+                return {
+                    user_id: userId,
+                    name: taskName,
+                    description: task.description || '',
+                    icon: 'default.png',
+                    category: taskCategory,
+                    planned_time: taskTime,
+                    actual_time: 0,
+                    points: taskPoints,
+                    start_date: formattedDate,
+                    date: formattedDate,  // 确保包含date字段
+                    end_date: formattedDate,
+                    status: '未完成',
+                    repeat_setting: '无',
+                    series_id: Math.floor(Math.random() * 900000) + 100000  // 添加series_id字段
+                };
+            });
+            
+            console.log('准备批量添加任务数据:', tasksData);
+            
+            // 调用新的批量添加任务API
+            const requestData = {
+                tasks: tasksData,
+                user_id: userId
+            };
+            
+            console.log('发送API请求:', requestData);
+            
+            console.log('准备发送fetch请求到:', 'http://127.0.0.1:5000/api/tasks/batch');
+            console.log('请求数据类型:', typeof requestData);
+            console.log('请求数据JSON字符串:', JSON.stringify(requestData));
+            
+            // 添加try-catch来捕获fetch可能的网络错误
+            let response;
+            try {
+                response = await fetch('http://127.0.0.1:5000/api/tasks/batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                console.log('fetch请求成功完成，响应对象:', response);
+            } catch (networkError) {
+                console.error('fetch网络请求失败:', networkError);
+                throw new Error(`网络请求失败: ${networkError.message}`);
+            }
+            
+            console.log('API响应状态:', response.status, response.statusText);
+            const data = await response.json();
+            console.log('API响应数据:', data);
+            
+            if (!response.ok || !data.success) {
+                throw new Error(`批量添加任务失败: ${data.error || '未知错误'}`);
+            }
+            
+            console.log('批量添加任务成功，响应:', data);
             
             // 显示成功提示
-            this.showNotification(`成功添加${selectedTasks.length}个任务`, 'success');
+            this.showNotification(`成功添加${data.count}个任务`, 'success');
             
             // 关闭模态窗口
             this.closeModal();
             
-            // 刷新任务列表
-            if (window.loadTasks) {
-                console.log('调用window.loadTasks刷新任务列表');
-                window.loadTasks();
-            } else if (window.refreshTasks) {
-                console.log('调用window.refreshTasks刷新任务列表');
-                window.refreshTasks();
-            } else {
-                console.log('无法找到刷新任务列表的函数，使用页面重载刷新');
-                // 使用setTimeout稍微延迟重载，确保用户能看到成功提示
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            }
+            // 定义一个明确的函数来刷新任务列表
+            const refreshTaskList = () => {
+                const currentUserId = localStorage.getItem('user_id') || '1';
+                console.log('刷新任务列表，使用用户ID:', currentUserId);
+                
+                // 直接从后端获取最新任务并更新UI
+                fetch(`http://127.0.0.1:5000/api/tasks?user_id=${currentUserId}&date=${formattedDate}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('获取到的最新任务数据:', data);
+                        // 尝试通过各种可能的方式刷新任务列表
+                        if (window.loadTasks) {
+                            console.log('调用window.loadTasks刷新任务列表');
+                            window.loadTasks();
+                        } else if (window.refreshTasks) {
+                            console.log('调用window.refreshTasks刷新任务列表');
+                            window.refreshTasks();
+                        } else {
+                            console.log('无法找到刷新任务列表的函数，使用页面重载刷新');
+                            // 使用setTimeout稍微延迟重载，确保用户能看到成功提示
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('刷新任务列表失败:', error);
+                        // 即使失败也要尝试刷新页面
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    });
+            };
+            
+            // 调用刷新函数
+            refreshTaskList();
         } catch (error) {
             console.error('添加任务失败:', error);
             this.showNotification('添加任务失败，请重试', 'error');

@@ -9,6 +9,228 @@ import re
 from werkzeug.utils import secure_filename
 
 def register_routes(app):
+    # 批量添加任务API
+    @app.route('/api/tasks/batch', methods=['POST'])
+    def add_tasks_batch():
+        print('=' * 50)
+        print('收到批量添加任务请求')
+        # 打印所有请求头
+        print('请求头信息:')
+        for key, value in request.headers:
+            print(f'  {key}: {value}')
+        
+        # 尝试获取JSON数据
+        try:
+            data = request.json
+            print('请求数据:', data)
+            
+            tasks_data = data.get('tasks', []) if data else []
+            user_id = data.get('user_id') if data else None
+            
+            print('任务数据数量:', len(tasks_data))
+            print('用户ID:', user_id)
+        except Exception as e:
+            print('解析请求数据失败:', str(e))
+            print('请求内容类型:', request.content_type)
+            print('请求原始数据:', request.get_data())
+            return jsonify({'error': '请求数据格式错误'}), 400
+        
+        if not tasks_data:
+            print('错误: 没有提供任务数据')
+            return jsonify({'error': '没有提供任务数据'}), 400
+        
+        try:
+            # 获取用户信息以设置昵称
+            user = User.query.get(user_id)
+            user_nickname = user.nickname or user.username if user else '未知用户'
+            
+            # 批量创建任务
+            created_tasks = []
+            for task_data in tasks_data:
+                try:
+                    print(f'处理任务: {task_data.get("name")}')
+                    # 处理images字段，确保它是JSON字符串格式
+                    images = task_data.get('images', [])
+                    images_json = json.dumps(images) if images else None
+                    
+                    # 创建任务 - 只使用Task模型中定义的字段
+                    task = Task(
+                        user_id=user_id,
+                        name=task_data.get('name', '未命名任务'),
+                        description=task_data.get('description', ''),
+                        icon=task_data.get('icon', 'default.png'),
+                        category=task_data.get('category', '其他'),
+                        planned_time=task_data.get('planned_time', 10),
+                        actual_time=task_data.get('actual_time', 0),
+                        points=task_data.get('points', 1),
+                        repeat_setting=task_data.get('repeat_setting', '无'),
+                        start_date=task_data.get('start_date'),
+                        end_date=task_data.get('end_date'),
+                        status=task_data.get('status', '未完成'),
+                        series_id=task_data.get('series_id') or str(random.randint(100000, 999999)),
+                        images=images_json
+                    )
+                    
+                    # 添加任务到会话
+                    db.session.add(task)
+                    
+                    # 立即提交以获取任务ID
+                    db.session.flush()
+                    
+                    print(f'任务添加到会话，ID: {task.id}')
+                    
+                    # 处理重复任务创建
+                    repeat_setting = task_data.get('repeat_setting', '无')
+                    start_date = task_data.get('start_date')
+                    end_date = task_data.get('end_date')
+                    
+                    # 只有在设置了结束日期的情况下才创建重复任务
+                    if end_date and start_date and repeat_setting != '无':
+                        try:
+                            # 转换字符串日期为datetime对象
+                            start = datetime.strptime(start_date, '%Y-%m-%d')
+                            end = datetime.strptime(end_date, '%Y-%m-%d')
+                            
+                            # 分割多选的重复设置
+                            repeat_settings = repeat_setting.split(',')
+                            
+                            # 星期映射表
+                            weekday_map = {
+                                '每周一': 0,
+                                '每周二': 1,
+                                '每周三': 2,
+                                '每周四': 3,
+                                '每周五': 4,
+                                '每周六': 5,
+                                '每周日': 6
+                            }
+                            
+                            # 处理每个重复设置
+                            for setting in repeat_settings:
+                                setting = setting.strip()  # 去除空白字符
+                                
+                                # 根据不同的重复类型创建任务
+                                if setting == '每天':
+                                    # 为每一天创建任务
+                                    current_date = start
+                                    while current_date <= end:
+                                        # 跳过已经创建的第一个任务
+                                        if current_date.strftime('%Y-%m-%d') != start_date:
+                                            daily_task = Task(
+                                                user_id=user_id,
+                                                name=task_data.get('name', '未命名任务'),
+                                                description=task_data.get('description', ''),
+                                                icon=task_data.get('icon', 'default.png'),
+                                                category=task_data.get('category', '其他'),
+                                                planned_time=task_data.get('planned_time', 10),
+                                                actual_time=0,
+                                                points=task_data.get('points', 1),
+                                                repeat_setting=repeat_setting,  # 保存完整的重复设置
+                                                start_date=current_date.strftime('%Y-%m-%d'),
+                                                end_date=end_date,
+                                                status='未完成',
+                                                series_id=task.series_id,
+                                                images=images_json
+                                            )
+                                            db.session.add(daily_task)
+                                        # 前进到下一天
+                                        current_date += timedelta(days=1)
+                                elif setting == '每个工作日':
+                                    # 为每个工作日创建任务
+                                    current_date = start
+                                    while current_date <= end:
+                                        # 0-4代表周一至周五
+                                        if current_date.weekday() < 5:
+                                            # 跳过已经创建的第一个任务
+                                            if current_date.strftime('%Y-%m-%d') != start_date:
+                                                weekday_task = Task(
+                                                    user_id=user_id,
+                                                    name=task_data.get('name', '未命名任务'),
+                                                    description=task_data.get('description', ''),
+                                                    icon=task_data.get('icon', 'default.png'),
+                                                    category=task_data.get('category', '其他'),
+                                                    planned_time=task_data.get('planned_time', 10),
+                                                    actual_time=0,
+                                                    points=task_data.get('points', 1),
+                                                    repeat_setting=repeat_setting,  # 保存完整的重复设置
+                                                    start_date=current_date.strftime('%Y-%m-%d'),
+                                                    end_date=end_date,
+                                                    status='未完成',
+                                                    series_id=task.series_id,
+                                                    images=images_json
+                                                )
+                                                db.session.add(weekday_task)
+                                        # 前进到下一天
+                                        current_date += timedelta(days=1)
+                                elif setting.startswith('每周'):
+                                    # 提取星期几
+                                    target_weekday = weekday_map.get(setting)
+                                    if target_weekday is not None:
+                                        # 为每个指定的星期几创建任务
+                                        current_date = start  # datetime对象是不可变的，直接赋值即可
+                                        
+                                        # 找到第一个目标星期几
+                                        days_ahead = target_weekday - current_date.weekday()
+                                        if days_ahead <= 0:  # 如果当天或已过去
+                                            days_ahead += 7
+                                        current_date += timedelta(days=days_ahead)
+                                        
+                                        # 创建所有符合条件的日期的任务
+                                        while current_date <= end:
+                                            weekly_task = Task(
+                                                user_id=user_id,
+                                                name=task_data.get('name', '未命名任务'),
+                                                description=task_data.get('description', ''),
+                                                icon=task_data.get('icon', 'default.png'),
+                                                category=task_data.get('category', '其他'),
+                                                planned_time=task_data.get('planned_time', 10),
+                                                actual_time=0,
+                                                points=task_data.get('points', 1),
+                                                repeat_setting=repeat_setting,  # 保存完整的重复设置
+                                                start_date=current_date.strftime('%Y-%m-%d'),
+                                                end_date=end_date,
+                                                status='未完成',
+                                                series_id=task.series_id,
+                                                images=images_json
+                                            )
+                                            db.session.add(weekly_task)
+                                            
+                                            # 前进到下一周的同一天
+                                            current_date += timedelta(days=7)
+                        except ValueError:
+                            # 日期格式不正确时忽略重复创建
+                            pass
+                    
+                    # 将任务ID添加到创建列表
+                    created_tasks.append(task.id)
+                except Exception as e:
+                    print(f'处理任务时出错: {str(e)}')
+                    # 继续处理下一个任务
+                    continue
+            
+            # 记录操作日志
+            log = OperationLog(
+                user_id=user_id,
+                user_nickname=user_nickname,
+                operation_type='批量添加任务',
+                operation_content=f'批量添加任务，共{len(created_tasks)}个',
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
+            db.session.add(log)
+            
+            # 合并为一次提交，确保所有任务和日志在同一个事务中完成
+            db.session.commit()
+            
+            print('任务创建成功，创建的任务ID列表:', created_tasks)
+            print('返回响应: 成功创建', len(created_tasks), '个任务')
+            return jsonify({'success': True, 'created_task_ids': created_tasks, 'count': len(created_tasks)})
+            
+        except Exception as e:
+            db.session.rollback()
+            print('任务创建失败:', str(e))
+            return jsonify({'error': '批量添加任务失败', 'details': str(e)}), 500
+    
     # 确保头像上传根目录存在
     AVATAR_ROOT_FOLDER = 'uploads/avatars'
     if not os.path.exists(AVATAR_ROOT_FOLDER):
