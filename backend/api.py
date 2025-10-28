@@ -416,142 +416,153 @@ def register_routes(app):
     
     @app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
     def delete_task(task_id):
-        task = Task.query.get(task_id)
-        if not task:
-            return jsonify({'success': False, 'message': '任务不存在'})
-        
-        user_id = task.user_id
-        task_name = task.name
-        task_points = task.points
-        task_status = task.status
-        
-        # 初始化操作者名称，避免未定义的情况
-        operator_name = '系统'
-        
-        # 删除任务相关的图片文件
-        if task.images:
-            try:
-                # 获取当前工作目录，确保使用绝对路径
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                
-                # 解析图片URL列表
-                image_urls = json.loads(task.images)
-                print(f"开始处理任务{task_id}的{len(image_urls)}张图片")
-                
-                # 检查可能的目录结构
-                user_dir = os.path.join(current_dir, 'uploads', 'task_images', str(user_id))
-                
-                # 方法1：直接遍历用户目录下的所有可能子目录，查找包含任务ID的目录
-                if os.path.exists(user_dir):
-                    task_dirs_to_remove = []
-                    for root, dirs, files in os.walk(user_dir):
-                        # 检查目录路径中是否包含任务ID
-                        if str(task_id) in root:
-                            print(f"找到可能包含任务{task_id}图片的目录: {root}")
-                            # 记录需要删除的目录
-                            task_dirs_to_remove.append(root)
-                            # 删除目录中的所有文件
-                            for file in files:
-                                file_path = os.path.join(root, file)
-                                try:
-                                    os.remove(file_path)
-                                    print(f"成功删除文件: {file_path}")
-                                except Exception as e:
-                                    print(f"删除文件时出错 {file_path}: {str(e)}")
+        try:
+            app.logger.info(f"开始删除任务，task_id: {task_id}")
+            task = Task.query.get(task_id)
+            if not task:
+                app.logger.warning(f"任务不存在，task_id: {task_id}")
+                return jsonify({'success': False, 'message': '任务不存在'})
+            
+            user_id = task.user_id
+            task_name = task.name
+            task_points = task.points
+            task_status = task.status
+            
+            app.logger.info(f"获取任务信息成功，user_id: {user_id}, task_name: {task_name}, task_status: {task_status}")
+            
+            # 初始化操作者名称，避免未定义的情况
+            operator_name = '系统'
+            
+            # 删除任务相关的图片文件
+            if task.images:
+                try:
+                    # 获取当前工作目录，确保使用绝对路径
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
                     
-                    # 删除空目录（从最深层开始删除）
-                    for directory in sorted(task_dirs_to_remove, reverse=True):
-                        if os.path.exists(directory) and not os.listdir(directory):
-                            try:
-                                os.rmdir(directory)
-                                print(f"成功删除空目录: {directory}")
-                            except Exception as e:
-                                    print(f"删除目录时出错 {directory}: {str(e)}")
-                
-                # 方法2：直接从URL构建绝对路径并删除
-                for image_url in image_urls:
-                    try:
-                        # 确保URL是相对路径格式
-                        if image_url.startswith('/'):
-                            image_url = image_url[1:]  # 移除开头的斜杠
+                    # 解析图片URL列表
+                    image_urls = json.loads(task.images)
+                    app.logger.info(f"开始处理任务{task_id}的{len(image_urls)}张图片")
+                    
+                    # 检查可能的目录结构
+                    user_dir = os.path.join(current_dir, 'uploads', 'task_images', str(user_id))
+                    
+                    # 方法1：直接遍历用户目录下的所有可能子目录，查找包含任务ID的目录
+                    if os.path.exists(user_dir):
+                        task_dirs_to_remove = []
+                        for root, dirs, files in os.walk(user_dir):
+                            # 检查目录路径中是否包含任务ID
+                            if str(task_id) in root:
+                                app.logger.info(f"找到可能包含任务{task_id}图片的目录: {root}")
+                                # 记录需要删除的目录
+                                task_dirs_to_remove.append(root)
+                                # 删除目录中的所有文件
+                                for file in files:
+                                    file_path = os.path.join(root, file)
+                                    try:
+                                        os.remove(file_path)
+                                        app.logger.info(f"成功删除文件: {file_path}")
+                                    except Exception as e:
+                                        app.logger.error(f"删除文件时出错 {file_path}: {str(e)}")
                         
-                        # 构建绝对路径
-                        file_path = os.path.join(current_dir, image_url)
-                        
-                        # 也尝试另一种路径格式（直接使用uploads开头）
-                        if not file_path.startswith(os.path.join(current_dir, 'uploads')):
-                            alt_file_path = os.path.join(current_dir, 'uploads', image_url.replace('uploads/', ''))
-                        else:
-                            alt_file_path = None
-                        
-                        # 尝试删除文件
-                        if os.path.exists(file_path):
-                            os.remove(file_path)
-                            print(f"通过直接路径删除成功: {file_path}")
-                        elif alt_file_path and os.path.exists(alt_file_path):
-                            os.remove(alt_file_path)
-                            print(f"通过备用路径删除成功: {alt_file_path}")
-                        else:
-                            # 尝试不同的URL解析方式
-                            if '/uploads/task_images/' in image_url:
-                                path_parts = image_url.split('/uploads/task_images/')[1]
-                                fallback_path = os.path.join(current_dir, 'uploads', 'task_images', path_parts)
-                                if os.path.exists(fallback_path):
-                                    os.remove(fallback_path)
-                                    print(f"通过备用解析路径删除成功: {fallback_path}")
-                                else:
-                                    print(f"无法找到文件: {file_path}, {alt_file_path}, {fallback_path}")
-                    except Exception as e:
-                        print(f"处理URL {image_url} 时出错: {str(e)}")
-                        
-            except Exception as e:
-                print(f"删除图片时出错: {str(e)}")
-                # 继续执行任务删除，不因图片删除失败而中断
-        
-        # 如果是已完成的任务，需要扣除对应的金币
-        if task_status == '已完成' and task_points > 0:
-            # 获取用户
-            user = User.query.get(user_id)
-            if user:
-                # 扣除金币
-                user.total_gold = max(0, user.total_gold - task_points)
-                
-                # 获取操作用户信息
-                # 注意：这里使用任务所属用户作为操作者
-                # 实际项目中应该从认证信息中获取当前登录用户
-                current_user = User.query.get(user_id)
-                if current_user:
-                    operator_name = current_user.username
-                
-                # 记录金币扣除日志
-                gold_log = OperationLog(
-                    user_id=user_id,
-                    user_nickname=current_user.nickname or current_user.username if current_user else '系统',  # 使用昵称或用户名
-                    operation_type='修改金币',
-                    operation_content=f'删除已完成任务：{task_name}，扣除{task_points}金币',
-                    operation_time=datetime.now(),
-                    operation_result='成功'
-                )
-                db.session.add(gold_log)
-        
-        # 删除任务记录
-        db.session.delete(task)
-        
-        # 记录操作日志
-        log = OperationLog(
-            user_id=user_id,
-            operator_name=operator_name,
-            operation_type='删除任务',
-            operation_content=f'删除任务：{task_name}',
-            operation_time=datetime.now(),
-            operation_result='成功'
-        )
-        db.session.add(log)
-        
-        # 合并为一次提交，确保任务删除和日志记录在同一个事务中完成
-        db.session.commit()
-        
-        return jsonify({'success': True})
+                        # 删除空目录（从最深层开始删除）
+                        for directory in sorted(task_dirs_to_remove, reverse=True):
+                            if os.path.exists(directory) and not os.listdir(directory):
+                                try:
+                                    os.rmdir(directory)
+                                    app.logger.info(f"成功删除空目录: {directory}")
+                                except Exception as e:
+                                    app.logger.error(f"删除目录时出错 {directory}: {str(e)}")
+                    
+                    # 方法2：直接从URL构建绝对路径并删除
+                    for image_url in image_urls:
+                        try:
+                            # 确保URL是相对路径格式
+                            if image_url.startswith('/'):
+                                image_url = image_url[1:]  # 移除开头的斜杠
+                            
+                            # 构建绝对路径
+                            file_path = os.path.join(current_dir, image_url)
+                            
+                            # 也尝试另一种路径格式（直接使用uploads开头）
+                            if not file_path.startswith(os.path.join(current_dir, 'uploads')):
+                                alt_file_path = os.path.join(current_dir, 'uploads', image_url.replace('uploads/', ''))
+                            else:
+                                alt_file_path = None
+                            
+                            # 尝试删除文件
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
+                                app.logger.info(f"通过直接路径删除成功: {file_path}")
+                            elif alt_file_path and os.path.exists(alt_file_path):
+                                os.remove(alt_file_path)
+                                app.logger.info(f"通过备用路径删除成功: {alt_file_path}")
+                            else:
+                                # 尝试不同的URL解析方式
+                                if '/uploads/task_images/' in image_url:
+                                    path_parts = image_url.split('/uploads/task_images/')[1]
+                                    fallback_path = os.path.join(current_dir, 'uploads', 'task_images', path_parts)
+                                    if os.path.exists(fallback_path):
+                                        os.remove(fallback_path)
+                                        app.logger.info(f"通过备用解析路径删除成功: {fallback_path}")
+                                    else:
+                                        app.logger.warning(f"无法找到文件: {file_path}, {alt_file_path}, {fallback_path}")
+                        except Exception as e:
+                            app.logger.error(f"处理URL {image_url} 时出错: {str(e)}")
+                            
+                except Exception as e:
+                    app.logger.error(f"删除图片时出错: {str(e)}")
+                    # 继续执行任务删除，不因图片删除失败而中断
+            
+            # 如果是已完成的任务，需要扣除对应的金币
+            if task_status == '已完成' and task_points > 0:
+                # 获取用户
+                user = User.query.get(user_id)
+                if user:
+                    # 扣除金币
+                    user.total_gold = max(0, user.total_gold - task_points)
+                    
+                    # 获取操作用户信息
+                    # 注意：这里使用任务所属用户作为操作者
+                    # 实际项目中应该从认证信息中获取当前登录用户
+                    current_user = User.query.get(user_id)
+                    if current_user:
+                        operator_name = current_user.username
+                    
+                    # 记录金币扣除日志
+                    gold_log = OperationLog(
+                        user_id=user_id,
+                        user_nickname=current_user.nickname or current_user.username if current_user else '系统',  # 使用昵称或用户名
+                        operation_type='修改金币',
+                        operation_content=f'删除已完成任务：{task_name}，扣除{task_points}金币',
+                        operation_time=datetime.now(),
+                        operation_result='成功'
+                    )
+                    db.session.add(gold_log)
+            
+            # 删除任务记录
+            db.session.delete(task)
+            
+            # 记录操作日志
+            log = OperationLog(
+                user_id=user_id,
+                user_nickname=operator_name if 'operator_name' in locals() else '系统',
+                operation_type='删除任务',
+                operation_content=f'删除任务：{task_name}',
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
+            db.session.add(log)
+            
+            # 合并为一次提交，确保任务删除和日志记录在同一个事务中完成
+            db.session.commit()
+            
+            app.logger.info(f"任务删除成功，task_id: {task_id}")
+            return jsonify({'success': True})
+        except Exception as e:
+            # 发生异常时回滚事务
+            db.session.rollback()
+            app.logger.error(f"删除任务时发生异常，task_id: {task_id}, 错误信息: {str(e)}")
+            return jsonify({'success': False, 'message': f'删除任务失败: {str(e)}'})
     
     # 上传任务图片
     @app.route('/api/tasks/<int:task_id>/upload', methods=['POST'])

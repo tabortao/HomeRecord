@@ -180,8 +180,23 @@ const taskAPI = {
     // 删除任务
     deleteTask: async (taskId) => {
         const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json' // 添加Content-Type头
+            }
         });
+        
+        if (!response.ok) {
+            // 尝试获取错误响应的JSON内容
+            try {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `服务器响应错误: ${response.status}`);
+            } catch (jsonError) {
+                // 如果无法解析JSON，使用默认错误消息
+                throw new Error(`服务器响应错误: ${response.status}`);
+            }
+        }
+        
         return await response.json();
     },
     
