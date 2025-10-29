@@ -302,6 +302,18 @@ const wishAPI = {
         return await response.json();
     },
 
+    // 上传心愿图片
+    uploadWishImage: async (userId, file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE_URL}/wishes/upload?user_id=${userId}`, {
+            method: 'POST',
+            body: formData
+        });
+        return await response.json();
+    },
+
     // 添加心愿
     addWish: async (wishData) => {
         const response = await fetch(`${API_BASE_URL}/wishes`, {

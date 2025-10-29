@@ -2888,6 +2888,7 @@ async function loadWishes() {
     const wishList = document.getElementById('wish-list');
     try {
         const wishes = await api.wishAPI.getWishes(appState.currentUser.id);
+        console.log('Wishes data received:', wishes); // 添加调试日志
         
         wishList.innerHTML = '';
         
@@ -2904,11 +2905,56 @@ async function loadWishes() {
             let bgColor = 'bg-blue-100';
             let borderColor = 'border-blue-200';
             
-            // 优先使用自定义图标
-            const useCustomIcon = wish.icon && wish.icon.trim() !== '' && wish.icon.startsWith('data:image');
-            
-            if (!useCustomIcon) {
-                // 根据心愿名称选择对应图标
+            // 优先处理自定义图标或路径
+            if (wish.icon && wish.icon.trim() !== '') {
+                console.log(`Wish ${wish.id} (${wish.name}) icon path: ${wish.icon}`); // 添加调试日志
+                
+                // 处理不同类型的图标路径，参考子账号头像处理方式
+                if (wish.icon.startsWith('data:image') || wish.icon.startsWith('http://') || wish.icon.startsWith('https://')) {
+                    // 如果是data URL或完整路径，直接使用
+                    iconSrc = wish.icon;
+                } 
+                // 如果是/uploads开头的路径，将其转换为/static/uploads路径
+                else if (wish.icon.startsWith('/uploads/')) {
+                    iconSrc = wish.icon.replace('/uploads/', '/static/uploads/');
+                }
+                // 如果是其他路径，可能是内置图标，添加静态路径前缀
+                else if (!wish.icon.startsWith('/')) {
+                    iconSrc = `/static/images/${wish.icon}`;
+                }
+                // 其他以'/'开头的路径，直接使用
+                else {
+                    iconSrc = wish.icon;
+                }
+                
+                bgColor = 'bg-indigo-100';
+                borderColor = 'border-indigo-200';
+                
+                // 如果是内置图标名称，还需要根据心愿名称选择对应样式
+                if (!wish.icon.startsWith('data:image') && !wish.icon.startsWith('/uploads/') && !wish.icon.startsWith('http://') && !wish.icon.startsWith('https://')) {
+                    const normalizedName = wish.name ? wish.name.toLowerCase() : '';
+                    if (normalizedName.includes('电视') || normalizedName.includes('看电视')) {
+                        bgColor = 'bg-blue-100';
+                        borderColor = 'border-blue-200';
+                    } else if (normalizedName.includes('零花钱') || normalizedName.includes('钱')) {
+                        bgColor = 'bg-yellow-100';
+                        borderColor = 'border-yellow-200';
+                    } else if (normalizedName.includes('手机') || normalizedName.includes('玩手机')) {
+                        bgColor = 'bg-gray-100';
+                        borderColor = 'border-gray-200';
+                    } else if (normalizedName.includes('游戏') || normalizedName.includes('玩游戏')) {
+                        bgColor = 'bg-green-100';
+                        borderColor = 'border-green-200';
+                    } else if (normalizedName.includes('平板') || normalizedName.includes('玩平板')) {
+                        bgColor = 'bg-purple-100';
+                        borderColor = 'border-purple-200';
+                    } else if (normalizedName.includes('自由') || normalizedName.includes('自由活动')) {
+                        bgColor = 'bg-orange-100';
+                        borderColor = 'border-orange-200';
+                    }
+                }
+            } else {
+                // 默认处理逻辑
                 const normalizedName = wish.name ? wish.name.toLowerCase() : '';
                 if (normalizedName.includes('电视') || normalizedName.includes('看电视')) {
                     iconSrc = '/static/images/看电视.png';
@@ -2935,11 +2981,6 @@ async function loadWishes() {
                     bgColor = 'bg-orange-100';
                     borderColor = 'border-orange-200';
                 }
-            } else {
-                // 使用自定义图标，设置更通用的背景色
-                iconSrc = wish.icon;
-                bgColor = 'bg-indigo-100';
-                borderColor = 'border-indigo-200';
             }
             
             // 检查用户权限
@@ -2954,7 +2995,7 @@ async function loadWishes() {
                 <div class="flex justify-between items-start relative">
                     <div class="flex items-center">
                         <div class="w-12 h-12 ${bgColor} rounded-full flex items-center justify-center mr-3 shadow-md overflow-hidden">
-                            <img src="${iconSrc}" alt="心愿图标" class="w-full h-full object-cover">
+                            <img src="${iconSrc}" alt="心愿图标" class="w-full h-full object-cover" onError="this.onerror=null;this.src='static/images/玩游戏.png';">
                         </div>
                         <div>
                             <h4 class="font-bold text-lg text-gray-800">${wish.name}</h4>
@@ -3767,13 +3808,13 @@ function showEditWishModal(wish) {
         });
         
         // 绑定图标上传事件
-        document.getElementById('wish-icon-upload').addEventListener('change', (e) => {
+        document.getElementById('wish-icon-upload').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (file) {
-                // 检查文件类型
-                const validTypes = ['image/png', 'image/jpeg', 'image/gif'];
+                // 检查文件类型（支持png、jpg、gif、heif/heic）
+                const validTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/heif', 'image/heic'];
                 if (!validTypes.includes(file.type)) {
-                    domUtils.showToast('请上传PNG、JPG或GIF格式的图片', 'error');
+                    domUtils.showToast('请上传PNG、JPG、GIF或HEIF格式的图片', 'error');
                     return;
                 }
                 
@@ -3783,11 +3824,34 @@ function showEditWishModal(wish) {
                     return;
                 }
                 
+                // 先显示临时预览
                 const reader = new FileReader();
-                reader.onload = (event) => {
+                reader.onload = async (event) => {
                     const preview = document.getElementById('wish-icon-preview');
                     preview.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-contain">`;
-                    document.getElementById('edit-wish-icon').value = event.target.result; // 保存为base64
+                    
+                    try {
+                        // 上传图片到服务器
+                        domUtils.showToast('正在上传图片...');
+                        const result = await api.wishAPI.uploadWishImage(appState.currentUser.id, file);
+                        
+                        if (result.success && result.image_url) {
+                            // 保存服务器返回的图片URL
+                            document.getElementById('edit-wish-icon').value = result.image_url;
+                            domUtils.showToast('图片上传成功');
+                        } else {
+                            domUtils.showToast(result.message || '图片上传失败', 'error');
+                            // 恢复初始状态
+                            preview.innerHTML = '<i class="fa fa-image text-gray-400 text-3xl"></i>';
+                            document.getElementById('edit-wish-icon').value = '';
+                        }
+                    } catch (error) {
+                        console.error('上传图片失败:', error);
+                        domUtils.showToast('图片上传失败，请重试', 'error');
+                        // 恢复初始状态
+                        preview.innerHTML = '<i class="fa fa-image text-gray-400 text-3xl"></i>';
+                        document.getElementById('edit-wish-icon').value = '';
+                    }
                 };
                 reader.readAsDataURL(file);
             }
@@ -3810,7 +3874,23 @@ function showEditWishModal(wish) {
         const iconInput = document.getElementById('edit-wish-icon');
     
         if (wish.icon && wish.icon.trim() !== '') {
-            iconPreview.innerHTML = `<img src="${wish.icon}" class="w-full h-full object-contain">`;
+            // 处理图标路径，参考子账号头像处理方式
+            let iconUrl;
+            // 如果是data URL或完整路径，直接使用
+            if (wish.icon.startsWith('data:image') || wish.icon.startsWith('http://') || wish.icon.startsWith('https://')) {
+                iconUrl = wish.icon;
+            } 
+            // 如果是/uploads开头的路径，将其转换为/static/uploads路径
+            else if (wish.icon.startsWith('/uploads/')) {
+                iconUrl = wish.icon.replace('/uploads/', '/static/uploads/');
+            }
+            // 如果是内置图标名称，添加静态路径
+            else {
+                iconUrl = `/static/images/${wish.icon}`;
+            }
+            
+            // 添加错误处理，确保图片无法加载时有备用显示
+            iconPreview.innerHTML = `<img src="${iconUrl}" class="w-full h-full object-contain" onError="this.onerror=null;this.src='static/images/玩游戏.png';">`;
             iconInput.value = wish.icon;
         } else {
             // 重置为默认状态

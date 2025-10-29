@@ -13,13 +13,20 @@ app.config['SECRET_KEY'] = 'your-secret-key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///homerecord.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# 设置上传文件夹（使用绝对路径，指向frontend/static/uploads）
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'static', 'uploads')
+
+# 确保上传目录存在
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 # 确保任务图片上传目录存在
-TASK_IMAGES_FOLDER = 'uploads/task_images'
+TASK_IMAGES_FOLDER = os.path.join(app.config['UPLOAD_FOLDER'], 'task_images')
 if not os.path.exists(TASK_IMAGES_FOLDER):
     os.makedirs(TASK_IMAGES_FOLDER, exist_ok=True)
 
 # 允许的文件扩展名
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg', 'heif', 'heic'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -29,6 +36,23 @@ CORS(app, resources={
     r"/api/*": {"origins": "*"},
     r"/uploads/*": {"origins": "*"}
 })
+
+# 静态文件服务路由
+@app.route('/uploads/<path:filename>')
+def serve_uploaded_file(filename):
+    # 安全地拼接文件路径
+    safe_filename = os.path.normpath(filename)
+    # 确保路径不会跳出uploads目录（安全检查）
+    if '..' in safe_filename.split(os.sep):
+        return jsonify({'success': False, 'message': '访问被拒绝'}), 403
+    
+    try:
+        return send_from_directory(app.config['UPLOAD_FOLDER'], safe_filename)
+    except FileNotFoundError:
+        return jsonify({'success': False, 'message': '文件不存在'}), 404
+    except Exception as e:
+        print(f"提供静态文件时出错: {str(e)}")
+        return jsonify({'success': False, 'message': '服务器错误'}), 500
 db.init_app(app)
 
 # 初始化数据库

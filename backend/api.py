@@ -6,6 +6,7 @@ import random
 import os
 import uuid
 import re
+import time
 from werkzeug.utils import secure_filename
 
 def register_routes(app):
@@ -1150,6 +1151,70 @@ def register_routes(app):
         return jsonify({'success': True})
     
     # 心愿相关路由
+    @app.route('/api/wishes/upload', methods=['POST'])
+    def upload_wish_image():
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'message': '用户ID不能为空'})
+        
+        # 检查是否有文件
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': '未找到上传文件'})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': '未选择文件'})
+        
+        # 检查文件类型
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'heif', 'heic'}
+        extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        
+        # 如果没有扩展名，从MIME类型推断
+        if not extension:
+            mime_type = file.content_type
+            if mime_type == 'image/png':
+                extension = 'png'
+            elif mime_type in ['image/jpeg', 'image/jpg']:
+                extension = 'jpg'
+            elif mime_type == 'image/gif':
+                extension = 'gif'
+            elif mime_type in ['image/heif', 'image/heic']:
+                extension = 'heic'
+            else:
+                return jsonify({'success': False, 'message': '不支持的文件类型'})
+        
+        if extension not in allowed_extensions:
+            return jsonify({'success': False, 'message': '不支持的文件类型，请上传PNG、JPG、GIF或HEIF格式的图片'})
+        
+        try:
+            # 创建上传目录（使用绝对路径）
+            user_wish_dir = os.path.join('wish', str(user_id))
+            upload_dir = os.path.join(app.config['UPLOAD_FOLDER'], user_wish_dir)
+            
+            # 确保目录存在
+            if not os.path.exists(upload_dir):
+                os.makedirs(upload_dir, exist_ok=True)
+            
+            # 生成唯一文件名
+            filename = f'wish_{user_id}_{int(time.time())}_{uuid.uuid4().hex[:8]}.{extension}'
+            filepath = os.path.join(upload_dir, filename)
+            
+            # 保存文件
+            file.save(filepath)
+            
+            # 验证文件是否成功保存
+            if not os.path.exists(filepath):
+                return jsonify({'success': False, 'message': '图片保存失败，文件未写入磁盘'})
+            
+            # 生成图片URL，使用/static/uploads/开头，便于前端直接访问
+            image_url = f'/static/uploads/wish/{user_id}/{filename}'
+            
+            print(f"图片上传成功: {filepath}")
+            return jsonify({'success': True, 'image_url': image_url, 'message': '图片上传成功'})
+        except Exception as e:
+            print(f"图片上传异常: {str(e)}")
+            return jsonify({'success': False, 'message': f'图片保存失败：{str(e)}'})
+    
     @app.route('/api/wishes', methods=['GET'])
     def get_wishes():
         user_id = request.args.get('user_id')
@@ -1238,10 +1303,57 @@ def register_routes(app):
         if wish.is_builtin:
             return jsonify({'success': False, 'message': '内置心愿不能删除'})
         
+        # 删除相关的图片文件
+        if wish.icon:
+            # 提取文件路径（确保安全处理）
+            try:
+                # 从不同格式的路径中提取实际文件路径
+                if wish.icon.startswith('/uploads/'):
+                    image_path = wish.icon[len('/uploads/'):]
+                elif wish.icon.startswith('/static/uploads/'):
+                    image_path = wish.icon[len('/static/uploads/'):]
+                else:
+                    # 不是上传的图片，可能是内置图标或其他类型，不删除
+                    print(f"跳过删除非上传图片: {wish.icon}")
+                    # 使用continue的替代方案，直接进入下一个if语句块
+                    image_path = None
+                
+                # 只有在image_path有效且安全检查通过时才继续
+                if image_path:
+                    # 安全检查：防止路径遍历攻击
+                    safe_image_path = os.path.normpath(image_path)
+                    if '..' in safe_image_path.split(os.sep):
+                        print(f"安全警告：尝试访问受限路径: {image_path}")
+                        image_path = None
+                
+                # 只有在image_path有效且安全检查通过时才继续执行文件删除逻辑
+                if image_path and safe_image_path:
+                    # 使用绝对路径
+                    full_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_image_path)
+                    
+                    # 再次验证文件路径是否在uploads目录内（额外安全措施）
+                    uploads_real_path = os.path.realpath(app.config['UPLOAD_FOLDER'])
+                    file_real_path = os.path.realpath(full_path) if os.path.exists(full_path) else ''
+                    
+                    if file_real_path.startswith(uploads_real_path):
+                        try:
+                            if os.path.exists(full_path):
+                                os.remove(full_path)
+                                print(f"删除心愿图片成功: {full_path}")
+                            else:
+                                print(f"心愿图片不存在: {full_path}")
+                        except Exception as e:
+                            print(f"删除心愿图片时出错: {str(e)}")
+                            # 继续执行，不因图片删除失败而中断删除心愿
+                    else:
+                        print(f"安全警告：尝试删除uploads目录外的文件: {full_path}")
+            except Exception as e:
+                print(f"处理心愿图片路径时出错: {str(e)}")
+        
         db.session.delete(wish)
         db.session.commit()
         
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'message': '心愿删除成功'})
     
     @app.route('/api/wishes/exchange/<int:wish_id>', methods=['POST'])
     def exchange_wish(wish_id):
