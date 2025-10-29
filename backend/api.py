@@ -232,8 +232,8 @@ def register_routes(app):
             print('任务创建失败:', str(e))
             return jsonify({'error': '批量添加任务失败', 'details': str(e)}), 500
     
-    # 确保头像上传根目录存在
-    AVATAR_ROOT_FOLDER = 'uploads/avatars'
+    # 确保头像上传根目录存在 - 修改为frontend/static/uploads/avatars
+    AVATAR_ROOT_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'static', 'uploads', 'avatars')
     if not os.path.exists(AVATAR_ROOT_FOLDER):
         os.makedirs(AVATAR_ROOT_FOLDER, exist_ok=True)
     
@@ -882,15 +882,23 @@ def register_routes(app):
         
         return jsonify({'success': True, 'message': '图片上传成功', 'image_url': f'/static/uploads/task_images/{task.user_id}/{task_id}/{filename}'})
     
-    # 提供上传文件的访问
-    @app.route('/uploads/<path:filename>')
-    def uploaded_file(filename):
-        return send_from_directory('uploads', filename)
-    
-    # 提供带有/api前缀的上传文件访问
-    @app.route('/api/uploads/<path:filename>')
-    def api_uploaded_file(filename):
-        return send_from_directory('uploads', filename)
+    # 提供上传文件的访问 - 已在app.py中定义
+    # 提供头像的访问路由
+    @app.route('/api/avatars/<path:filename>')
+    def serve_avatar(filename):
+        # 安全地拼接文件路径
+        safe_filename = os.path.normpath(filename)
+        # 确保路径不会跳出uploads目录（安全检查）
+        if '..' in safe_filename.split(os.sep):
+            return jsonify({'success': False, 'message': '访问被拒绝'}), 403
+        
+        try:
+            return send_from_directory(AVATAR_ROOT_FOLDER, safe_filename)
+        except FileNotFoundError:
+            return jsonify({'success': False, 'message': '文件不存在'}), 404
+        except Exception as e:
+            print(f"提供头像文件时出错: {str(e)}")
+            return jsonify({'success': False, 'message': '服务器错误'}), 500
     
     @app.route('/api/tasks/series/<series_id>', methods=['DELETE'])
     def delete_task_series(series_id):

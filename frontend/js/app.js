@@ -3455,8 +3455,8 @@ async function updateUserInfo() {
             // 预设头像使用本地资源
             avatarUrl = `static/images/avatars/${user.avatar}`;
         } else {
-            // 自定义上传的头像使用API路径
-            avatarUrl = `http://localhost:5000/api/avatars/${user.avatar}`;
+            // 自定义上传的头像使用静态资源路径
+            avatarUrl = `/static/uploads/avatars/${user.avatar}`;
         }
         if(document.getElementById('profile-avatar')) document.getElementById('profile-avatar').src = avatarUrl;
         if(document.getElementById('task-page-avatar')) document.getElementById('task-page-avatar').src = avatarUrl;
@@ -3560,7 +3560,7 @@ function initAvatarSelector() {
                 
                 if (result.success) {
                     // 更新隐藏字段和预览
-                    const customAvatarUrl = `http://localhost:5000/api/avatars/${result.filename}`;
+                    const customAvatarUrl = `/static/uploads/avatars/${result.filename}`;
                     if(document.getElementById('avatar')) document.getElementById('avatar').value = result.filename;
                     if(document.getElementById('current-avatar')) document.getElementById('current-avatar').src = customAvatarUrl;
                     
@@ -3630,7 +3630,7 @@ function showEditProfileModal() {
             let avatarUrl;
             if (avatar.includes('avatar_')) {
                 // 自定义上传的头像
-                avatarUrl = `http://localhost:5000/api/avatars/${avatar}`;
+                avatarUrl = `/static/uploads/avatars/${avatar}`;
             } else {
                 // 预设头像
                 avatarUrl = `static/images/avatars/${avatar}`;

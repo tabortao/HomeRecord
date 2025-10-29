@@ -314,9 +314,9 @@ class SubaccountManager {
                 let html = '';
                 result.subaccounts.forEach(subaccount => {
                     // 使用正确的头像路径格式，直接使用api.js中定义的方式获取头像
-                    const avatarUrl = subaccount.avatar ? 
-                        `http://localhost:5000/api/avatars/${subaccount.avatar}` : 
-                        'static/images/avatars/default.svg';
+                    const avatarUrl = subaccount.avatar ?
+            `/static/uploads/avatars/${subaccount.avatar}` :
+            'static/images/avatars/default.svg';
                     
                     html += `
                         <div class="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
@@ -495,9 +495,9 @@ class SubaccountManager {
                 }
                 
                 // 设置头像预览
-                const avatarUrl = userInfo.avatar ? 
-                    `http://localhost:5000/api/avatars/${userInfo.avatar}` : 
-                    'static/images/avatars/default.svg';
+                const avatarUrl = userInfo.avatar ?
+            `/static/uploads/avatars/${userInfo.avatar}` :
+            'static/images/avatars/default.svg';
                 const avatarPreview = document.getElementById('edit-subaccount-avatar-preview');
                 if (avatarPreview) {
                     avatarPreview.innerHTML = `<img src="${avatarUrl}" alt="${userInfo.nickname || userInfo.username}" class="w-full h-full object-cover" onError="this.onerror=null;this.src='static/images/avatars/default.svg';">`;
