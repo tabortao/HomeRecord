@@ -1432,6 +1432,16 @@ def register_routes(app):
             exchange_match = re.search(r'兑换([^，]+)', content)
             exchange_info = exchange_match.group(1) if exchange_match else '未知数量'
             
+            # 查询心愿图标信息
+            wish_icon = None
+            try:
+                # 根据心愿名称查询心愿图标
+                wish = Wish.query.filter_by(name=wish_name).first()
+                if wish:
+                    wish_icon = wish.icon
+            except Exception as e:
+                print(f'查询心愿图标失败: {str(e)}')
+            
             result.append({
                 'id': log.id,
                 'user_id': log.user_id,
@@ -1440,7 +1450,8 @@ def register_routes(app):
                 'cost': cost,
                 'exchange_info': exchange_info,
                 'operation_time': log.operation_time.strftime('%Y-%m-%d %H:%M:%S'),
-                'operation_result': log.operation_result
+                'operation_result': log.operation_result,
+                'icon': wish_icon
             })
         
         return jsonify({

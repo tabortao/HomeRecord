@@ -3198,20 +3198,23 @@ function showExchangeHistory() {
     // 创建并显示模态框
     const modalHTML = `
     <div id="exchange-history-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div class="bg-white rounded-lg w-full max-w-md max-h-[70vh] flex flex-col">
-            <div class="p-3 border-b flex justify-between items-center">
-                <h3 class="text-lg font-semibold">兑换记录</h3>
-                <button id="close-history-modal" class="close-modal text-gray-500 hover:text-gray-700">
+        <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-xl transition-all duration-300 transform scale-95 opacity-0" id="modal-container">
+            <div class="p-4 border-b flex justify-between items-center bg-gradient-to-r from-indigo-50 to-purple-50 rounded-t-2xl">
+                <h3 class="text-lg font-bold text-indigo-700">兑换记录</h3>
+                <button id="close-history-modal" class="close-modal text-gray-500 hover:text-gray-700 w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 hover:bg-gray-100">
                     <i class="fa fa-times"></i>
                 </button>
             </div>
-            <div class="overflow-y-auto flex-grow" id="history-content" style="max-height: calc(70vh - 100px);">
-                <div id="history-list" class="p-2">
-                    <div class="text-center py-8">加载中...</div>
+            <div class="overflow-y-auto flex-grow" id="history-content">
+                <div id="history-list" class="p-4">
+                    <div class="text-center py-10">
+                        <div class="inline-block w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3"></div>
+                        <p class="text-gray-500">加载中...</p>
+                    </div>
                 </div>
             </div>
-            <div class="p-3 border-t text-center text-sm">
-                <span id="pagination-info" class="text-gray-500">共 0 条记录，第 0/0 页</span>
+            <div class="p-4 border-t bg-gray-50 rounded-b-2xl text-center">
+                <span id="pagination-info" class="text-gray-600 px-3 py-1 rounded-full bg-gray-100 text-sm font-medium">共 0 条记录，第 0/0 页</span>
             </div>
         </div>
     </div>`;
@@ -3225,21 +3228,31 @@ function showExchangeHistory() {
     // 添加新模态框
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
+    // 添加模态框动画效果
+    setTimeout(() => {
+        const modalContainer = document.getElementById('modal-container');
+        modalContainer.classList.remove('scale-95', 'opacity-0');
+        modalContainer.classList.add('scale-100', 'opacity-100');
+    }, 10);
+    
     // 绑定关闭事件
     document.getElementById('close-history-modal').addEventListener('click', () => {
-        const modal = document.getElementById('exchange-history-modal');
-        if (modal) {
-            modal.remove();
-        }
+        closeHistoryModal();
     });
     
     // 点击模态框背景关闭
     const modal = document.getElementById('exchange-history-modal');
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-            modal.remove();
+            closeHistoryModal();
         }
     });
+    
+    // 自适应调整模态框高度
+    adjustModalHeight();
+    
+    // 监听窗口大小变化，动态调整高度
+    window.addEventListener('resize', adjustModalHeight);
     
     // 添加滚动加载功能
     const contentArea = document.getElementById('history-content');
@@ -3247,6 +3260,14 @@ function showExchangeHistory() {
     
     // 加载第一页数据
     loadExchangeHistory(currentHistoryPage);
+    
+    // 清理事件监听器
+    const cleanup = () => {
+        window.removeEventListener('resize', adjustModalHeight);
+    };
+    
+    // 存储清理函数，在关闭模态框时调用
+    modal.cleanup = cleanup;
 }
 
 function handleHistoryScroll() {
@@ -3267,6 +3288,44 @@ function loadNextPage() {
     }
 }
 
+function closeHistoryModal() {
+    const modalContainer = document.getElementById('modal-container');
+    const modal = document.getElementById('exchange-history-modal');
+    
+    // 添加关闭动画
+    modalContainer.classList.remove('scale-100', 'opacity-100');
+    modalContainer.classList.add('scale-95', 'opacity-0');
+    
+    setTimeout(() => {
+        if (modal) {
+            // 调用清理函数移除事件监听器
+            if (modal.cleanup && typeof modal.cleanup === 'function') {
+                modal.cleanup();
+            }
+            modal.remove();
+        }
+    }, 200);
+}
+
+// 自适应调整模态框高度
+function adjustModalHeight() {
+    const modal = document.getElementById('exchange-history-modal');
+    if (!modal) return;
+    
+    const windowHeight = window.innerHeight;
+    const modalContainer = document.getElementById('modal-container');
+    const headerHeight = modalContainer.querySelector('div[class*="p-4 border-b"]').offsetHeight;
+    const footerHeight = modalContainer.querySelector('div[class*="p-4 border-t"]').offsetHeight;
+    
+    // 设置模态框最大高度为窗口高度的90%
+    modalContainer.style.maxHeight = `${windowHeight * 0.9}px`;
+    
+    // 计算并设置内容区域的高度
+    const contentArea = document.getElementById('history-content');
+    const maxContentHeight = windowHeight * 0.9 - headerHeight - footerHeight - 16; // 减去padding
+    contentArea.style.maxHeight = `${maxContentHeight}px`;
+}
+
 async function loadExchangeHistory(page) {
     if (isLoadingHistory || !hasMoreHistory) return;
     
@@ -3276,9 +3335,12 @@ async function loadExchangeHistory(page) {
     // 添加加载提示（如果不是第一页）
     if (page > 1) {
         const loadingIndicator = document.createElement('div');
-        loadingIndicator.className = 'text-center py-2 text-gray-500';
+        loadingIndicator.className = 'flex justify-center items-center py-4 text-gray-500';
         loadingIndicator.id = 'loading-indicator';
-        loadingIndicator.textContent = '加载中...';
+        loadingIndicator.innerHTML = `
+            <div class="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mr-2"></div>
+            加载更多记录...
+        `;
         historyList.appendChild(loadingIndicator);
     }
     
@@ -3301,12 +3363,14 @@ async function loadExchangeHistory(page) {
             if (response.data && response.data.length > 0) {
                 response.data.forEach(record => {
                     const historyItem = document.createElement('div');
-                    historyItem.className = 'p-3 border-b border-gray-100';
+                    historyItem.className = 'p-4 mb-3 rounded-xl shadow-sm bg-white border border-gray-100 transition-all duration-200 hover:shadow-md hover:border-indigo-100 opacity-0 transform translate-y-2';
                     
                     // 格式化时间
                     const formattedTime = formatDateTime(record.operation_time);
                     
-                    // 创建记录内容
+                    // 根据操作结果设置不同颜色
+                    const resultClass = record.operation_result === '成功' ? 'text-green-500' : 'text-red-500';
+                    
                     // 添加用户标识，如果是其他用户的记录，显示用户名
                     let userInfo = '';
                     if (record.user_id && record.user_id !== appState.currentUser.id) {
@@ -3314,20 +3378,88 @@ async function loadExchangeHistory(page) {
                         userInfo = record.username ? `[${record.username}] ` : `[用户${record.user_id}] `;
                     }
                     
+                    // 处理图标显示
+                    let iconDisplay = '';
+                    
+                    if (record.icon) {
+                        // 处理不同类型的图标路径，参考心愿列表的处理方式
+                        let iconSrc = '';
+                        if (record.icon.startsWith('data:image') || record.icon.startsWith('http://') || record.icon.startsWith('https://')) {
+                            // 如果是data URL或完整路径，直接使用
+                            iconSrc = record.icon;
+                        } else if (record.icon.startsWith('/uploads/')) {
+                            // 如果是/uploads开头的路径，将其转换为/static/uploads路径
+                            iconSrc = record.icon.replace('/uploads/', '/static/uploads/');
+                        } else if (!record.icon.startsWith('/')) {
+                            // 如果是其他路径，可能是内置图标，添加静态路径前缀
+                            iconSrc = `/static/images/${record.icon}`;
+                        } else {
+                            // 其他以'/'开头的路径，直接使用
+                            iconSrc = record.icon;
+                        }
+                        
+                        // 使用图片图标，添加rounded-full样式确保为圆形
+                        iconDisplay = `<img src="${iconSrc}" alt="${record.wish_name}" class="w-6 h-6 object-cover rounded-full">`;
+                    } else {
+                        // 如果没有图标信息，根据文本内容获取默认Font Awesome图标
+                        let iconClass = 'fa-gift';
+                        const exchangeLower = record.exchange_info.toLowerCase();
+                        if (exchangeLower.includes('电视') || exchangeLower.includes('看电')) {
+                            iconClass = 'fa-tv';
+                        } else if (exchangeLower.includes('手机') || exchangeLower.includes('玩手机')) {
+                            iconClass = 'fa-mobile-alt';
+                        } else if (exchangeLower.includes('游戏') || exchangeLower.includes('玩游戏')) {
+                            iconClass = 'fa-gamepad';
+                        } else if (exchangeLower.includes('钱') || exchangeLower.includes('零花钱')) {
+                            iconClass = 'fa-coins';
+                        } else if (exchangeLower.includes('平板') || exchangeLower.includes('玩平板')) {
+                            iconClass = 'fa-tablet-alt';
+                        } else if (exchangeLower.includes('自由') || exchangeLower.includes('自由活动')) {
+                            iconClass = 'fa-wind';
+                        }
+                        
+                        // 使用Font Awesome图标
+                        iconDisplay = `<i class="fa ${iconClass} text-indigo-600"></i>`;
+                    }
+                    
                     historyItem.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-gray-600">${formattedTime}：${userInfo}使用${record.cost}金币兑换了${record.exchange_info}</p>
+                        <div class="flex items-start">
+                            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center mr-3 flex-shrink-0">
+                                <div class="w-8 h-8 rounded-full overflow-hidden bg-white flex items-center justify-center">
+                                    ${iconDisplay}
+                                </div>
                             </div>
-                            <span class="text-green-500">${record.operation_result}</span>
+                            <div class="flex-grow">
+                                <div class="flex justify-between items-start mb-1">
+                                    <div>
+                                        <p class="text-gray-800 font-medium">${record.exchange_info}</p>
+                                    </div>
+                                    <span class="${resultClass} font-medium px-2 py-0.5 rounded-full text-xs">${record.operation_result}</span>
+                                </div>
+                                <p class="text-gray-600 text-sm mb-1">${userInfo}使用<span class="text-yellow-500 font-bold">${record.cost}</span>金币</p>
+                                <p class="text-gray-400 text-xs">${formattedTime}</p>
+                            </div>
                         </div>
                     `;
                     
                     historyList.appendChild(historyItem);
+                    
+                    // 添加淡入动画
+                    setTimeout(() => {
+                        historyItem.classList.remove('opacity-0', 'translate-y-2');
+                    }, 10);
                 });
             } else if (page === 1) {
                 // 没有记录时显示空状态
-                historyList.innerHTML = '<div class="text-center py-10 text-gray-500">暂无兑换记录</div>';
+                historyList.innerHTML = `
+                    <div class="text-center py-12 bg-gray-50 rounded-xl">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-indigo-50 rounded-full flex items-center justify-center">
+                            <i class="fa fa-history text-2xl text-indigo-300"></i>
+                        </div>
+                        <h4 class="text-gray-500 font-medium mb-1">暂无兑换记录</h4>
+                        <p class="text-gray-400 text-sm">完成兑换后，记录将显示在这里</p>
+                    </div>
+                `;
             }
             
             // 更新分页信息
