@@ -384,6 +384,14 @@ function initTomatoSettings() {
 // 初始化应用
 // 初始化任务设置
 function initTaskSettings() {
+    // 初始化默认设置
+    if (!appState.taskSettings) {
+        appState.taskSettings = {
+            autoSort: false,
+            autoMigrate: false
+        };
+    }
+    
     // 从localStorage加载任务设置
     try {
         const savedSettings = localStorage.getItem('taskSettings');
@@ -411,16 +419,23 @@ function initTaskSettings() {
     if (saveTaskSettingsBtn) {
         saveTaskSettingsBtn.addEventListener('click', saveTaskSettings);
     }
+    
+    // 如果启用了自动迁移功能，执行迁移
+    if (appState.taskSettings.autoMigrate) {
+        migrateUnfinishedTasks();
+    }
 }
 
 // 显示任务设置模态窗口
 function showTaskSettingsModal() {
     const modal = document.getElementById('task-settings-modal');
     const autoSortCheckbox = document.getElementById('auto-sort-tasks');
+    const autoMigrateCheckbox = document.getElementById('auto-migrate-tasks');
     
-    if (modal && autoSortCheckbox) {
+    if (modal && autoSortCheckbox && autoMigrateCheckbox) {
         // 设置复选框状态
         autoSortCheckbox.checked = appState.taskSettings.autoSort;
+        autoMigrateCheckbox.checked = appState.taskSettings.autoMigrate;
         // 显示模态窗口
         modal.classList.remove('hidden');
     }
@@ -437,27 +452,145 @@ function hideTaskSettingsModal() {
 // 保存任务设置
 function saveTaskSettings() {
     const autoSortCheckbox = document.getElementById('auto-sort-tasks');
+    const autoMigrateCheckbox = document.getElementById('auto-migrate-tasks');
     
-    if (autoSortCheckbox) {
+    if (autoSortCheckbox && autoMigrateCheckbox) {
         // 更新设置
         appState.taskSettings.autoSort = autoSortCheckbox.checked;
+        appState.taskSettings.autoMigrate = autoMigrateCheckbox.checked;
         
         // 保存到localStorage
         try {
             localStorage.setItem('taskSettings', JSON.stringify(appState.taskSettings));
             domUtils.showToast('设置已保存');
             
-            // 重新加载任务以应用排序
-            if (appState.currentUser) {
-                loadTasks();
+            // 如果启用了自动迁移，立即执行一次迁移
+            if (appState.taskSettings.autoMigrate) {
+                migrateUnfinishedTasks();
             }
+            
+            // 重新加载任务以应用排序
+            loadTasks(appState.currentDate);
+            
+            // 隐藏模态窗口
+            hideTaskSettingsModal();
         } catch (error) {
             console.error('保存任务设置失败:', error);
             domUtils.showToast('保存设置失败', 'error');
         }
+    }
+}
+
+// 迁移未完成任务
+async function migrateUnfinishedTasks() {
+    if (!appState.currentUser) {
+        console.log('用户未登录，跳过任务迁移');
+        return;
+    }
+    
+    try {
+        console.log('开始迁移未完成任务...');
         
-        // 关闭模态窗口
-        hideTaskSettingsModal();
+        // 获取今天的日期字符串
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        
+        // 记录上一次迁移的日期，避免重复迁移
+        const lastMigrationDate = localStorage.getItem('lastMigrationDate');
+        if (lastMigrationDate === todayStr) {
+            console.log('今天已经执行过迁移，跳过');
+            return;
+        }
+        
+        // 获取用户所有未完成的任务
+        const response = await fetch(`${API_BASE_URL}/tasks/unfinished?user_id=${appState.currentUser.id}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${appState.token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('获取未完成任务失败');
+        }
+        
+        const unfinishedTasks = await response.json();
+        console.log(`找到 ${unfinishedTasks.length} 个未完成任务`);
+        
+        // 筛选出日期在今天之前的任务
+        const tasksToMigrate = unfinishedTasks.filter(task => {
+            return task.start_date < todayStr && task.status === '未完成';
+        });
+        
+        console.log(`需要迁移 ${tasksToMigrate.length} 个任务`);
+        
+        // 迁移任务
+        for (const task of tasksToMigrate) {
+            // 创建新任务（迁移到今天）
+            // 在描述中添加迁移信息，不修改任务名称
+            const migrationInfo = `\n\n【迁移信息】原任务日期：${task.start_date}，迁移时间：${new Date().toLocaleString('zh-CN')}`;
+            const newTaskData = {
+                user_id: task.user_id,
+                name: task.name, // 保留原任务名称
+                description: (task.description || '') + migrationInfo,
+                icon: task.icon || 'default.png',
+                category: task.category,
+                planned_time: task.planned_time,
+                actual_time: 0,
+                points: task.points,
+                repeat_setting: '无',
+                start_date: todayStr,
+                end_date: todayStr,
+                status: '未完成',
+                series_id: task.series_id || String(Math.random().toFixed(6)).substring(2),
+                migrated_from: task.start_date, // 记录迁移来源日期
+                images: task.images || []
+            };
+            
+            // 添加新任务
+            const addResponse = await fetch(`${API_BASE_URL}/tasks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${appState.token}`
+                },
+                body: JSON.stringify(newTaskData)
+            });
+            
+            if (!addResponse.ok) {
+                console.error(`添加迁移任务失败: ${task.name}`);
+                continue;
+            }
+            
+            // 删除原任务
+            const deleteResponse = await fetch(`${API_BASE_URL}/tasks/${task.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${appState.token}`
+                }
+            });
+            
+            if (!deleteResponse.ok) {
+                console.error(`删除原任务失败: ${task.name}`);
+            }
+            
+            console.log(`任务迁移成功: ${task.name}`);
+        }
+        
+        // 记录本次迁移日期
+        localStorage.setItem('lastMigrationDate', todayStr);
+        
+        if (tasksToMigrate.length > 0) {
+            domUtils.showToast(`成功迁移 ${tasksToMigrate.length} 个未完成任务到今天`);
+            // 重新加载今天的任务
+            loadTasks(todayStr);
+        }
+        
+        console.log('任务迁移完成');
+    } catch (error) {
+        console.error('任务迁移失败:', error);
+        // 不显示错误提示，避免影响用户体验
     }
 }
 
@@ -1923,6 +2056,27 @@ async function handleAddTask(e) {
             hideAddTaskModal();
             await loadTasks();
             await loadStatistics();
+            
+            // 检查是否需要立即迁移（当任务日期早于今天时）
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            
+            // 如果任务开始日期早于今天，且自动迁移功能已启用
+            if (taskData.start_date < todayStr && taskData.status === '未完成' && appState.taskSettings?.autoMigrate) {
+                console.log('检测到编辑了历史任务，立即执行迁移检查');
+                
+                // 临时保存当前的最后迁移日期
+                const tempLastMigration = localStorage.getItem('lastMigrationDate');
+                // 移除日期限制，强制执行迁移
+                localStorage.removeItem('lastMigrationDate');
+                // 执行迁移
+                await migrateUnfinishedTasks();
+                // 恢复原始的最后迁移日期
+                if (tempLastMigration) {
+                    localStorage.setItem('lastMigrationDate', tempLastMigration);
+                }
+            }
+            
             domUtils.showToast('任务已更新');
         } else {
             // 添加模式
@@ -1939,6 +2093,27 @@ async function handleAddTask(e) {
             if (result.success) {
                 hideAddTaskModal();
                 await loadTasks();
+                
+                // 检查是否需要立即迁移（当任务日期早于今天时）
+                const currentDate = new Date();
+                const currentDateStr = currentDate.toISOString().split('T')[0];
+                
+                // 如果任务开始日期早于今天，且自动迁移功能已启用
+                if (taskData.start_date < currentDateStr && taskData.status === '未完成' && appState.taskSettings?.autoMigrate) {
+                    console.log('检测到创建了历史任务，立即执行迁移检查');
+                    
+                    // 临时保存当前的最后迁移日期
+                    const tempLastMigration = localStorage.getItem('lastMigrationDate');
+                    // 移除日期限制，强制执行迁移
+                    localStorage.removeItem('lastMigrationDate');
+                    // 执行迁移
+                    await migrateUnfinishedTasks();
+                    // 恢复原始的最后迁移日期
+                    if (tempLastMigration) {
+                        localStorage.setItem('lastMigrationDate', tempLastMigration);
+                    }
+                }
+                
                 domUtils.showToast('任务添加成功');
             }
         }

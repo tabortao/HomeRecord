@@ -453,6 +453,66 @@ def register_routes(app):
     
     # 任务相关路由
     # 获取任务列表
+    @app.route('/api/tasks/unfinished', methods=['GET'])
+    def get_unfinished_tasks():
+        try:
+            # 获取当前用户ID
+            user_id = request.args.get('user_id', type=int)
+            
+            if not user_id:
+                return jsonify({'error': '缺少用户ID参数'}), 400
+            
+            # 获取用户信息，检查是否为子账号
+            user = User.query.get(user_id)
+            # 如果是子账号，使用父账号ID来查询数据
+            effective_user_id = user.parent_id if user and user.parent_id else user_id
+            
+            app.logger.info(f"获取未完成任务，用户ID: {user_id}, 有效用户ID: {effective_user_id}")
+            
+            # 构建查询，获取所有未完成的任务
+            query = Task.query.filter_by(user_id=effective_user_id, status='未完成')
+            
+            # 按日期升序排序，先获取较早的任务
+            query = query.order_by(Task.start_date.asc())
+            
+            # 执行查询
+            tasks = query.all()
+            
+            # 转换为字典列表
+            result = []
+            for task in tasks:
+                # 解析images字段
+                images = []
+                if task.images:
+                    try:
+                        images = json.loads(task.images)
+                    except json.JSONDecodeError:
+                        images = []
+                
+                task_dict = {
+                    'id': task.id,
+                    'name': task.name,
+                    'category': task.category,
+                    'points': task.points,
+                    'status': task.status,
+                    'start_date': task.start_date,
+                    'end_date': task.end_date,
+                    'planned_time': task.planned_time,
+                    'actual_time': task.actual_time,
+                    'description': task.description,
+                    'user_id': task.user_id,
+                    'series_id': task.series_id,
+                    'images': images,
+                    'created_at': task.created_at.isoformat() if task.created_at else None
+                }
+                result.append(task_dict)
+            
+            app.logger.info(f"找到 {len(result)} 个未完成任务")
+            return jsonify(result)
+        except Exception as e:
+            app.logger.error(f"获取未完成任务失败: {e}")
+            return jsonify({'error': str(e)}), 500
+    
     @app.route('/api/tasks', methods=['GET'])
     def get_tasks_list():
          try:

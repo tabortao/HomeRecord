@@ -448,6 +448,36 @@ class TaskTabsManager {
             // 显示成功提示
             this.showNotification(`成功添加${data.count}个任务`, 'success');
             
+            // 重新加载任务列表
+            if (typeof loadTasks === 'function') {
+                await loadTasks();
+            }
+            
+            // 检查是否需要立即迁移（当任务日期早于今天时）
+            const currentBatchDate = new Date();
+            const currentBatchDateStr = currentBatchDate.toISOString().split('T')[0];
+            
+            // 从app.js导入appState变量
+            const appState = window.appState || {};
+            
+            // 如果任务开始日期早于今天，且自动迁移功能已启用
+            if (formattedDate < currentBatchDateStr && appState.taskSettings?.autoMigrate) {
+                console.log('检测到批量添加了历史任务，立即执行迁移检查');
+                
+                // 临时保存当前的最后迁移日期
+                const tempLastMigration = localStorage.getItem('lastMigrationDate');
+                // 移除日期限制，强制执行迁移
+                localStorage.removeItem('lastMigrationDate');
+                // 执行迁移
+                if (typeof migrateUnfinishedTasks === 'function') {
+                    await migrateUnfinishedTasks();
+                }
+                // 恢复原始的最后迁移日期
+                if (tempLastMigration) {
+                    localStorage.setItem('lastMigrationDate', tempLastMigration);
+                }
+            }
+            
             // 关闭模态窗口
             this.closeModal();
             

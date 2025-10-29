@@ -598,6 +598,15 @@
                             <p class="text-sm text-gray-500 mt-1 ml-7">勾选后，学科下已完成任务排下方，所有任务完成的学科排在有未完成任务的学科下方</p>
                         </div>
                     </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="auto-migrate-tasks" class="w-5 h-5 text-green-600 rounded border-gray-300 focus:ring-green-500">
+                                <span class="ml-2 text-gray-700 font-medium">未完成任务自动迁移</span>
+                            </label>
+                            <p class="text-sm text-gray-500 mt-1 ml-7">勾选后，系统会自动将历史未完成的任务迁移到今天，并标记为迁移任务，将不能创建历史未完成任务</p>
+                        </div>
+                    </div>
                 </div>
                 <div class="mt-6 flex justify-end">
                     <button id="save-task-settings" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">

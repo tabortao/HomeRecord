@@ -32,3 +32,4 @@
 - 每个 js 文件的文件名应与其所实现的功能模块相关，采用驼峰命名法。
 - 所有 js 文件均存储在`frontend\js`目录下。
 - 启动前端服务，运行`cd frontend; python -m http.server 8000`。
+- - 在终端中用 Node 解析 app.js、api.js等js文件， 来快速检查语法错误，预期结果：无语法错误。`node -e "const fs=require('fs'); new Function(fs.readFileSync('g:/Code/Go-WorkSpace/HomeworkRecord/js/app.js','utf8')); console.log('PARSE_OK');"`
