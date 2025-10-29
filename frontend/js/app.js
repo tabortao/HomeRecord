@@ -210,7 +210,20 @@ function initImageViewer() {
             if (imagesData) {
                 try {
                     const images = JSON.parse(imagesData);
-                    openImageViewer(images);
+                    // 处理图片路径，确保正确显示
+                    const processedImages = images.map(img => {
+                        // 对于/static/uploads/开头的路径，直接使用
+                        if (img.startsWith('/static/uploads/')) {
+                            return img;
+                        }
+                        // 对于/uploads/开头的路径，转换为/static/uploads/
+                        if (img.startsWith('/uploads/')) {
+                            return img.replace('/uploads/', '/static/uploads/');
+                        }
+                        // 对于其他路径，保持不变
+                        return img;
+                    });
+                    openImageViewer(processedImages);
                 } catch (error) {
                     console.error('解析图片数据失败:', error);
                 }
@@ -304,10 +317,16 @@ function updateViewerImage() {
     
     // 检查URL是否已经是完整的URL（包含http）
     if (imageUrl && !imageUrl.startsWith('http')) {
-        // 确保URL中不会有多余的斜杠
-        const baseUrl = 'http://localhost:5000'; // 直接使用明确的基础URL
-        const path = imageUrl && imageUrl.startsWith('/') ? imageUrl : imageUrl ? `/${imageUrl}` : '';
-        imageUrl = `${baseUrl}${path}`;
+        // 对于/static/uploads/开头的路径，保持为相对路径
+        if (imageUrl.startsWith('/static/uploads/')) {
+            // 保持相对路径不变，这样会从当前域名加载资源
+            imageUrl = imageUrl;
+        } else {
+            // 对于其他相对路径，添加基础URL
+            const baseUrl = 'http://localhost:5000'; // 直接使用明确的基础URL
+            const path = imageUrl && imageUrl.startsWith('/') ? imageUrl : imageUrl ? `/${imageUrl}` : '';
+            imageUrl = `${baseUrl}${path}`;
+        }
     }
     
     imageElement.src = imageUrl;
@@ -831,16 +850,24 @@ function bindEvents() {
             const imagesData = imagesIcon.getAttribute('data-images');
             const images = tryParseJSON(imagesData) || [];
             if (images.length > 0) {
-                // 将相对路径转换为完整URL
-                const fullImageUrls = images.map(img => {
+                // 处理图片路径
+                const processedImages = images.map(img => {
                     // 检查是否已经是完整URL
                     if (img.startsWith('http://') || img.startsWith('https://')) {
                         return img;
                     }
-                    // 对于相对路径，添加API基础URL
-                    return `http://localhost:5000${img}`;
+                    // 对于/static/uploads/开头的路径，直接使用相对路径
+                    if (img.startsWith('/static/uploads/')) {
+                        return img;
+                    }
+                    // 对于/uploads/开头的路径，转换为/static/uploads/
+                    if (img.startsWith('/uploads/')) {
+                        return img.replace('/uploads/', '/static/uploads/');
+                    }
+                    // 对于其他路径，保持不变
+                    return img;
                 });
-                openImageViewer(fullImageUrls);
+                openImageViewer(processedImages);
             }
         }
     });
@@ -2319,6 +2346,12 @@ function editTask(task) {
                     let fullImageUrl;
                     if (imageUrl && imageUrl.startsWith('http')) {
                         fullImageUrl = imageUrl;
+                    } else if (imageUrl && imageUrl.startsWith('/static/uploads/')) {
+                        // 对于/static/uploads/开头的路径，直接使用相对路径
+                        fullImageUrl = imageUrl;
+                    } else if (imageUrl && imageUrl.startsWith('/uploads/')) {
+                        // 对于/uploads/开头的路径，转换为/static/uploads/
+                        fullImageUrl = imageUrl.replace('/uploads/', '/static/uploads/');
                     } else {
                         // 确保URL中不会有多余的斜杠
                         const baseUrl = 'http://localhost:5000'; // 直接使用基础URL
@@ -2334,6 +2367,12 @@ function editTask(task) {
                         const allImages = taskImages.map(imgUrl => {
                             if (imgUrl && imgUrl.startsWith('http')) {
                                 return imgUrl;
+                            } else if (imgUrl && imgUrl.startsWith('/static/uploads/')) {
+                                // 对于/static/uploads/开头的路径，直接使用相对路径
+                                return imgUrl;
+                            } else if (imgUrl && imgUrl.startsWith('/uploads/')) {
+                                // 对于/uploads/开头的路径，转换为/static/uploads/
+                                return imgUrl.replace('/uploads/', '/static/uploads/');
                             } else {
                                 const path = imgUrl && imgUrl.startsWith('/') ? imgUrl : imgUrl ? `/${imgUrl}` : '';
                                 return `http://localhost:5000${path}`;

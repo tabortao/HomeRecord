@@ -721,74 +721,51 @@ def register_routes(app):
                 try:
                     # 获取当前工作目录，确保使用绝对路径
                     current_dir = os.path.dirname(os.path.abspath(__file__))
+                    # 获取正确的上传目录（指向frontend/static/uploads）
+                    upload_folder = os.path.join(current_dir, '..', 'frontend', 'static', 'uploads')
                     
                     # 解析图片URL列表
                     image_urls = json.loads(task.images)
                     app.logger.info(f"开始处理任务{task_id}的{len(image_urls)}张图片")
                     
-                    # 检查可能的目录结构
-                    user_dir = os.path.join(current_dir, 'uploads', 'task_images', str(user_id))
+                    # 方法1：直接删除任务ID对应的目录（更高效的方式）
+                    task_dir = os.path.join(upload_folder, 'task_images', str(user_id), str(task_id))
+                    if os.path.exists(task_dir):
+                        app.logger.info(f"找到任务{task_id}的图片目录: {task_dir}")
+                        # 递归删除目录及其所有内容
+                        import shutil
+                        try:
+                            shutil.rmtree(task_dir)
+                            app.logger.info(f"成功删除任务目录及其所有内容: {task_dir}")
+                        except Exception as e:
+                            app.logger.error(f"删除任务目录时出错 {task_dir}: {str(e)}")
+                    else:
+                        app.logger.info(f"任务目录不存在: {task_dir}")
                     
-                    # 方法1：直接遍历用户目录下的所有可能子目录，查找包含任务ID的目录
-                    if os.path.exists(user_dir):
-                        task_dirs_to_remove = []
-                        for root, dirs, files in os.walk(user_dir):
-                            # 检查目录路径中是否包含任务ID
-                            if str(task_id) in root:
-                                app.logger.info(f"找到可能包含任务{task_id}图片的目录: {root}")
-                                # 记录需要删除的目录
-                                task_dirs_to_remove.append(root)
-                                # 删除目录中的所有文件
-                                for file in files:
-                                    file_path = os.path.join(root, file)
-                                    try:
-                                        os.remove(file_path)
-                                        app.logger.info(f"成功删除文件: {file_path}")
-                                    except Exception as e:
-                                        app.logger.error(f"删除文件时出错 {file_path}: {str(e)}")
-                        
-                        # 删除空目录（从最深层开始删除）
-                        for directory in sorted(task_dirs_to_remove, reverse=True):
-                            if os.path.exists(directory) and not os.listdir(directory):
-                                try:
-                                    os.rmdir(directory)
-                                    app.logger.info(f"成功删除空目录: {directory}")
-                                except Exception as e:
-                                    app.logger.error(f"删除目录时出错 {directory}: {str(e)}")
-                    
-                    # 方法2：直接从URL构建绝对路径并删除
+                    # 方法2：直接从URL构建绝对路径并删除（作为备用方法）
                     for image_url in image_urls:
                         try:
-                            # 确保URL是相对路径格式
-                            if image_url.startswith('/'):
-                                image_url = image_url[1:]  # 移除开头的斜杠
-                            
-                            # 构建绝对路径
-                            file_path = os.path.join(current_dir, image_url)
-                            
-                            # 也尝试另一种路径格式（直接使用uploads开头）
-                            if not file_path.startswith(os.path.join(current_dir, 'uploads')):
-                                alt_file_path = os.path.join(current_dir, 'uploads', image_url.replace('uploads/', ''))
+                            # 构建正确的文件路径
+                            if image_url.startswith('/static/uploads/'):
+                                # 从/static/uploads/开头的URL中提取相对路径
+                                relative_path = image_url.replace('/static/uploads/', '')
+                                file_path = os.path.join(upload_folder, relative_path)
+                            elif image_url.startswith('static/uploads/'):
+                                # 处理没有前导斜杠的情况
+                                file_path = os.path.join(upload_folder, image_url.replace('static/uploads/', ''))
                             else:
-                                alt_file_path = None
+                                # 尝试从URL中提取task_images部分
+                                if '/task_images/' in image_url:
+                                    path_parts = image_url.split('/task_images/')[1]
+                                    file_path = os.path.join(upload_folder, 'task_images', path_parts)
+                                else:
+                                    # 无法解析的URL格式
+                                    continue
                             
                             # 尝试删除文件
                             if os.path.exists(file_path):
                                 os.remove(file_path)
-                                app.logger.info(f"通过直接路径删除成功: {file_path}")
-                            elif alt_file_path and os.path.exists(alt_file_path):
-                                os.remove(alt_file_path)
-                                app.logger.info(f"通过备用路径删除成功: {alt_file_path}")
-                            else:
-                                # 尝试不同的URL解析方式
-                                if '/uploads/task_images/' in image_url:
-                                    path_parts = image_url.split('/uploads/task_images/')[1]
-                                    fallback_path = os.path.join(current_dir, 'uploads', 'task_images', path_parts)
-                                    if os.path.exists(fallback_path):
-                                        os.remove(fallback_path)
-                                        app.logger.info(f"通过备用解析路径删除成功: {fallback_path}")
-                                    else:
-                                        app.logger.warning(f"无法找到文件: {file_path}, {alt_file_path}, {fallback_path}")
+                                app.logger.info(f"通过URL解析删除成功: {file_path}")
                         except Exception as e:
                             app.logger.error(f"处理URL {image_url} 时出错: {str(e)}")
                             
@@ -867,7 +844,8 @@ def register_routes(app):
             return jsonify({'success': False, 'message': '不支持的文件类型'})
         
         # 创建上传目录，按照 user_id/task_id 的结构组织
-        upload_folder = os.path.join('uploads', 'task_images', str(task.user_id), str(task_id))
+        # 使用app.config['UPLOAD_FOLDER']作为基础目录，确保指向frontend/static/uploads
+        upload_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'task_images', str(task.user_id), str(task_id))
         os.makedirs(upload_folder, exist_ok=True)
         
         # 生成带时间戳的文件名，格式：年月日时分秒_原始文件名
@@ -881,8 +859,8 @@ def register_routes(app):
         
         # 更新任务的图片信息
         images = json.loads(task.images or '[]')
-        # 使用相对路径存储，便于前端访问
-        image_url = f'/uploads/task_images/{task.user_id}/{task_id}/{filename}'
+        # 使用/static/uploads/前缀，便于前端直接访问静态目录
+        image_url = f'/static/uploads/task_images/{task.user_id}/{task_id}/{filename}'
         images.append(image_url)
         task.images = json.dumps(images)
         db.session.commit()
@@ -902,7 +880,7 @@ def register_routes(app):
         db.session.add(log)
         db.session.commit()
         
-        return jsonify({'success': True, 'message': '图片上传成功', 'image_url': f'/uploads/task_images/{task.user_id}/{task_id}/{filename}'})
+        return jsonify({'success': True, 'message': '图片上传成功', 'image_url': f'/static/uploads/task_images/{task.user_id}/{task_id}/{filename}'})
     
     # 提供上传文件的访问
     @app.route('/uploads/<path:filename>')
@@ -933,69 +911,47 @@ def register_routes(app):
                     image_urls = json.loads(task.images)
                     print(f"开始处理任务系列中的任务{task.id}的{len(image_urls)}张图片")
                     
-                    # 检查可能的目录结构
-                    user_dir = os.path.join(current_dir, 'uploads', 'task_images', str(user_id))
+                    # 获取正确的上传目录（指向frontend/static/uploads）
+                    upload_folder = os.path.join(current_dir, '..', 'frontend', 'static', 'uploads')
                     
-                    # 方法1：直接遍历用户目录下的所有可能子目录，查找包含任务ID的目录
-                    if os.path.exists(user_dir):
-                        task_dirs_to_remove = []
-                        for root, dirs, files in os.walk(user_dir):
-                            # 检查目录路径中是否包含任务ID
-                            if str(task.id) in root:
-                                print(f"找到可能包含任务系列中任务{task.id}图片的目录: {root}")
-                                # 记录需要删除的目录
-                                task_dirs_to_remove.append(root)
-                                # 删除目录中的所有文件
-                                for file in files:
-                                    file_path = os.path.join(root, file)
-                                    try:
-                                        os.remove(file_path)
-                                        print(f"成功删除任务系列中的任务文件: {file_path}")
-                                    except Exception as e:
-                                        print(f"删除任务系列中的任务文件时出错 {file_path}: {str(e)}")
-                        
-                        # 删除空目录（从最深层开始删除）
-                        for directory in sorted(task_dirs_to_remove, reverse=True):
-                            if os.path.exists(directory) and not os.listdir(directory):
-                                try:
-                                    os.rmdir(directory)
-                                    print(f"成功删除任务系列中的空目录: {directory}")
-                                except Exception as e:
-                                    print(f"删除任务系列中的目录时出错 {directory}: {str(e)}")
+                    # 方法1：直接删除任务ID对应的目录（更高效的方式）
+                    task_dir = os.path.join(upload_folder, 'task_images', str(user_id), str(task.id))
+                    if os.path.exists(task_dir):
+                        print(f"找到任务系列中任务{task.id}的图片目录: {task_dir}")
+                        # 递归删除目录及其所有内容
+                        import shutil
+                        try:
+                            shutil.rmtree(task_dir)
+                            print(f"成功删除任务系列中任务目录及其所有内容: {task_dir}")
+                        except Exception as e:
+                            print(f"删除任务系列中任务目录时出错 {task_dir}: {str(e)}")
+                    else:
+                        print(f"任务系列中任务目录不存在: {task_dir}")
                     
-                    # 方法2：直接从URL构建绝对路径并删除
+                    # 方法2：直接从URL构建绝对路径并删除（作为备用方法）
                     for image_url in image_urls:
                         try:
-                            # 确保URL是相对路径格式
-                            if image_url.startswith('/'):
-                                image_url = image_url[1:]  # 移除开头的斜杠
-                            
-                            # 构建绝对路径
-                            file_path = os.path.join(current_dir, image_url)
-                            
-                            # 也尝试另一种路径格式（直接使用uploads开头）
-                            if not file_path.startswith(os.path.join(current_dir, 'uploads')):
-                                alt_file_path = os.path.join(current_dir, 'uploads', image_url.replace('uploads/', ''))
+                            # 构建正确的文件路径
+                            if image_url.startswith('/static/uploads/'):
+                                # 从/static/uploads/开头的URL中提取相对路径
+                                relative_path = image_url.replace('/static/uploads/', '')
+                                file_path = os.path.join(upload_folder, relative_path)
+                            elif image_url.startswith('static/uploads/'):
+                                # 处理没有前导斜杠的情况
+                                file_path = os.path.join(upload_folder, image_url.replace('static/uploads/', ''))
                             else:
-                                alt_file_path = None
+                                # 尝试从URL中提取task_images部分
+                                if '/task_images/' in image_url:
+                                    path_parts = image_url.split('/task_images/')[1]
+                                    file_path = os.path.join(upload_folder, 'task_images', path_parts)
+                                else:
+                                    # 无法解析的URL格式
+                                    continue
                             
                             # 尝试删除文件
                             if os.path.exists(file_path):
                                 os.remove(file_path)
-                                print(f"通过直接路径删除任务系列中的任务图片成功: {file_path}")
-                            elif alt_file_path and os.path.exists(alt_file_path):
-                                os.remove(alt_file_path)
-                                print(f"通过备用路径删除任务系列中的任务图片成功: {alt_file_path}")
-                            else:
-                                # 尝试不同的URL解析方式
-                                if '/uploads/task_images/' in image_url:
-                                    path_parts = image_url.split('/uploads/task_images/')[1]
-                                    fallback_path = os.path.join(current_dir, 'uploads', 'task_images', path_parts)
-                                    if os.path.exists(fallback_path):
-                                        os.remove(fallback_path)
-                                        print(f"通过备用解析路径删除任务系列中的任务图片成功: {fallback_path}")
-                                    else:
-                                        print(f"无法找到任务系列中的任务图片文件: {file_path}, {alt_file_path}, {fallback_path}")
+                                print(f"通过URL解析删除任务系列中任务图片成功: {file_path}")
                         except Exception as e:
                             print(f"处理任务系列中的任务图片URL {image_url} 时出错: {str(e)}")
                             
