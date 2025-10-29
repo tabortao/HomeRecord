@@ -487,7 +487,12 @@ class SubaccountManager {
                 document.getElementById('edit-subaccount-nickname').value = userInfo.nickname || '';
                 
                 // 设置权限单选按钮
-                document.querySelector(`input[name="edit-subaccount-permission"][value="${userInfo.permissions || 'view'}"]`).checked = true;
+                const permissionInput = document.querySelector(`input[name="edit-subaccount-permission"][value="${userInfo.permissions || 'view'}"]`);
+                if (permissionInput) {
+                    permissionInput.checked = true;
+                } else {
+                    console.warn('未找到匹配的权限单选按钮:', userInfo.permissions || 'view');
+                }
                 
                 // 设置头像预览
                 const avatarUrl = userInfo.avatar ? 
@@ -534,7 +539,8 @@ class SubaccountManager {
         try {
             const subaccountId = this.currentEditingSubaccountId;
             const nickname = document.getElementById('edit-subaccount-nickname').value.trim();
-            const permission = document.querySelector('input[name="edit-subaccount-permission"]:checked').value;
+            const checkedPermission = document.querySelector('input[name="edit-subaccount-permission"]:checked');
+            const permission = checkedPermission ? checkedPermission.value : 'view';
             
             // 验证必填字段
             if (!nickname) {
