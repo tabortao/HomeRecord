@@ -9,6 +9,8 @@ __pycache__/
 # Distribution / packaging
 .Python
 instance/
+backend/instance/
+frontend/static/uploads/
 build/
 develop-eggs/
 dist/
