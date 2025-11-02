@@ -9,8 +9,13 @@ import uuid
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///homerecord.db'
+# 使用环境变量配置SECRET_KEY，如果没有设置则使用默认值
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-secret-key-for-development-only')
+# 使用绝对路径配置数据库URI，确保在Docker环境中也能正确访问
+instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
+if not os.path.exists(instance_path):
+    os.makedirs(instance_path, exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "homerecord.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # 设置上传文件夹（使用绝对路径，指向frontend/static/uploads）
