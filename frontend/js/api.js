@@ -1,5 +1,6 @@
-// API基础URL，优先从环境变量获取，否则使用默认值
-export const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5000/api';
+// API基础URL，直接使用默认值
+// 浏览器环境中没有process对象，所以直接使用默认URL
+export const API_BASE_URL = 'http://localhost:5000/api';
 
 // 用户相关API
 const userAPI = {

@@ -1,23 +1,40 @@
 version: '3'
 
 services:
-  homerecord-app:
-    image: tabortoa/homerecord-app:latest #国内用户镜像加速 dk.nastool.de/tabortoa/homerecord-app
-    container_name: homerecord
+  # 后端服务配置
+  backend:
+    image: tabortoa/homerecord-backend:latest # 国内用户镜像加速 dk.nastool.de/tabortoa/homerecord-backend
+    container_name: homerecord-backend
     ports:
       - "5000:5000"
-      - "38004:8000"
     volumes:
-      - ./backend/instance:/app/backend/instance
-      - ./frontend/static/uploads:/app/frontend/static/uploads
+      - ./backend/instance:/app/backend/instance  # 数据库持久化
+      - ./backend/logs:/app/backend/logs          # 日志目录
     environment:
       - FLASK_ENV=development
       - FLASK_APP=backend/app.py
-      - API_BASE_URL=http://192.18.3.4:5000/api
+      - SECRET_KEY=your-secret-key-here
     networks:
       - app-network
     restart: unless-stopped
-    # 保持容器运行并显示日志
+    tty: true
+
+  # 前端服务配置
+  frontend:
+    image: tabortoa/homerecord-frontend:latest # 国内用户镜像加速 dk.nastool.de/tabortoa/homerecord-frontend
+    container_name: homerecord-frontend
+    ports:
+      - "38004:8000"
+    volumes:
+      - ./frontend/static/uploads:/app/frontend/static/uploads  # 上传文件持久化
+    environment:
+      - API_BASE_URL=http://localhost:5000/api  # 使用localhost以便浏览器能正确访问后端服务
+      - PORT=8000
+    networks:
+      - app-network
+    depends_on:
+      - backend  # 确保后端服务先启动
+    restart: unless-stopped
     tty: true
 
 networks:
