@@ -2,7 +2,7 @@ version: '3'
 
 services:
   homerecord-app:
-    image: tabortoa/homerecord-app:v1.0.7 #国内用户镜像加速 dk.nastool.de/tabortoa/homerecord-app
+    image: tabortoa/homerecord-app:latest #国内用户镜像加速 dk.nastool.de/tabortoa/homerecord-app
     container_name: homerecord
     ports:
       - "5000:5000"
