@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  homerecord-app:
+    image: tabortoa/homerecord-app:v1.0.7 #国内用户镜像加速 dk.nastool.de/tabortoa/homerecord-app
+    container_name: homerecord
+    ports:
+      - "5000:5000"
+      - "38004:8000"
+    volumes:
+      - ./backend/instance:/app/backend/instance
+      - ./frontend/static/uploads:/app/frontend/static/uploads
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=backend/app.py
+      - API_BASE_URL=http://192.18.3.4:5000/api
+    networks:
+      - app-network
+    restart: unless-stopped
+    # 保持容器运行并显示日志
+    tty: true
+
+networks:
+  app-network:
+    driver: bridge
