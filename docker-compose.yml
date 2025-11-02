@@ -28,7 +28,7 @@ services:
     volumes:
       - ./frontend/static/uploads:/app/frontend/static/uploads  # 上传文件持久化
     environment:
-      - API_BASE_URL=http://backend:5000/api  # 使用服务名称backend以便容器间通信
+      # 移除API_BASE_URL环境变量，前端现在会动态计算API地址
       - PORT=8000
     networks:
       - app-network

@@ -1,6 +1,18 @@
-// API基础URL，直接使用默认值
-// 浏览器环境中没有process对象，所以直接使用默认URL
-export const API_BASE_URL = 'http://localhost:5000/api';
+// 动态设置API_BASE_URL
+// 在Docker环境中，应该使用与前端页面相同的域名，但端口为5000
+export const API_BASE_URL = (() => {
+    // 获取当前页面的协议和主机名
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    
+    // 如果是本地开发环境（localhost或127.0.0.1），使用默认地址
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:5000/api';
+    }
+    
+    // 其他情况（Docker部署环境），使用与当前页面相同的协议和主机名，但端口为5000
+    return `${protocol}//${hostname}:5000/api`;
+})();
 
 // 用户相关API
 const userAPI = {
