@@ -235,6 +235,13 @@
 .fa-bullhorn:before {
   content: "\f0a1";
 }
+/* 筛选与排序图标 */
+.fa-filter:before {
+  content: "\f0b0";
+}
+.fa-sort:before {
+  content: "\f0dc";
+}
 /* 改为使用Font Awesome 4.7.0中可用的金币图标 */
 /* 小心愿页面编辑图标旁边的金币数图标 */
 .fa-coins:before {

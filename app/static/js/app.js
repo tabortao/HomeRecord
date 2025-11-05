@@ -48,7 +48,9 @@ let appState = {
     // 任务设置
     taskSettings: {
         autoSort: false // 任务自动排序开关
-    }
+    },
+    // 任务排序方法（default|time|category|completed_first|added_time）
+    taskSortMethod: 'default'
 };
 
 // 公开全局状态，提供给其他模块访问
@@ -1243,10 +1245,27 @@ async function loadTasks() {
     taskList.innerHTML = `
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-medium">${taskTitle}</h3>
-            <div class="flex space-x-2">
-                <button id="filter-all" class="px-3 py-1 rounded-full bg-green-600 text-white text-sm">全部</button>
-                <button id="filter-completed" class="px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm">已完成</button>
-                <button id="filter-pending" class="px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm">待完成</button>
+            <div class="relative flex items-center space-x-2">
+                <button id="task-filter-btn" class="p-2 rounded-full hover:bg-gray-100" title="筛选">
+                    <i class="fa fa-filter"></i>
+                </button>
+                <button id="task-sort-btn" class="p-2 rounded-full hover:bg-gray-100" title="排序">
+                    <i class="fa fa-sort"></i>
+                </button>
+                <!-- 筛选菜单 -->
+                <div id="task-filter-menu" class="absolute right-12 top-10 z-10 bg-white border border-gray-200 rounded-md shadow-lg w-32 hidden">
+                    <button class="task-filter-option w-full text-left px-3 py-2 hover:bg-gray-100" data-filter="all">全部</button>
+                    <button class="task-filter-option w-full text-left px-3 py-2 hover:bg-gray-100" data-filter="completed">已完成</button>
+                    <button class="task-filter-option w-full text-left px-3 py-2 hover:bg-gray-100" data-filter="pending">待完成</button>
+                </div>
+                <!-- 排序菜单 -->
+                <div id="task-sort-menu" class="absolute right-0 top-10 z-10 bg-white border border-gray-200 rounded-md shadow-lg w-40 hidden">
+                    <button class="task-sort-option w-full text-left px-3 py-2 hover:bg-gray-100" data-sort="default">默认排序</button>
+                    <button class="task-sort-option w-full text-left px-3 py-2 hover:bg-gray-100" data-sort="time">时间顺序</button>
+                    <button class="task-sort-option w-full text-left px-3 py-2 hover:bg-gray-100" data-sort="category">科目分类</button>
+                    <button class="task-sort-option w-full text-left px-3 py-2 hover:bg-gray-100" data-sort="completed_first">完成优先</button>
+                    <button class="task-sort-option w-full text-left px-3 py-2 hover:bg-gray-100" data-sort="added_time">添加时间</button>
+                </div>
             </div>
         </div>
         <div class="text-center text-gray-500 py-8">
@@ -1322,9 +1341,9 @@ async function loadTasks() {
         }, 3000);
     }
     
-    // 无论如何都设置筛选按钮事件
-    if (typeof setupFilterButtons === 'function') {
-        setupFilterButtons(tasks);
+    // 设置筛选与排序控件事件
+    if (typeof setupTaskFilterAndSortControls === 'function') {
+        setupTaskFilterAndSortControls(tasks);
     }
     
     // 更新筛选按钮状态
@@ -1338,48 +1357,64 @@ async function loadTasks() {
     }
 }
 
-// 独立的筛选按钮设置函数
-function setupFilterButtons(tasks) {
-    // 获取按钮元素
-    const filterAll = document.getElementById('filter-all');
-    const filterCompleted = document.getElementById('filter-completed');
-    const filterPending = document.getElementById('filter-pending');
-    
-    if (!filterAll || !filterCompleted || !filterPending) {
-        console.error('筛选按钮元素未找到');
+// 筛选与排序控件设置
+function setupTaskFilterAndSortControls(tasks) {
+    const filterBtn = document.getElementById('task-filter-btn');
+    const sortBtn = document.getElementById('task-sort-btn');
+    const filterMenu = document.getElementById('task-filter-menu');
+    const sortMenu = document.getElementById('task-sort-menu');
+
+    if (!filterBtn || !sortBtn || !filterMenu || !sortMenu) {
+        console.error('筛选/排序控件未找到');
         return;
     }
-    
-    // 移除所有事件监听器（通过克隆节点）
-    const newFilterAll = filterAll.cloneNode(true);
-    const newFilterCompleted = filterCompleted.cloneNode(true);
-    const newFilterPending = filterPending.cloneNode(true);
-    
-    filterAll.parentNode.replaceChild(newFilterAll, filterAll);
-    filterCompleted.parentNode.replaceChild(newFilterCompleted, filterCompleted);
-    filterPending.parentNode.replaceChild(newFilterPending, filterPending);
-    
-    // 添加新的事件监听器
-    newFilterAll.addEventListener('click', () => {
-        currentFilter = 'all';
-        appState.currentCategory = '';
-        updateTaskFilterButtons();
-        filterAndRenderTasks(tasks, 'all');
+
+    // 通过克隆清理旧监听
+    const newFilterBtn = filterBtn.cloneNode(true);
+    const newSortBtn = sortBtn.cloneNode(true);
+    filterBtn.parentNode.replaceChild(newFilterBtn, filterBtn);
+    sortBtn.parentNode.replaceChild(newSortBtn, sortBtn);
+
+    // 菜单显示切换
+    newFilterBtn.addEventListener('click', () => {
+        sortMenu.classList.add('hidden');
+        filterMenu.classList.toggle('hidden');
     });
-    
-    newFilterCompleted.addEventListener('click', () => {
-        currentFilter = 'completed';
-        appState.currentCategory = '';
-        updateTaskFilterButtons();
-        filterAndRenderTasks(tasks, 'completed');
+    newSortBtn.addEventListener('click', () => {
+        filterMenu.classList.add('hidden');
+        sortMenu.classList.toggle('hidden');
     });
-    
-    newFilterPending.addEventListener('click', () => {
-        currentFilter = 'pending';
-        appState.currentCategory = '';
-        updateTaskFilterButtons();
-        filterAndRenderTasks(tasks, 'pending');
+
+    // 筛选选项选择
+    filterMenu.querySelectorAll('.task-filter-option').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const selected = e.currentTarget.getAttribute('data-filter');
+            currentFilter = selected || 'all';
+            appState.currentCategory = '';
+            filterMenu.classList.add('hidden');
+            updateTaskFilterButtons();
+            filterAndRenderTasks(tasks, currentFilter);
+        });
     });
+
+    // 排序选项选择
+    sortMenu.querySelectorAll('.task-sort-option').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const selected = e.currentTarget.getAttribute('data-sort');
+            appState.taskSortMethod = selected || 'default';
+            sortMenu.classList.add('hidden');
+            filterAndRenderTasks(tasks, currentFilter);
+        });
+    });
+
+    // 点击外部区域关闭菜单（本次渲染一次监听）
+    document.addEventListener('click', (evt) => {
+        const target = evt.target;
+        const inFilter = newFilterBtn.contains(target) || filterMenu.contains(target);
+        const inSort = newSortBtn.contains(target) || sortMenu.contains(target);
+        if (!inFilter) filterMenu.classList.add('hidden');
+        if (!inSort) sortMenu.classList.add('hidden');
+    }, { once: true });
 }
 
 // 更新筛选按钮状态
@@ -1390,14 +1425,14 @@ function updateTaskFilterButtons() {
         'pending': document.getElementById('filter-pending')
     };
     
-    Object.entries(buttons).forEach(([key, button]) => {
-        if (button) {
-            if (key === currentFilter) {
-                button.className = 'px-3 py-1 rounded-full bg-green-600 text-white text-sm';
-            } else {
-                button.className = 'px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm';
-            }
-        }
+    // 兼容旧按钮存在时的样式更新；当前布局仅图标
+    const mapping = ['all', 'completed', 'pending'];
+    Object.values(buttons).forEach((button, idx) => {
+        if (!button) return;
+        const key = mapping[idx];
+        button.className = key === currentFilter
+            ? 'px-3 py-1 rounded-full bg-green-600 text-white text-sm'
+            : 'px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm';
     });
 }
 
@@ -1462,17 +1497,18 @@ function filterAndRenderTasks(tasks, filter) {
     // 处理任务排序
     let categoriesToRender = Object.keys(tasksByCategory);
     
-    if (appState.taskSettings.autoSort) {
-        // 对学科进行排序：有未完成任务的学科排在前面
+    // 按学科排序（当选择“科目分类”时）
+    if (appState.taskSortMethod === 'category') {
+        categoriesToRender.sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    }
+    
+    // 自动排序：仅在默认排序模式下生效（未完成优先的学科排前）
+    if (appState.taskSettings.autoSort && appState.taskSortMethod === 'default') {
         categoriesToRender = categoriesToRender.sort((catA, catB) => {
             const hasPendingA = tasksByCategory[catA].some(task => task.status === '未完成');
             const hasPendingB = tasksByCategory[catB].some(task => task.status === '未完成');
-            
-            // 如果A有未完成任务而B没有，则A排在前面
             if (hasPendingA && !hasPendingB) return -1;
-            // 如果B有未完成任务而A没有，则B排在前面
             if (!hasPendingA && hasPendingB) return 1;
-            // 否则保持原有顺序
             return 0;
         });
     }
@@ -1492,14 +1528,39 @@ function filterAndRenderTasks(tasks, filter) {
         `;
         categoryElement.appendChild(categoryHeader);
         
-        // 任务列表 - 如果开启自动排序，则学科内未完成任务排在前面
+        // 任务列表排序（按所选排序方式）
         let categoryTasks = tasksByCategory[category];
-        if (appState.taskSettings.autoSort) {
+        switch (appState.taskSortMethod) {
+            case 'time':
+                categoryTasks = categoryTasks.slice().sort((a, b) => {
+                    const ta = (a.planned_time ?? a.expected_time ?? 0);
+                    const tb = (b.planned_time ?? b.expected_time ?? 0);
+                    return ta - tb;
+                });
+                break;
+            case 'completed_first':
+                categoryTasks = categoryTasks.slice().sort((a, b) => {
+                    const sa = a.status === '已完成' ? 1 : 0;
+                    const sb = b.status === '已完成' ? 1 : 0;
+                    return sb - sa; // 已完成优先
+                });
+                break;
+            case 'added_time':
+                categoryTasks = categoryTasks.slice().sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
+                break;
+            case 'category':
+            case 'default':
+            default:
+                // 保持原顺序
+                categoryTasks = categoryTasks;
+        }
+        
+        // 自动排序（未完成排前）仅在默认模式下生效
+        if (appState.taskSettings.autoSort && appState.taskSortMethod === 'default') {
             categoryTasks = categoryTasks.sort((taskA, taskB) => {
-                // 未完成任务排在前面
                 if (taskA.status === '未完成' && taskB.status === '已完成') return -1;
                 if (taskA.status === '已完成' && taskB.status === '未完成') return 1;
-                return 0; // 状态相同保持原顺序
+                return 0;
             });
         }
         
@@ -1515,9 +1576,9 @@ function filterAndRenderTasks(tasks, filter) {
             const taskStatusClass = isCompleted ? 'line-through text-gray-400' : '';
             
             taskElement.innerHTML = `
-                <div class="flex items-start">
-                    <div class="mr-3 mt-1">
-                        <i class="fa ${iconClass} ${statusClass} text-3xl"></i>
+                <div class="flex items-center">
+                    <div class="mr-3 flex items-center">
+                        <i class="fa ${iconClass} ${statusClass} text-3xl transform scale-150"></i>
                     </div>
                     <div class="flex-1">
                         <div class="flex justify-between items-start">
@@ -1704,6 +1765,15 @@ async function toggleTaskStatus(taskId, currentStatus) {
                     taskNameElement.classList.add('line-through', 'text-gray-400');
                 } else {
                     taskNameElement.classList.remove('line-through', 'text-gray-400');
+                }
+            }
+            // 更新任务描述样式（避免在未完成状态保留划线）
+            const taskDescElement = taskElement.querySelector('p.text-sm.flex-1');
+            if (taskDescElement) {
+                if (newStatus === '已完成') {
+                    taskDescElement.classList.add('line-through', 'text-gray-400');
+                } else {
+                    taskDescElement.classList.remove('line-through', 'text-gray-400');
                 }
             }
             
