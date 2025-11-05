@@ -1,0 +1,16 @@
+services:
+  homerecord:
+    image: tabortoa/homerecord:latest
+    container_name: homerecord
+    ports:
+      - "5050:5050"
+    # 可通过 .env 或环境变量覆盖 SECRET_KEY
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+    # 绑定宿主机目录，不使用命名卷
+    volumes:
+      - ./instance:/app/app/instance
+      - ./uploads:/app/app/static/uploads
+    restart: unless-stopped
+
+# 使用 Python 的`secret`模块生成一个随机的 SECRET_KEY，用于 Flask 应用的加密,`python -c "import secrets; print(secrets.token_hex(16))"
