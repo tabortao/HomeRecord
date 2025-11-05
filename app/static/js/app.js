@@ -994,6 +994,8 @@ function bindEvents() {
 async function handleLogin() {
     const username = document.getElementById('login-username').value;
     const password = document.getElementById('login-password').value;
+    const rememberCheckbox = document.getElementById('login-remember');
+    const rememberMe = rememberCheckbox ? rememberCheckbox.checked : false;
     
     if (!username || !password) {
         domUtils.showToast('请输入用户名和密码', 'error');
@@ -1004,7 +1006,12 @@ async function handleLogin() {
         const result = await api.userAPI.login(username, password);
         if (result.success) {
             appState.currentUser = result.user;
-            storageUtils.saveUser(result.user);
+            if (rememberMe) {
+                storageUtils.saveUser(result.user);
+            } else {
+                // 不记住登录时，确保不持久化用户信息
+                storageUtils.clearUser();
+            }
             showMainApp();
             // 更新用户信息显示
             updateUserInfo();
@@ -1516,6 +1523,9 @@ function filterAndRenderTasks(tasks, filter) {
                         <div class="flex justify-between items-start">
                             <h4 class="font-medium text-base ${taskStatusClass} flex-1">${task.name}</h4>
                             <div class="flex items-center">
+                                <button class="task-speak p-1 hover:bg-blue-100 rounded-full transition-colors duration-200 mr-2" title="朗读任务">
+                                    <i class="fa fa-bullhorn text-blue-600"></i>
+                                </button>
                                 <button class="task-tomato p-1 hover:bg-green-100 rounded-full transition-colors duration-200 mr-2" title="番茄钟">
                                     <img src="static/images/番茄钟.png" alt="番茄钟" class="w-5 h-5">
                                 </button>
@@ -1528,9 +1538,8 @@ function filterAndRenderTasks(tasks, filter) {
                                 ${task.description ? `<p class="text-sm text-gray-500 ${taskStatusClass} flex-1">${task.description}</p>` : '<div class="flex-1"></div>'}
                                 <div class="flex items-center space-x-3">
                                     ${task.images && tryParseJSON(task.images) && tryParseJSON(task.images).length > 0 ? `
-                                    <div class="task-images-icon flex items-center text-sm text-blue-500 cursor-pointer hover:text-blue-700 transition-colors" data-task-id="${task.id}" data-images='${task.images}'>
-                                        <i class="fa fa-image mr-1"></i>
-                                        <span>图片</span>
+                                    <div class="task-images-icon flex items-center text-blue-500 cursor-pointer hover:text-blue-700 transition-colors" data-task-id="${task.id}" data-images='${task.images}'>
+                                        <i class="fa fa-image"></i>
                                     </div>
                                     ` : ''}
                                     <div class="flex items-center text-sm text-purple-600 font-medium">
@@ -1576,6 +1585,15 @@ function filterAndRenderTasks(tasks, filter) {
                 e.stopPropagation();
                 startTomatoTimer(task);
             });
+
+            // 朗读任务按钮
+            const speakBtn = taskElement.querySelector('.task-speak');
+            if (speakBtn) {
+                speakBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    speakTask(task, category);
+                });
+            }
             
             // 操作菜单按钮
             taskElement.querySelector('.task-menu').addEventListener('click', (e) => {
@@ -1588,6 +1606,40 @@ function filterAndRenderTasks(tasks, filter) {
         
         taskList.appendChild(categoryElement);
     });
+}
+
+// 朗读任务内容
+function speakTask(task, category) {
+    try {
+        const synth = window.speechSynthesis;
+        if (!synth) {
+            domUtils.showToast('当前浏览器不支持朗读', 'error');
+            return;
+        }
+
+        const remark = task.description && task.description.trim() !== '' ? `，备注：${task.description}` : '';
+        const text = `${category}作业，${task.name}${remark}`;
+
+        if (synth.speaking) {
+            synth.cancel();
+        }
+
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'zh-CN';
+        const voices = synth.getVoices();
+        const zhVoice = voices && voices.find(v => /zh|CN|Hans/i.test(v.lang));
+        if (zhVoice) {
+            utter.voice = zhVoice;
+        }
+        utter.rate = 1;
+        utter.pitch = 1;
+
+        synth.speak(utter);
+        domUtils.showToast('正在朗读任务…');
+    } catch (err) {
+        console.error('朗读任务失败:', err);
+        domUtils.showToast('朗读失败，请重试', 'error');
+    }
 }
 
 // 切换任务状态

@@ -231,6 +231,10 @@
 .fa-ellipsis-v:before {
   content: "\f142";
 }
+/* 小喇叭朗读按钮图标 */
+.fa-bullhorn:before {
+  content: "\f0a1";
+}
 /* 改为使用Font Awesome 4.7.0中可用的金币图标 */
 /* 小心愿页面编辑图标旁边的金币数图标 */
 .fa-coins:before {
