@@ -44,7 +44,7 @@ let appState = {
     tomatoMode: 'countdown', // countdown 或 stopwatch
     tomatoElapsedSeconds: 0,
     // 番茄钟设置
-    fixedTomatoPage: false,
+    fixedTomatoPage: true,
     // 任务设置
     taskSettings: {
         autoSort: false // 任务自动排序开关
@@ -351,7 +351,10 @@ function initTomatoSettings() {
     if (savedSettings) {
         try {
             const settings = JSON.parse(savedSettings);
-            appState.fixedTomatoPage = settings.fixedTomatoPage || false;
+            // 默认勾选：若不存在保存值则默认 true；存在则尊重保存值
+            appState.fixedTomatoPage = typeof settings.fixedTomatoPage === 'boolean'
+                ? settings.fixedTomatoPage
+                : true;
         } catch (e) {
             console.error('加载番茄钟设置失败:', e);
         }
@@ -4082,19 +4085,23 @@ function showEditWishModal(wish) {
         const iconInput = document.getElementById('edit-wish-icon');
     
         if (wish.icon && wish.icon.trim() !== '') {
-            // 处理图标路径，参考子账号头像处理方式
+            // 处理图标路径，确保与卡片显示逻辑一致
             let iconUrl;
             // 如果是data URL或完整路径，直接使用
             if (wish.icon.startsWith('data:image') || wish.icon.startsWith('http://') || wish.icon.startsWith('https://')) {
                 iconUrl = wish.icon;
-            } 
+            }
             // 如果是/uploads开头的路径，将其转换为/static/uploads路径
             else if (wish.icon.startsWith('/uploads/')) {
                 iconUrl = wish.icon.replace('/uploads/', '/static/uploads/');
             }
-            // 如果是内置图标名称，添加静态路径
-            else {
+            // 如果不是以'/'开头，视为内置图标名称，添加静态路径前缀
+            else if (!wish.icon.startsWith('/')) {
                 iconUrl = `/static/images/${wish.icon}`;
+            }
+            // 其他以'/'开头的路径（如/static/uploads/...或绝对路径），直接使用
+            else {
+                iconUrl = wish.icon;
             }
             
             // 添加错误处理，确保图片无法加载时有备用显示
