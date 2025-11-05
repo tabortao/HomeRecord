@@ -36,6 +36,7 @@ let appState = {
     currentUser: null,
     currentDate: dateUtils.getCurrentDate(),
     currentCategory: '全部学科',
+    currentPage: 'task',
     selectedTaskId: null,
     tomatoTimer: null,
     tomatoTimeLeft: 0,
@@ -49,6 +50,9 @@ let appState = {
         autoSort: false // 任务自动排序开关
     }
 };
+
+// 公开全局状态，提供给其他模块访问
+window.appState = appState;
 
 // 全局筛选状态
 let currentFilter = 'all';
@@ -654,6 +658,32 @@ function initApp() {
     if (logsModal) {
         logsModal.classList.add('hidden');
     }
+
+    // 处理页面可见性变化，用墙钟校正番茄钟，确保锁屏恢复后时间正确
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            appState._hiddenAt = Date.now();
+        } else if (document.visibilityState === 'visible') {
+            if (appState._hiddenAt) {
+                const deltaSec = Math.floor((Date.now() - appState._hiddenAt) / 1000);
+                appState._hiddenAt = null;
+                if (deltaSec > 0) {
+                    if (appState.tomatoMode === 'countdown') {
+                        appState.tomatoTimeLeft = Math.max(0, (appState.tomatoTimeLeft || 0) - deltaSec);
+                        if (appState.tomatoTimeLeft === 0) {
+                            // 若计时在后台已结束，直接完成
+                            handleTomatoFinish();
+                        } else {
+                            updateTomatoDisplays();
+                        }
+                    } else {
+                        appState.tomatoElapsedSeconds = (appState.tomatoElapsedSeconds || 0) + deltaSec;
+                        updateTomatoDisplays();
+                    }
+                }
+            }
+        }
+    });
 }
 
 // 显示登录页面
@@ -1019,6 +1049,8 @@ async function handleRegister() {
 
 // 切换页面
 function switchPage(page) {
+    // 记录当前页面，供下拉刷新等模块使用
+    appState.currentPage = page;
     // 隐藏所有页面
     document.getElementById('task-page').classList.add('hidden');
     document.getElementById('wish-page').classList.add('hidden');
@@ -1175,6 +1207,7 @@ const url = `${API_BASE_URL}/statistics?user_id=${appState.currentUser.id}&date=
 // 加载任务列表
 // 将loadTasks函数暴露到window对象，供其他模块使用
 async function loadTasks() {
+    // 暴露以供外部模块调用（例如下拉刷新）
     window.loadTasks = loadTasks;
     const taskList = document.getElementById('task-list');
     
@@ -2924,6 +2957,8 @@ function showTomatoModal() {
 
 // 加载心愿列表
 async function loadWishes() {
+    // 暴露以供外部模块调用（例如下拉刷新）
+    window.loadWishes = loadWishes;
     const wishList = document.getElementById('wish-list');
     try {
         const wishes = await api.wishAPI.getWishes(appState.currentUser.id);
@@ -3512,6 +3547,8 @@ function formatDateTime(dateTimeStr) {
 
 // 更新用户信息显示
 async function updateUserInfo() {
+    // 暴露以供外部模块调用（例如下拉刷新）
+    window.updateUserInfo = updateUserInfo;
     if (!appState.currentUser) return;
     
     try {

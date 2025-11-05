@@ -9,7 +9,7 @@
 ## 后端设计要求
 
 - 创建虚拟环境，然后在虚拟环境中安装依赖。`cd app; .\venv\Scripts\activate; pip install -r requirements.txt `。
-- 启动后端服务，运行`cd app; .\venv\Scripts\activate; python app.py`。
+- 启动后端服务，运行`cd app; .\venv\Scripts\activate; python app.py`，访问`http://localhost:5050/`。
 - 后端采用 Python Flask 框架，数据库采用 SQLite，数据库文件位于`app\instance\homerecord.db`。
 - 所有 API 路由均存储在`app\api.py`文件中。
 - 所有数据库操作脚本均存储在`app\script`目录下。

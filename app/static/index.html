@@ -226,7 +226,7 @@
         </div>
 
         <!-- 内容区域 -->
-        <div id="content" class="flex-1 p-3 pb-20 main-content">
+        <div id="content" class="flex-1 p-3 pb-20 main-content overflow-y-auto">
             <!-- 作业打卡页面 -->
             <div id="task-page">
                 <!-- 日期选择器 -->
@@ -288,7 +288,7 @@
                         </div>
                     </div>
                     
-                    <div id="wish-list" class="grid grid-cols-2 gap-3">
+                    <div id="wish-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <!-- 心愿将通过JS动态生成 -->
                 </div>
             </div>
@@ -1215,6 +1215,7 @@
     <script type="module" src="js/app.js"></script>
     <script type="module" src="js/taskTabs.js"></script>
     <script type="module" src="js/subaccountManager.js"></script>
+    <script type="module" src="js/pullToRefresh.js"></script>
     <script src="js/pwa.js"></script>
 
     <!-- 修改子账号模态窗口 -->
