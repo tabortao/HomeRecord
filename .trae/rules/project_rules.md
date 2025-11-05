@@ -3,16 +3,16 @@
 本小程序是一个面向小学生的作业与积分管理工具，旨在通过简洁有趣的界面和激励机制，帮助学生培养良好的学习习惯和时间管理能力。系统采用前后端分离架构，前端使用 HTML、JavaScript 和 Tailwind CSS 构建，后端使用 Python Flask 框架和 SQLite 数据库。
 
 - 项目开发、调试、修改、新增功能时，均需要查看项目已有文件夹及文件名，然后阅读理解`docs\PRD\完整需求文档.md`。
-- 网页图标采用`frontend\static\images\favicon`。
-- 其他静态文件（如图片、字体等）均存储在`frontend\static`目录下。
+- 网页图标采用`static\images\favicon`。
+- 其他静态文件（如图片、字体等）均存储在`static`目录下。
 - 使用powershell终端时，注意不支持&&作为命令分隔符，需要使用分号;作为命令分隔符。
 ## 后端设计要求
 
-- 创建虚拟环境，然后在虚拟环境中安装依赖。`cd backend; .\venv\Scripts\activate; pip install -r requirements.txt `。
-- 启动后端服务，运行`cd backend; .\venv\Scripts\activate; python app.py`。
-- 后端采用 Python Flask 框架，数据库采用 SQLite，数据库文件位于`backend\instance\homerecord.db`。
-- 所有 API 路由均存储在`backend\api.py`文件中。
-- 所有数据库操作脚本均存储在`backend\script`目录下。
+- 创建虚拟环境，然后在虚拟环境中安装依赖。`cd app; .\venv\Scripts\activate; pip install -r requirements.txt `。
+- 启动后端服务，运行`cd app; .\venv\Scripts\activate; python app.py`。
+- 后端采用 Python Flask 框架，数据库采用 SQLite，数据库文件位于`app\instance\homerecord.db`。
+- 所有 API 路由均存储在`app\api.py`文件中。
+- 所有数据库操作脚本均存储在`app\script`目录下。
 - 测试账号：
   - 用户名：testuser
   - 密码：Testuser123
@@ -31,5 +31,4 @@
 - 添加新的图标时，需修改`frontend\static\css\font-awesome.local.css`文件，添加新的图标类名。
 - 每个 js 文件的文件名应与其所实现的功能模块相关，采用驼峰命名法。
 - 所有 js 文件均存储在`frontend\js`目录下。
-- 启动前端服务，运行`cd frontend; python -m http.server 8000`。
 - -在终端中用 Node 解析 app.js、api.js等js文件， 来快速检查语法错误，预期结果：无语法错误。`cd g:\Code\Go-WorkSpace\HomeRecord ; node --check g:/Code/Go-WorkSpace/HomeRecord/frontend/js/app.js; if($LASTEXITCODE -eq 0){Write-Host "app.js PARSE_OK"}`。

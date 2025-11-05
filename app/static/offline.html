@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>离线模式</title>
+  <link rel="stylesheet" href="static/css/tailwind.min.css">
+  <style>
+    body { background-color: #f8fafc; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+  <div class="max-w-md w-full bg-white rounded-2xl shadow p-6 text-center">
+    <div class="text-green-600 text-4xl mb-2">⚠️</div>
+    <h1 class="text-xl font-bold text-gray-800 mb-3">当前处于离线状态</h1>
+    <p class="text-gray-600 mb-6">无法连接到网络。已安装的页面与静态资源将继续可用，部分功能（如登录、数据同步）可能暂不可用。</p>
+    <div class="space-x-2">
+      <button onclick="location.reload()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">重试连接</button>
+      <a href="/" class="bg-white border border-green-600 text-green-600 px-4 py-2 rounded hover:bg-green-50">返回首页</a>
+    </div>
+  </div>
+</body>
+</html>
