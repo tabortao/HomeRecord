@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
+from werkzeug.exceptions import NotFound
 from flask_cors import CORS
 from models import db, User, Task, TaskCategory, Wish, OperationLog, Honor, UserHonor
 from datetime import datetime, timedelta
@@ -8,7 +9,12 @@ import random
 import uuid
 from werkzeug.utils import secure_filename
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static'),
+    static_url_path='/static'
+)
+print('STATIC FOLDER ->', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static'))
 # 使用环境变量配置SECRET_KEY，如果没有设置则使用默认值
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-secret-key-for-development-only')
 # 使用绝对路径配置数据库URI，确保在Docker环境中也能正确访问
@@ -18,8 +24,8 @@ if not os.path.exists(instance_path):
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "homerecord.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# 设置上传文件夹（使用绝对路径，指向frontend/static/uploads）
-app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'static', 'uploads')
+# 设置上传文件夹（使用绝对路径，指向backend/static/uploads）
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
 
 # 确保上传目录存在
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -52,12 +58,62 @@ def serve_uploaded_file(filename):
         return jsonify({'success': False, 'message': '访问被拒绝'}), 403
     
     try:
+        # 额外打印实际文件路径用于调试
+        uploads_root = os.path.abspath(app.config['UPLOAD_FOLDER'])
+        full_path = os.path.abspath(os.path.join(app.config['UPLOAD_FOLDER'], safe_filename))
+        print('SERVE UPLOAD ->', full_path, 'exists=', os.path.exists(full_path))
+        # 再次校验路径必须在 uploads 根目录下
+        if not full_path.startswith(uploads_root + os.sep) and full_path != uploads_root:
+            return jsonify({'success': False, 'message': '访问被拒绝'}), 403
+        # 如果文件存在则直接返回文件
+        if os.path.isfile(full_path):
+            return send_file(full_path)
+        # 回退到 send_from_directory（保持目录内类型推断）
         return send_from_directory(app.config['UPLOAD_FOLDER'], safe_filename)
     except FileNotFoundError:
+        return jsonify({'success': False, 'message': '文件不存在'}), 404
+    except NotFound:
+        # Flask/werkzeug 在找不到文件时会抛出 NotFound，而不是 FileNotFoundError
         return jsonify({'success': False, 'message': '文件不存在'}), 404
     except Exception as e:
         print(f"提供静态文件时出错: {str(e)}")
         return jsonify({'success': False, 'message': '服务器错误'}), 500
+
+# 首页与JS静态路由
+@app.route('/')
+def index():
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    return send_from_directory(os.path.join(app.static_folder, 'js'), filename)
+
+@app.route('/static/<path:filename>')
+def serve_static_assets(filename):
+    return send_from_directory(app.static_folder, filename)
+
+# 调试路由：查看所有已注册的URL映射
+@app.route('/__routes')
+def list_routes():
+    try:
+        rules = []
+        for rule in app.url_map.iter_rules():
+            rules.append({
+                'endpoint': rule.endpoint,
+                'methods': sorted(list(rule.methods)),
+                'rule': str(rule)
+            })
+        return jsonify({'success': True, 'routes': rules})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# 调试：打印所有请求路径，确保路由匹配逻辑可观察
+@app.before_request
+def log_request_path():
+    try:
+        print('REQUEST PATH ->', request.path)
+    except Exception:
+        pass
 db.init_app(app)
 
 # 初始化数据库
@@ -460,5 +516,14 @@ def add_task():
 from api import register_routes
 register_routes(app)
 
+# 启动时打印URL映射，辅助调试
+try:
+    print('=== URL MAP START ===')
+    for rule in app.url_map.iter_rules():
+        print(f"{rule} -> endpoint={rule.endpoint}, methods={','.join(sorted(list(rule.methods)))}")
+    print('=== URL MAP END ===')
+except Exception as e:
+    print('打印URL映射失败:', e)
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=False, port=5050)

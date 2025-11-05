@@ -1,7 +1,7 @@
 // 导入API和工具函数
 import * as api from './api.js';
-// 定义API基础URL
-const API_BASE_URL = 'http://localhost:5000/api';
+// 采用 api.js 提供的动态 API_BASE_URL，避免端口硬编码
+import { API_BASE_URL } from './api.js';
 import { dateUtils, timeUtils, storageUtils, domUtils, colorUtils } from './utils.js';
 // 导入学科设置管理器
 import SubjectSettingsManager from './subjectSettings.js';
@@ -323,7 +323,7 @@ function updateViewerImage() {
             imageUrl = imageUrl;
         } else {
             // 对于其他相对路径，添加基础URL
-            const baseUrl = 'http://localhost:5000'; // 直接使用明确的基础URL
+        const baseUrl = window.location.origin; // 使用当前页面的origin
             const path = imageUrl && imageUrl.startsWith('/') ? imageUrl : imageUrl ? `/${imageUrl}` : '';
             imageUrl = `${baseUrl}${path}`;
         }
@@ -1112,7 +1112,7 @@ async function loadStatistics() {
         
         const date = appState.currentDate || dateUtils.getCurrentDate();
         // 使用与其他API调用相同的基础URL格式
-        const url = `http://localhost:5000/api/statistics?user_id=${appState.currentUser.id}&date=${date}`;
+const url = `${API_BASE_URL}/statistics?user_id=${appState.currentUser.id}&date=${date}`;
         console.log('请求统计数据URL:', url, '用户ID:', appState.currentUser.id, '日期:', date);
         
         const response = await fetch(url, {
@@ -1216,7 +1216,7 @@ async function loadTasks() {
     
     try {
         // 构建API URL - 对于子账号，后端会自动处理为主账号的任务
-        const API_BASE_URL = 'http://localhost:5000/api';
+// 使用从 api.js 导入的 API_BASE_URL
         let url = `${API_BASE_URL}/tasks?user_id=${appState.currentUser.id}&date=${appState.currentDate}`;
         
         // 只有当分类有效且不是默认值时才添加category参数
@@ -2045,8 +2045,8 @@ async function handleAddTask(e) {
                     let imageUrl = img.src;
                     if (imageUrl.startsWith(API_BASE_URL)) {
                         imageUrl = imageUrl.substring(API_BASE_URL.length);
-                    } else if (imageUrl.startsWith('http://localhost:5000')) {
-                        imageUrl = imageUrl.substring('http://localhost:5000'.length);
+            } else if (imageUrl.startsWith(window.location.origin)) {
+                imageUrl = imageUrl.substring(window.location.origin.length);
                     }
                     
                     // 检查是否在已删除列表中
@@ -2354,7 +2354,7 @@ function editTask(task) {
                         fullImageUrl = imageUrl.replace('/uploads/', '/static/uploads/');
                     } else {
                         // 确保URL中不会有多余的斜杠
-                        const baseUrl = 'http://localhost:5000'; // 直接使用基础URL
+                        const baseUrl = window.location.origin; // 使用当前页面的origin
                         const path = imageUrl && imageUrl.startsWith('/') ? imageUrl : imageUrl ? `/${imageUrl}` : '';
                         fullImageUrl = `${baseUrl}${path}`;
                     }
@@ -2375,7 +2375,7 @@ function editTask(task) {
                                 return imgUrl.replace('/uploads/', '/static/uploads/');
                             } else {
                                 const path = imgUrl && imgUrl.startsWith('/') ? imgUrl : imgUrl ? `/${imgUrl}` : '';
-                                return `http://localhost:5000${path}`;
+                                return `${window.location.origin}${path}`;
                             }
                         });
                         openImageViewer(allImages);

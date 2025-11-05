@@ -1,17 +1,10 @@
 // 动态设置API_BASE_URL
-// 在Docker环境中，应该使用与前端页面相同的域名，但端口为5000
+// 使用当前页面的协议、主机名和端口，避免硬编码端口导致跨端口访问失败
 export const API_BASE_URL = (() => {
-    // 获取当前页面的协议和主机名
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
-    
-    // 如果是本地开发环境（localhost或127.0.0.1），使用默认地址
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return 'http://localhost:5000/api';
-    }
-    
-    // 其他情况（Docker部署环境），使用与当前页面相同的协议和主机名，但端口为5000
-    return `${protocol}//${hostname}:5000/api`;
+    const port = window.location.port ? `:${window.location.port}` : '';
+    return `${protocol}//${hostname}${port}/api`;
 })();
 
 // 用户相关API

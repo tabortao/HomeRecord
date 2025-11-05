@@ -1,0 +1,27 @@
+# Ignore VCS
+.git
+.gitignore
+
+# CI config
+.github/
+
+# Local venvs
+venv/
+app/venv/
+
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local scripts not needed in image
+start_project.bat
+start_project.ps1
+docs/

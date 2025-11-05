@@ -232,8 +232,8 @@ def register_routes(app):
             print('任务创建失败:', str(e))
             return jsonify({'error': '批量添加任务失败', 'details': str(e)}), 500
     
-    # 确保头像上传根目录存在 - 修改为frontend/static/uploads/avatars
-    AVATAR_ROOT_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'static', 'uploads', 'avatars')
+    # 确保头像上传根目录存在 - 修改为backend/static/uploads/avatars
+    AVATAR_ROOT_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads', 'avatars')
     if not os.path.exists(AVATAR_ROOT_FOLDER):
         os.makedirs(AVATAR_ROOT_FOLDER, exist_ok=True)
     
@@ -719,10 +719,8 @@ def register_routes(app):
             # 删除任务相关的图片文件
             if task.images:
                 try:
-                    # 获取当前工作目录，确保使用绝对路径
-                    current_dir = os.path.dirname(os.path.abspath(__file__))
-                    # 获取正确的上传目录（指向frontend/static/uploads）
-                    upload_folder = os.path.join(current_dir, '..', 'frontend', 'static', 'uploads')
+                    # 使用后端配置的上传目录（backend/static/uploads）
+                    upload_folder = app.config['UPLOAD_FOLDER']
                     
                     # 解析图片URL列表
                     image_urls = json.loads(task.images)
@@ -919,8 +917,8 @@ def register_routes(app):
                     image_urls = json.loads(task.images)
                     print(f"开始处理任务系列中的任务{task.id}的{len(image_urls)}张图片")
                     
-                    # 获取正确的上传目录（指向frontend/static/uploads）
-                    upload_folder = os.path.join(current_dir, '..', 'frontend', 'static', 'uploads')
+                    # 使用后端配置的上传目录（backend/static/uploads）
+                    upload_folder = app.config['UPLOAD_FOLDER']
                     
                     # 方法1：直接删除任务ID对应的目录（更高效的方式）
                     task_dir = os.path.join(upload_folder, 'task_images', str(user_id), str(task.id))

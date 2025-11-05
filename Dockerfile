@@ -1,40 +1,40 @@
-# 后端服务构建阶段
-FROM python:3.9-slim AS backend
+# syntax=docker/dockerfile:1
+# HomeRecord Flask app container
 
-# 设置工作目录
-WORKDIR /app/backend
+FROM python:3.11-slim AS base
 
-# 复制后端依赖文件
-COPY backend/requirements.txt .
+# Prevent Python from writing pyc files and enable stdout flushing
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    FLASK_ENV=production
 
-# 安装后端依赖
-RUN pip install --no-cache-dir -r requirements.txt
+# Set workdir to the repository root
+WORKDIR /app
 
-# 复制后端代码
-COPY backend/ .
+# Install OS packages (if needed later, keep minimal)
+RUN apt-get update -y && apt-get install -y --no-install-recommends \
+    build-essential \
+ && rm -rf /var/lib/apt/lists/*
 
-# 设置环境变量
-ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=app.py
-ENV FLASK_ENV=production
+# Copy requirements first for better layer caching
+COPY app/requirements.txt ./app/requirements.txt
 
-# 暴露后端服务端口
-EXPOSE 5000
+# Install Python dependencies (include gunicorn)
+RUN pip install --no-cache-dir -r ./app/requirements.txt gunicorn
 
-# 启动后端服务
-CMD ["python", "app.py"]
+# Copy application source
+COPY app ./app
 
-# 前端服务构建阶段
-FROM python:3.9-slim AS frontend
+# Create runtime directories (DB, uploads)
+RUN mkdir -p ./app/instance \
+    && mkdir -p ./app/static/uploads/task_images
 
-# 设置工作目录
-WORKDIR /app/frontend
+# Expose service port
+EXPOSE 5050
 
-# 复制前端代码
-COPY frontend/ .
+# Default environment (override in production using -e SECRET_KEY=...)
+ENV SECRET_KEY="change-me-in-production"
 
-# 暴露前端服务端口
-EXPOSE 8000
-
-# 启动前端服务（使用Python的HTTP服务器）
-CMD ["python", "-m", "http.server", "8000"]
+# Run with Gunicorn in production
+WORKDIR /app/app
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5050", "app:app"]
