@@ -1,60 +1,22 @@
 {
-  "name": "作业积分小程序",
+  "name": "作业与积分小程序",
   "short_name": "作业积分",
-  "description": "帮助学生记录作业完成情况、学习时间和积分兑换心愿的应用",
+  "description": "面向小学生的作业与积分管理工具，支持离线访问。",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#4CAF50",
-  "orientation": "portrait-primary",
+  "theme_color": "#22c55e",
   "icons": [
     {
-      "src": "/static/images/favicon/android-chrome-192x192.png",
+      "src": "static/images/favicon/android-chrome-192x192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
-      "src": "/static/images/favicon/android-chrome-512x512.png",
+      "src": "static/images/favicon/android-chrome-512x512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/images/favicon/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "apple touch icon"
-    },
-    {
-      "src": "/static/images/favicon/favicon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/images/favicon/favicon-16x16.png",
-      "sizes": "16x16",
       "type": "image/png"
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "计划打卡",
-      "short_name": "打卡",
-      "description": "查看和管理今日任务",
-      "url": "/#calendar",
-      "icons": [{ "src": "/static/images/favicon/favicon-32x32.png", "sizes": "32x32" }]
-    },
-    {
-      "name": "我的心愿",
-      "short_name": "心愿",
-      "description": "查看和兑换心愿",
-      "url": "/#wishes",
-      "icons": [{ "src": "/static/images/favicon/favicon-32x32.png", "sizes": "32x32" }]
-    }
-  ],
-  "categories": ["education", "productivity", "utilities"],
-  "screenshots": [],
-  "lang": "zh-CN",
-  "dir": "ltr"
+  ]
 }
