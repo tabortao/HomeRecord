@@ -225,6 +225,32 @@ const taskAPI = {
         
         return await response.json();
     },
+
+    // 删除任务系列（可选从指定日期开始）
+    deleteTaskSeries: async (seriesId, fromDate = null) => {
+        let url = `${API_BASE_URL}/tasks/series/${seriesId}`;
+        if (fromDate) {
+            url += `?from_date=${encodeURIComponent(fromDate)}`;
+        }
+
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            try {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `服务器响应错误: ${response.status}`);
+            } catch (e) {
+                throw new Error(`服务器响应错误: ${response.status}`);
+            }
+        }
+
+        return await response.json();
+    },
     
     // 上传任务图片
     uploadTaskImages: async (taskId, files) => {

@@ -2589,6 +2589,113 @@ async function deleteTask(taskId) {
             domUtils.showToast('无权限删除任务', 'error');
             return;
         }
+
+        // 如果是重复任务（存在series_id），弹出多选删除对话框
+        if (task && task.series_id) {
+            // 先移除已存在的对话框
+            const existingDialog = document.querySelector('.series-delete-dialog');
+            if (existingDialog) existingDialog.remove();
+
+            const remark = '此任务为重复任务，删除后任务内容信息将不能恢复哦！';
+            const dialogHtml = `
+                <div class="series-delete-dialog fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300">
+                    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl transform transition-transform duration-300 max-h-[80vh] overflow-y-auto">
+                        <div class="text-center mb-4">
+                            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+                                <i class="fa fa-trash text-red-500"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">删除重复任务</h3>
+                            <p class="text-gray-600 text-sm">${remark}</p>
+                        </div>
+                        <div class="space-y-3">
+                            <button class="series-delete-current w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">仅删除当前任务</button>
+                            <button class="series-delete-future w-full px-4 py-3 border border-orange-300 rounded-lg text-orange-700 font-medium hover:bg-orange-50 transition-colors">删除当前及未来全部任务</button>
+                            <button class="series-delete-all w-full px-4 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors">删除所有任务</button>
+                            <button class="series-delete-cancel w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">取消</button>
+                        </div>
+                    </div>
+                </div>`;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = dialogHtml;
+            const dialog = tempDiv.firstElementChild;
+            document.body.appendChild(dialog);
+
+            // 动画
+            setTimeout(() => {
+                dialog.style.opacity = '1';
+                dialog.querySelector('.bg-white').style.transform = 'scale(1)';
+            }, 10);
+
+            const close = () => {
+                dialog.style.opacity = '0';
+                dialog.querySelector('.bg-white').style.transform = 'scale(0.95)';
+                setTimeout(() => dialog.remove(), 200);
+            };
+
+            // 绑定事件
+            dialog.querySelector('.series-delete-current').addEventListener('click', async () => {
+                try {
+                    // 当前任务删除
+                    // 如果是已完成的任务，在UI上先显示临时扣除
+                    if (task.status === '已完成' && task.points > 0) {
+                        const deductAmount = -task.points;
+                        const dayEl = document.getElementById('day-gold');
+                        const totalEl = document.getElementById('total-gold');
+                        if (dayEl) dayEl.textContent = Math.max(0, (parseInt(dayEl.textContent || '0', 10) + deductAmount)).toString();
+                        if (totalEl) totalEl.textContent = Math.max(0, (parseInt(totalEl.textContent || '0', 10) + deductAmount)).toString();
+                    }
+                    await api.taskAPI.deleteTask(taskId);
+                    await loadTasks();
+                    await loadStatistics();
+                    await updateUserInfo();
+                    domUtils.showToast('已删除当前任务');
+                } catch (e) {
+                    console.error('删除当前任务失败:', e);
+                    domUtils.showToast('删除失败，请重试', 'error');
+                } finally {
+                    close();
+                }
+            });
+
+            dialog.querySelector('.series-delete-future').addEventListener('click', async () => {
+                try {
+                    await api.taskAPI.deleteTaskSeries(task.series_id, task.start_date);
+                    await loadTasks();
+                    await loadStatistics();
+                    await updateUserInfo();
+                    domUtils.showToast('已删除当前及未来重复任务');
+                } catch (e) {
+                    console.error('删除未来任务失败:', e);
+                    domUtils.showToast('删除失败，请重试', 'error');
+                } finally {
+                    close();
+                }
+            });
+
+            dialog.querySelector('.series-delete-all').addEventListener('click', async () => {
+                try {
+                    await api.taskAPI.deleteTaskSeries(task.series_id);
+                    await loadTasks();
+                    await loadStatistics();
+                    await updateUserInfo();
+                    domUtils.showToast('已删除该系列所有任务');
+                } catch (e) {
+                    console.error('删除所有系列任务失败:', e);
+                    domUtils.showToast('删除失败，请重试', 'error');
+                } finally {
+                    close();
+                }
+            });
+
+            dialog.querySelector('.series-delete-cancel').addEventListener('click', () => close());
+
+            // 点击背景关闭
+            dialog.addEventListener('click', (e) => {
+                if (e.target === dialog) close();
+            });
+            return; // 已处理重复任务删除对话框
+        }
     } catch (error) {
         console.error('检查任务权限失败:', error);
         domUtils.showToast('检查权限失败，请重试', 'error');

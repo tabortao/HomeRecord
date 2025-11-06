@@ -900,114 +900,104 @@ def register_routes(app):
     
     @app.route('/api/tasks/series/<series_id>', methods=['DELETE'])
     def delete_task_series(series_id):
-        tasks = Task.query.filter_by(series_id=series_id).all()
-        if not tasks:
-            return jsonify({'success': False, 'message': '任务系列不存在'})
-        
-        user_id = tasks[0].user_id
-        total_deducted_points = 0
-        # 获取当前工作目录，确保使用绝对路径
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        # 为每个任务删除对应的图片文件
-        for task in tasks:
-            if task.images:
-                try:
-                    # 解析图片URL列表
-                    image_urls = json.loads(task.images)
-                    print(f"开始处理任务系列中的任务{task.id}的{len(image_urls)}张图片")
-                    
-                    # 使用后端配置的上传目录（backend/static/uploads）
-                    upload_folder = app.config['UPLOAD_FOLDER']
-                    
-                    # 方法1：直接删除任务ID对应的目录（更高效的方式）
-                    task_dir = os.path.join(upload_folder, 'task_images', str(user_id), str(task.id))
-                    if os.path.exists(task_dir):
-                        print(f"找到任务系列中任务{task.id}的图片目录: {task_dir}")
-                        # 递归删除目录及其所有内容
-                        import shutil
-                        try:
-                            shutil.rmtree(task_dir)
-                            print(f"成功删除任务系列中任务目录及其所有内容: {task_dir}")
-                        except Exception as e:
-                            print(f"删除任务系列中任务目录时出错 {task_dir}: {str(e)}")
-                    else:
-                        print(f"任务系列中任务目录不存在: {task_dir}")
-                    
-                    # 方法2：直接从URL构建绝对路径并删除（作为备用方法）
-                    for image_url in image_urls:
-                        try:
-                            # 构建正确的文件路径
-                            if image_url.startswith('/static/uploads/'):
-                                # 从/static/uploads/开头的URL中提取相对路径
-                                relative_path = image_url.replace('/static/uploads/', '')
-                                file_path = os.path.join(upload_folder, relative_path)
-                            elif image_url.startswith('static/uploads/'):
-                                # 处理没有前导斜杠的情况
-                                file_path = os.path.join(upload_folder, image_url.replace('static/uploads/', ''))
-                            else:
-                                # 尝试从URL中提取task_images部分
-                                if '/task_images/' in image_url:
-                                    path_parts = image_url.split('/task_images/')[1]
-                                    file_path = os.path.join(upload_folder, 'task_images', path_parts)
+        """
+        删除任务系列。
+        支持可选查询参数 from_date (YYYY-MM-DD)，当提供该参数时，仅删除该日期及之后的系列任务。
+        未提供 from_date 时，删除整个系列的所有任务。
+        """
+        try:
+            from_date = request.args.get('from_date')
+
+            # 根据是否提供 from_date 选择删除范围
+            if from_date:
+                tasks = Task.query.filter(Task.series_id == series_id, Task.start_date >= from_date).all()
+            else:
+                tasks = Task.query.filter_by(series_id=series_id).all()
+
+            if not tasks:
+                return jsonify({'success': False, 'message': '任务系列不存在或没有匹配的任务'})
+
+            user_id = tasks[0].user_id
+            total_deducted_points = 0
+
+            # 为每个任务删除对应的图片文件
+            for task in tasks:
+                if task.images:
+                    try:
+                        image_urls = json.loads(task.images)
+                        upload_folder = app.config['UPLOAD_FOLDER']
+
+                        # 删除任务ID对应目录
+                        task_dir = os.path.join(upload_folder, 'task_images', str(user_id), str(task.id))
+                        if os.path.exists(task_dir):
+                            import shutil
+                            try:
+                                shutil.rmtree(task_dir)
+                            except Exception as e:
+                                print(f"删除任务目录时出错 {task_dir}: {str(e)}")
+
+                        # 备用：从URL删除文件
+                        for image_url in image_urls:
+                            try:
+                                if image_url.startswith('/static/uploads/'):
+                                    relative_path = image_url.replace('/static/uploads/', '')
+                                    file_path = os.path.join(upload_folder, relative_path)
+                                elif image_url.startswith('static/uploads/'):
+                                    file_path = os.path.join(upload_folder, image_url.replace('static/uploads/', ''))
                                 else:
-                                    # 无法解析的URL格式
-                                    continue
-                            
-                            # 尝试删除文件
-                            if os.path.exists(file_path):
-                                os.remove(file_path)
-                                print(f"通过URL解析删除任务系列中任务图片成功: {file_path}")
-                        except Exception as e:
-                            print(f"处理任务系列中的任务图片URL {image_url} 时出错: {str(e)}")
-                            
-                except Exception as e:
-                    print(f"删除任务系列中的任务图片时出错: {str(e)}")
-                    # 继续执行，不因图片删除失败而中断
-            
-            # 检查是否是已完成的任务，如果是则记录需要扣除的金币
-            if task.status == '已完成' and task.points > 0:
-                total_deducted_points += task.points
-                
-                # 获取当前操作用户信息
-                current_user = User.query.get(user_id)
-                operator_name = current_user.username if current_user else '未知用户'
-                
-                # 记录金币扣除日志
-                gold_log = OperationLog(
-                    user_id=user_id,
-                    user_nickname=current_user.nickname or current_user.username if current_user else '未知用户',  # 使用昵称或用户名
-                    operation_type='修改金币',
-                    operation_content=f'删除任务系列中的已完成任务：{task.name}，扣除{task.points}金币',
-                    operation_time=datetime.now(),
-                    operation_result='成功'
-                )
-                db.session.add(gold_log)
-            
-            # 删除任务记录
-            db.session.delete(task)
-        
-        # 如果有需要扣除的金币，更新用户金币数
-        if total_deducted_points > 0:
-            user = User.query.get(user_id)
-            if user:
-                user.total_gold = max(0, user.total_gold - total_deducted_points)
-        
-        db.session.commit()
-        
-        # 记录操作日志
-        log = OperationLog(
-            user_id=user_id,
-            user_nickname=current_user.nickname or current_user.username if current_user else '未知用户',  # 使用昵称或用户名
-            operation_type='删除任务系列',
-            operation_content=f'删除任务系列：{series_id}',
-            operation_time=datetime.now(),
-            operation_result='成功'
-        )
-        db.session.add(log)
-        db.session.commit()
-        
-        return jsonify({'success': True})
+                                    if '/task_images/' in image_url:
+                                        path_parts = image_url.split('/task_images/')[1]
+                                        file_path = os.path.join(upload_folder, 'task_images', path_parts)
+                                    else:
+                                        continue
+                                if os.path.exists(file_path):
+                                    os.remove(file_path)
+                            except Exception as e:
+                                print(f"处理任务图片URL {image_url} 时出错: {str(e)}")
+                    except Exception as e:
+                        print(f"删除任务图片时出错: {str(e)}")
+
+                # 统计金币扣除（已完成任务）
+                if task.status == '已完成' and task.points > 0:
+                    total_deducted_points += task.points
+
+                # 删除任务记录
+                db.session.delete(task)
+
+            # 更新用户金币数
+            if total_deducted_points > 0:
+                user = User.query.get(user_id)
+                if user:
+                    user.total_gold = max(0, user.total_gold - total_deducted_points)
+
+            db.session.commit()
+
+            # 记录操作日志（健壮处理current_user可能为空的情况）
+            current_user = User.query.get(user_id)
+            user_nickname = (
+                current_user.nickname if current_user and current_user.nickname
+                else (current_user.username if current_user else '未知用户')
+            )
+            scope_text = '及未来任务' if from_date else '所有任务'
+            log = OperationLog(
+                user_id=user_id,
+                user_nickname=user_nickname,
+                operation_type='删除任务系列',
+                operation_content=f'删除系列({series_id})的{scope_text}，from_date={from_date or "无"}',
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
+            db.session.add(log)
+            db.session.commit()
+
+            return jsonify({'success': True})
+        except Exception as e:
+            db.session.rollback()
+            try:
+                app.logger.error(f"删除任务系列时发生异常，series_id: {series_id}, 错误信息: {str(e)}")
+            except Exception:
+                print(f"删除任务系列时发生异常，series_id: {series_id}, 错误信息: {str(e)}")
+            return jsonify({'success': False, 'message': f'删除任务系列失败: {str(e)}'}), 500
     
     # 任务分类相关路由
     @app.route('/api/categories', methods=['GET'])
