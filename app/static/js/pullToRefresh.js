@@ -5,7 +5,8 @@ const STATE = {
   startY: 0,
   pulling: false,
   lastDelta: 0,
-  threshold: 70,
+  // 提高阈值，避免轻微下拉就触发刷新
+  threshold: 130,
   indicator: null,
 };
 

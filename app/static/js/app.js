@@ -1707,11 +1707,23 @@ function speakTask(task, category) {
         }
 
         const utter = new SpeechSynthesisUtterance(text);
+        // 优先使用简体中文普通话
         utter.lang = 'zh-CN';
-        const voices = synth.getVoices();
-        const zhVoice = voices && voices.find(v => /zh|CN|Hans/i.test(v.lang));
-        if (zhVoice) {
-            utter.voice = zhVoice;
+        let voices = synth.getVoices();
+        // 个别浏览器需要等待voices加载
+        if (!voices || voices.length === 0) {
+            synth.onvoiceschanged = () => {
+                voices = synth.getVoices();
+            };
+        }
+        if (voices && voices.length > 0) {
+            // 优先 zh-CN（排除粤语 zh-HK 和台语 zh-TW）
+            const preferred = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('zh-cn'))
+                || voices.find(v => /zh\-cn|zh_cn|zh.*hans/i.test(v.lang))
+                || voices.find(v => /zh/i.test(v.lang));
+            if (preferred) {
+                utter.voice = preferred;
+            }
         }
         utter.rate = 1;
         utter.pitch = 1;
@@ -4062,12 +4074,14 @@ function showEditProfileModal() {
             if(document.getElementById('avatar')) document.getElementById('avatar').value = avatar;
             // 根据头像类型选择正确的加载路径
             let avatarUrl;
-            if (avatar.includes('avatar_')) {
-                // 自定义上传的头像
-                avatarUrl = `/static/uploads/avatars/${avatar}`;
-            } else {
-                // 预设头像
+            if (!avatar || avatar === 'default.svg') {
+                avatarUrl = 'static/images/avatars/default.svg';
+            } else if (avatar.endsWith('.svg') && avatar.startsWith('avatar')) {
+                // 预设头像（svg位于本地静态目录）
                 avatarUrl = `static/images/avatars/${avatar}`;
+            } else {
+                // 自定义上传头像（保留原始扩展名）
+                avatarUrl = `/static/uploads/avatars/${avatar}`;
             }
             if(document.getElementById('current-avatar')) document.getElementById('current-avatar').src = avatarUrl;
         }
@@ -4122,15 +4136,11 @@ async function handleEditProfile(e) {
     }
     
     try {
-        // 构建更新数据，确保头像使用SVG格式
-        let avatarValue = avatar;
-        if (avatarValue && !avatarValue.endsWith('.svg')) {
-            avatarValue = avatarValue.replace('.png', '.svg');
-        }
+        // 构建更新数据（保留头像原有扩展名与文件名）
         const updateData = {
             nickname: nickname,
             phone: phone,
-            avatar: avatarValue
+            avatar: avatar
         };
         
         // 如果需要修改密码，添加密码字段
@@ -4150,7 +4160,7 @@ async function handleEditProfile(e) {
         // 更新本地存储的用户信息
         appState.currentUser.nickname = nickname;
         appState.currentUser.phone = phone;
-        appState.currentUser.avatar = avatarValue;
+        appState.currentUser.avatar = avatar;
         localStorage.setItem('currentUser', JSON.stringify(appState.currentUser));
         
         // 更新页面显示
