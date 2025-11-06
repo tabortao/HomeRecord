@@ -673,10 +673,14 @@ function initApp() {
                 const deltaSec = Math.floor((Date.now() - appState._hiddenAt) / 1000);
                 appState._hiddenAt = null;
                 if (deltaSec > 0) {
+                    // 仅在番茄钟真实处于活动或绑定了任务时才进行校正
+                    const hasTomatoContext = !!appState.tomatoTimer || !!appState.tomatoTaskId;
+                    if (!hasTomatoContext) return;
+
                     if (appState.tomatoMode === 'countdown') {
                         appState.tomatoTimeLeft = Math.max(0, (appState.tomatoTimeLeft || 0) - deltaSec);
                         if (appState.tomatoTimeLeft === 0) {
-                            // 若计时在后台已结束，直接完成
+                            // 若计时在后台已结束，直接完成（仅在存在任务上下文时）
                             handleTomatoFinish();
                         } else {
                             updateTomatoDisplays();
@@ -3138,6 +3142,8 @@ function handleTomatoPause() {
 
 // 完成：停止计时并标记任务完成，更新后端和界面
 async function handleTomatoFinish() {
+    // 记录是否真有正在运行或绑定任务的番茄钟上下文
+    const hadActiveContext = !!appState.tomatoTimer || !!appState.tomatoTaskId || (appState.tomatoElapsedSeconds && appState.tomatoElapsedSeconds > 0);
     if (appState.tomatoTimer) {
         clearInterval(appState.tomatoTimer);
         appState.tomatoTimer = null;
@@ -3191,7 +3197,10 @@ async function handleTomatoFinish() {
         // 检查是否有新的荣誉可以获取
         await checkNewHonors();
         
-        domUtils.showToast('番茄钟完成，任务已标记为完成');
+        // 仅在确有番茄钟活动上下文时提示完成，避免首次进入页面误报
+        if (hadActiveContext) {
+            domUtils.showToast('番茄钟完成，任务已标记为完成');
+        }
     } catch (err) {
         console.error('番茄钟完成时更新失败', err);
         domUtils.showToast('更新任务失败，请重试', 'error');
