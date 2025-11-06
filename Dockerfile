@@ -35,6 +35,10 @@ EXPOSE 5050
 # Default environment (override in production using -e SECRET_KEY=...)
 ENV SECRET_KEY="change-me-in-production"
 
-# Run with Gunicorn in production
+# Copy and use entrypoint to run migration before boot
+COPY app/docker-entrypoint.sh ./app/docker-entrypoint.sh
+RUN chmod +x ./app/docker-entrypoint.sh
+
+# Run with entrypoint (runs migration, then Gunicorn)
 WORKDIR /app/app
-CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5050", "app:app"]
+ENTRYPOINT ["/app/app/../app/docker-entrypoint.sh"]

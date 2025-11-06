@@ -1,4 +1,4 @@
-const CACHE_NAME = 'homerecord-cache-v1';
+const CACHE_NAME = 'homerecord-cache-v2';
 const CORE_ASSETS = [
   // HTML
   '/static/index.html',
@@ -27,9 +27,19 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME && caches.delete(key)))).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((key) => key !== CACHE_NAME && caches.delete(key)));
+    // Enable navigation preload to speed up navigation fetches when possible
+    try {
+      if (self.registration && self.registration.navigationPreload) {
+        await self.registration.navigationPreload.enable();
+      }
+    } catch (e) {
+      // ignore
+    }
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
@@ -39,16 +49,28 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   // 处理页面导航请求（HTML文档）离线兜底
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((resp) => {
-          // 更新缓存中的首页副本（可选）
-          const clone = resp.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put('/static/index.html', clone)).catch(() => {});
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cachedIndex = await cache.match('/static/index.html');
+
+      // Try to use navigation preload if available, else normal fetch
+      const preloadResponse = await event.preloadResponse;
+      const networkPromise = (preloadResponse ? Promise.resolve(preloadResponse) : fetch(request))
+        .then(async (resp) => {
+          try {
+            await cache.put('/static/index.html', resp.clone());
+          } catch (e) {}
           return resp;
         })
-        .catch(() => caches.match('/static/offline.html'))
-    );
+        .catch(async () => {
+          if (cachedIndex) return cachedIndex;
+          const offline = await caches.match('/static/offline.html');
+          return offline;
+        });
+
+      // 优先返回缓存的 index.html，提高首屏与回前台速度；后台更新网络内容
+      return cachedIndex || networkPromise;
+    })());
     return;
   }
   // 仅处理当前源的静态资源
