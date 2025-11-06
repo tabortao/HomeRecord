@@ -323,6 +323,48 @@ const categoryAPI = {
             method: 'DELETE'
         });
         return await response.json();
+    },
+
+    // 批量更新分类排序
+    reorderCategories: async (orders) => {
+        // 优先尝试批量更新端点
+        try {
+            const response = await fetch(`${API_BASE_URL}/categories/reorder`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ orders })
+            });
+
+            // 如果服务端返回有效JSON则直接使用
+            const contentType = response.headers.get('content-type') || '';
+            if (response.ok && contentType.includes('application/json')) {
+                return await response.json();
+            }
+        } catch (e) {
+            // 忽略批量端点错误，走降级路径
+        }
+
+        // 降级：逐个调用更新分类接口，确保在旧版本后端也能保存排序
+        let updated = 0;
+        for (const item of orders) {
+            try {
+                const resp = await fetch(`${API_BASE_URL}/categories/${item.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ sort_order: item.sort_order })
+                });
+                if (resp.ok) {
+                    updated += 1;
+                }
+            } catch (err) {
+                // 单项失败不影响其他项
+            }
+        }
+        return { success: true, updated };
     }
 };
 

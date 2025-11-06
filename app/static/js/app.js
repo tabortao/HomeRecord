@@ -760,11 +760,11 @@ async function initData() {
     // 加载统计数据
     await loadStatistics();
     
-    // 加载任务列表
-    await loadTasks();
-    
-    // 加载分类列表
+    // 先加载分类列表，确保后续任务按最新分类顺序渲染
     await loadCategories();
+    
+    // 再加载任务列表
+    await loadTasks();
     
     // 加载周视图
     loadWeekView();
@@ -1496,20 +1496,37 @@ function filterAndRenderTasks(tasks, filter) {
     
     // 处理任务排序
     let categoriesToRender = Object.keys(tasksByCategory);
-    
-    // 按学科排序（当选择“科目分类”时）
+
+    // 构建学科排序映射（来源于已加载的分类列表）
+    const categoryOrderMap = {};
+    if (window.taskTabsManager && Array.isArray(window.taskTabsManager.categories)) {
+        window.taskTabsManager.categories.forEach((cat, idx) => {
+            const order = (typeof cat.sort_order === 'number' && !Number.isNaN(cat.sort_order))
+                ? cat.sort_order
+                : idx + 1;
+            categoryOrderMap[cat.name] = order;
+        });
+    }
+    const getOrder = (name) => {
+        const o = categoryOrderMap[name];
+        return (typeof o === 'number' && !Number.isNaN(o)) ? o : Number.MAX_SAFE_INTEGER;
+    };
+
+    // 分类排序：当选择“科目分类”时按名称字母顺序，否则按sort_order
     if (appState.taskSortMethod === 'category') {
         categoriesToRender.sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    } else {
+        categoriesToRender.sort((a, b) => getOrder(a) - getOrder(b));
     }
-    
-    // 自动排序：仅在默认排序模式下生效（未完成优先的学科排前）
+
+    // 自动排序：默认模式下，先按是否含未完成任务分组，再按sort_order稳定排序
     if (appState.taskSettings.autoSort && appState.taskSortMethod === 'default') {
         categoriesToRender = categoriesToRender.sort((catA, catB) => {
             const hasPendingA = tasksByCategory[catA].some(task => task.status === '未完成');
             const hasPendingB = tasksByCategory[catB].some(task => task.status === '未完成');
             if (hasPendingA && !hasPendingB) return -1;
             if (!hasPendingA && hasPendingB) return 1;
-            return 0;
+            return getOrder(catA) - getOrder(catB);
         });
     }
     

@@ -65,6 +65,7 @@ class TaskCategory(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))  # 自定义分类关联用户，内置分类不关联
     name = db.Column(db.String(50), unique=True, nullable=False)
     color = db.Column(db.String(20), default='#999999')
+    sort_order = db.Column(db.Integer, default=0)
     is_builtin = db.Column(db.Boolean, default=False)
 
 # 心愿表

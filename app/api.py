@@ -1004,10 +1004,10 @@ def register_routes(app):
     def get_categories():
         user_id = request.args.get('user_id')
         
-        # 获取内置分类和用户自定义分类
+        # 获取内置分类和用户自定义分类，并按sort_order升序排列
         categories = TaskCategory.query.filter(
             (TaskCategory.is_builtin == True) | (TaskCategory.user_id == user_id)
-        ).all()
+        ).order_by(TaskCategory.sort_order.asc(), TaskCategory.name.asc()).all()
         
         result = []
         for category in categories:
@@ -1015,7 +1015,8 @@ def register_routes(app):
                 'id': category.id,
                 'name': category.name,
                 'color': category.color,
-                'is_builtin': category.is_builtin
+                'is_builtin': category.is_builtin,
+                'sort_order': category.sort_order if hasattr(category, 'sort_order') else None
             })
         
         return jsonify(result)
@@ -1029,11 +1030,16 @@ def register_routes(app):
         if TaskCategory.query.filter_by(name=data.get('name')).first():
             return jsonify({'success': False, 'message': '分类名称已存在'})
         
+        # 计算新的排序位置（追加到末尾）
+        last = TaskCategory.query.order_by(TaskCategory.sort_order.desc()).first()
+        next_order = (last.sort_order + 1) if last and last.sort_order is not None else 1
+
         category = TaskCategory(
             user_id=user_id,
             name=data.get('name'),
             color=data.get('color', '#999999'),
-            is_builtin=False
+            is_builtin=False,
+            sort_order=next_order
         )
         
         db.session.add(category)
@@ -1043,7 +1049,8 @@ def register_routes(app):
             'id': category.id,
             'name': category.name,
             'color': category.color,
-            'is_builtin': category.is_builtin
+            'is_builtin': category.is_builtin,
+            'sort_order': category.sort_order
         }})
     
     @app.route('/api/categories/<int:category_id>', methods=['PUT'])
@@ -1073,6 +1080,13 @@ def register_routes(app):
         # 更新颜色
         if 'color' in data:
             category.color = data['color']
+
+        # 更新排序
+        if 'sort_order' in data:
+            try:
+                category.sort_order = int(data['sort_order'])
+            except Exception:
+                pass
         
         db.session.commit()
         
@@ -1080,7 +1094,8 @@ def register_routes(app):
             'id': category.id,
             'name': category.name,
             'color': category.color,
-            'is_builtin': category.is_builtin
+            'is_builtin': category.is_builtin,
+            'sort_order': category.sort_order
         }})
     
     @app.route('/api/categories/<int:category_id>', methods=['DELETE'])
@@ -1101,6 +1116,33 @@ def register_routes(app):
         db.session.commit()
         
         return jsonify({'success': True})
+
+    # 批量更新分类排序
+    @app.route('/api/categories/reorder', methods=['PUT'])
+    def reorder_categories():
+        try:
+            data = request.json or {}
+            orders = data.get('orders') or data.get('category_orders') or []
+            if not isinstance(orders, list):
+                return jsonify({'success': False, 'message': '请求数据格式错误'}), 400
+
+            updated = 0
+            for item in orders:
+                cid = item.get('id')
+                order = item.get('sort_order')
+                if cid is None or order is None:
+                    continue
+                category = TaskCategory.query.get(cid)
+                if category:
+                    try:
+                        category.sort_order = int(order)
+                        updated += 1
+                    except Exception:
+                        pass
+            db.session.commit()
+            return jsonify({'success': True, 'updated': updated})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
     
     # 心愿相关路由
     @app.route('/api/wishes/upload', methods=['POST'])

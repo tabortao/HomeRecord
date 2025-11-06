@@ -132,6 +132,58 @@ try:
         print(f"ID: {row[0]}, Name: {row[1]}, Description: {row[2]}, Icon: {row[3]}")
     
     print("\n数据库迁移完成！")
+
+    # ==========================
+    # 任务分类表迁移：添加sort_order并填充
+    # ==========================
+    try:
+        cursor.execute("PRAGMA table_info(task_category)")
+        tc_columns = [column[1] for column in cursor.fetchall()]
+        print(f"\n当前task_category表字段: {tc_columns}")
+
+        if 'sort_order' not in tc_columns:
+            cursor.execute("ALTER TABLE task_category ADD COLUMN sort_order INTEGER DEFAULT 0")
+            print("添加sort_order字段到task_category表成功")
+
+        # 为内置学科设置默认顺序
+        builtin_order = [
+            ('语文', 1),
+            ('数学', 2),
+            ('英语', 3),
+            ('科学', 4),
+            ('体育', 5),
+            ('其他', 6)
+        ]
+        for name, order in builtin_order:
+            cursor.execute("UPDATE task_category SET sort_order = ? WHERE name = ?", (order, name))
+
+        # 找到当前最大sort_order
+        cursor.execute("SELECT MAX(sort_order) FROM task_category")
+        row = cursor.fetchone()
+        max_order = row[0] if row and row[0] is not None else 0
+
+        # 为没有设置排序的分类分配顺序（按id升序附加到末尾）
+        cursor.execute("SELECT id, name, sort_order FROM task_category ORDER BY id ASC")
+        rows = cursor.fetchall()
+        for cid, name, order in rows:
+            if order is None or order == 0:
+                max_order += 1
+                cursor.execute("UPDATE task_category SET sort_order = ? WHERE id = ?", (max_order, cid))
+
+        conn.commit()
+        # 打印更新后的结构与示例数据
+        cursor.execute("PRAGMA table_info(task_category)")
+        tc_updated_columns = cursor.fetchall()
+        print("\n更新后的task_category表结构:")
+        for column in tc_updated_columns:
+            print(f"- {column[1]} ({column[2]})")
+
+        cursor.execute("SELECT id, name, color, is_builtin, sort_order FROM task_category ORDER BY sort_order ASC LIMIT 10")
+        print("\n示例任务分类数据（前10条）:")
+        for row in cursor.fetchall():
+            print(f"ID: {row[0]}, Name: {row[1]}, Color: {row[2]}, Builtin: {row[3]}, Order: {row[4]}")
+    except Exception as e:
+        print(f"更新task_category表时出错: {str(e)}")
     
 finally:
     # 关闭数据库连接

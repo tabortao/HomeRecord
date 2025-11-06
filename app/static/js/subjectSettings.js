@@ -13,8 +13,10 @@ class SubjectSettingsManager {
         this.newSubjectColor = document.getElementById('new-subject-color');
         this.addSubjectBtn = document.getElementById('add-subject-btn');
         
-        // 初始化用户ID
-        this.userId = localStorage.getItem('user_id') || '2'; // 使用与taskTabsManager相同的默认值
+        // 初始化用户ID（与 app.js 保持一致）
+        this.userId = (window.appState && window.appState.currentUser && window.appState.currentUser.id)
+            || localStorage.getItem('user_id')
+            || '2';
         
         // 初始化事件监听
         this.initEvents();
@@ -66,17 +68,21 @@ class SubjectSettingsManager {
             this.renderSubjects(subjects);
         } catch (error) {
             console.error('加载学科失败:', error);
-            alert('加载学科失败，请重试');
+            domUtils.showToast('加载学科失败，请重试', 'error');
         }
     }
     
     // 渲染学科列表
     renderSubjects(subjects) {
         this.subjectsList.innerHTML = '';
-        
+
+        // 启用拖拽排序：按当前顺序渲染并设置draggable
         subjects.forEach(subject => {
             const subjectItem = document.createElement('div');
             subjectItem.className = 'bg-gray-50 rounded-lg p-3 flex flex-col';
+            subjectItem.setAttribute('draggable', 'true');
+            subjectItem.dataset.categoryId = subject.id;
+            subjectItem.style.cursor = 'move';
             
             // 学科头部
             const subjectHeader = document.createElement('div');
@@ -175,6 +181,9 @@ class SubjectSettingsManager {
             
             // 添加事件监听
             this.addSubjectEventListeners(subject, subjectNameInput, colorBtn, saveBtn, deleteBtn, colorPickerContainer, colorIndicator);
+
+            // 拖拽事件
+            this.addDragEvents(subjectItem);
         });
     }
     
@@ -202,6 +211,12 @@ class SubjectSettingsManager {
                 // 通知全局更新
                 if (window.taskTabsManager) {
                     window.taskTabsManager.loadCategories();
+                }
+                if (typeof window.loadCategories === 'function') {
+                    window.loadCategories();
+                }
+                if (typeof window.loadTasks === 'function') {
+                    window.loadTasks();
                 }
                 
                 this.showToast('学科名称更新成功');
@@ -235,6 +250,12 @@ class SubjectSettingsManager {
                 if (window.taskTabsManager) {
                     window.taskTabsManager.loadCategories();
                 }
+                if (typeof window.loadCategories === 'function') {
+                    window.loadCategories();
+                }
+                if (typeof window.loadTasks === 'function') {
+                    window.loadTasks();
+                }
                 
                 // 关闭颜色选择器
                 colorPicker.classList.add('hidden');
@@ -261,6 +282,12 @@ class SubjectSettingsManager {
                             if (window.taskTabsManager) {
                                 window.taskTabsManager.loadCategories();
                             }
+                            if (typeof window.loadCategories === 'function') {
+                                window.loadCategories();
+                            }
+                            if (typeof window.loadTasks === 'function') {
+                                window.loadTasks();
+                            }
                             
                             this.showToast('学科删除成功');
                         } catch (error) {
@@ -270,6 +297,74 @@ class SubjectSettingsManager {
                     }
                 );
             });
+        }
+    }
+
+    // 添加拖拽事件处理
+    addDragEvents(item) {
+        item.addEventListener('dragstart', (e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            this.draggingItem = item;
+            item.classList.add('opacity-60');
+        });
+
+        item.addEventListener('dragend', () => {
+            item.classList.remove('opacity-60');
+            this.draggingItem = null;
+        });
+
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const target = item;
+            target.classList.add('ring-2', 'ring-blue-300');
+        });
+
+        item.addEventListener('dragleave', () => {
+            item.classList.remove('ring-2', 'ring-blue-300');
+        });
+
+        item.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const target = item;
+            target.classList.remove('ring-2', 'ring-blue-300');
+            if (!this.draggingItem || this.draggingItem === target) return;
+
+            // 根据位置插入
+            const rect = target.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+            const container = this.subjectsList;
+            if (e.clientY < midpoint) {
+                container.insertBefore(this.draggingItem, target);
+            } else {
+                container.insertBefore(this.draggingItem, target.nextSibling);
+            }
+
+            // 保存新的排序
+            this.saveOrder();
+        });
+    }
+
+    // 保存排序到后端
+    async saveOrder() {
+        try {
+            const items = Array.from(this.subjectsList.children);
+            const orders = items.map((el, idx) => ({
+                id: parseInt(el.dataset.categoryId, 10),
+                sort_order: idx + 1
+            }));
+            const result = await api.categoryAPI.reorderCategories(orders);
+            if (result && result.success) {
+                // 通知全局更新
+                if (window.taskTabsManager) {
+                    await window.taskTabsManager.loadCategories();
+                }
+                this.showToast('学科排序已保存');
+            } else {
+                this.showToast('保存排序失败', 'error');
+            }
+        } catch (err) {
+            console.error('保存排序失败:', err);
+            this.showToast('保存排序失败', 'error');
         }
     }
     
@@ -327,6 +422,12 @@ class SubjectSettingsManager {
             if (window.taskTabsManager) {
                 console.log('通知taskTabsManager更新分类');
                 await window.taskTabsManager.loadCategories();
+            }
+            if (typeof window.loadCategories === 'function') {
+                window.loadCategories();
+            }
+            if (typeof window.loadTasks === 'function') {
+                window.loadTasks();
             }
             
             this.showToast('学科添加成功');

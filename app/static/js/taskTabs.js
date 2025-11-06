@@ -587,8 +587,10 @@ class TaskTabsManager {
     // 加载学科分类列表（供SubjectSettingsManager调用）
     async loadCategories() {
         try {
-            // 获取当前用户ID
-            const userId = localStorage.getItem('user_id') || '2';
+            // 获取当前用户ID（与 app.js 保持一致）
+            const userId = (window.appState && window.appState.currentUser && window.appState.currentUser.id)
+                || localStorage.getItem('user_id')
+                || '2';
             
             console.log('开始加载学科分类，用户ID:', userId);
             // 从API获取学科分类
@@ -599,6 +601,14 @@ class TaskTabsManager {
             
             // 更新所有相关的UI组件
             this.updateCategoryDropdowns();
+
+            // 分类更新后，刷新任务列表和顶部过滤器，确保排序与展示一致
+            if (typeof window.loadCategories === 'function') {
+                try { await window.loadCategories(); } catch (e) { console.warn('刷新过滤器失败:', e); }
+            }
+            if (typeof window.loadTasks === 'function') {
+                try { await window.loadTasks(); } catch (e) { console.warn('刷新任务列表失败:', e); }
+            }
             
         } catch (error) {
             console.error('加载学科分类时出错:', error);

@@ -125,12 +125,12 @@ with app.app_context():
     try:
         # 定义新的内置学科列表
         new_categories = [
-            {'name': '语文', 'color': '#FF6B6B', 'is_builtin': True},
-            {'name': '数学', 'color': '#4ECDC4', 'is_builtin': True},
-            {'name': '英语', 'color': '#45B7D1', 'is_builtin': True},
-            {'name': '科学', 'color': '#96CEB4', 'is_builtin': True},
-            {'name': '体育', 'color': '#FFEAA7', 'is_builtin': True},
-            {'name': '其他', 'color': '#DDA0DD', 'is_builtin': True}
+            {'name': '语文', 'color': '#FF6B6B', 'is_builtin': True, 'sort_order': 1},
+            {'name': '数学', 'color': '#4ECDC4', 'is_builtin': True, 'sort_order': 2},
+            {'name': '英语', 'color': '#45B7D1', 'is_builtin': True, 'sort_order': 3},
+            {'name': '科学', 'color': '#96CEB4', 'is_builtin': True, 'sort_order': 4},
+            {'name': '体育', 'color': '#FFEAA7', 'is_builtin': True, 'sort_order': 5},
+            {'name': '其他', 'color': '#DDA0DD', 'is_builtin': True, 'sort_order': 6}
         ]
         
         # 为每个新的内置学科，先删除数据库中所有同名的记录（无论是否内置）
