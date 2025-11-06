@@ -2590,8 +2590,12 @@ async function deleteTask(taskId) {
             return;
         }
 
-        // 如果是重复任务（存在series_id），弹出多选删除对话框
-        if (task && task.series_id) {
+        // 如果是重复任务（存在series_id 且重复设置不为“无”），弹出多选删除对话框
+        const rawRepeat = task ? (task.repeat_setting ?? task.repeat ?? '') : '';
+        const normalizedRepeat = (rawRepeat || '').trim();
+        const noRepeatValues = ['无', '不重复', 'none', 'None', ''];
+        const isRecurring = !!(task && task.series_id && !noRepeatValues.includes(normalizedRepeat));
+        if (isRecurring) {
             // 先移除已存在的对话框
             const existingDialog = document.querySelector('.series-delete-dialog');
             if (existingDialog) existingDialog.remove();
