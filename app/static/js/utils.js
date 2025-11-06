@@ -149,7 +149,7 @@ const domUtils = {
     },
 
     // 显示确认对话框
-    showConfirm: (title, message, onConfirm, onCancel) => {
+    showConfirm: (title, message, onConfirm, onCancel, okText = '确定', cancelText = '取消') => {
         // 移除已存在的confirm
         const existingConfirm = document.querySelector('.confirm-dialog');
         if (existingConfirm) {
@@ -169,8 +169,8 @@ const domUtils = {
                         <p class="text-gray-600">${message}</p>
                     </div>
                     <div class="flex space-x-4">
-                        <button class="confirm-cancel flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-200">取消</button>
-                        <button class="confirm-ok flex-1 px-4 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400">确定</button>
+                        <button class="confirm-cancel flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-200">${cancelText}</button>
+                        <button class="confirm-ok flex-1 px-4 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400">${okText}</button>
                     </div>
                 </div>
             </div>

@@ -2608,9 +2608,9 @@ async function deleteTask(taskId) {
                             <p class="text-gray-600 text-sm">${remark}</p>
                         </div>
                         <div class="space-y-3">
-                            <button class="series-delete-current w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">仅删除当前任务</button>
+                            <button class="series-delete-current w-full px-4 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors">仅删除当前任务</button>
                             <button class="series-delete-future w-full px-4 py-3 border border-orange-300 rounded-lg text-orange-700 font-medium hover:bg-orange-50 transition-colors">删除当前及未来全部任务</button>
-                            <button class="series-delete-all w-full px-4 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors">删除所有任务</button>
+                            <button class="series-delete-all w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">删除所有任务</button>
                             <button class="series-delete-cancel w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">取消</button>
                         </div>
                     </div>
@@ -2737,7 +2737,10 @@ async function deleteTask(taskId) {
             } catch (error) {
                 domUtils.showToast('删除失败，请重试', 'error');
             }
-        }
+        },
+        null,
+        '删除',
+        '取消'
     );
 }
 
