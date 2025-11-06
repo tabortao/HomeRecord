@@ -116,6 +116,7 @@ class UserSettings(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
     fixed_tomato_page = db.Column(db.Boolean, default=False)
     task_auto_sort = db.Column(db.Boolean, default=False)
+    tts_enabled = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     

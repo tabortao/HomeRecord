@@ -17,7 +17,7 @@
   - 用户名：testuser
   - 密码：Testuser123
   - 子账号：subtestuser，子账号密码：Subtestuser123
-- 数据库发生改变时，创建脚本，并在脚本中添加必要的迁移代码，`.\venv\Scripts\activate; python run_migration.py `。
+- 数据库发生改变时，完善脚本`run_migration.py`，并在脚本中添加必要的迁移代码，`.\venv\Scripts\activate; python run_migration.py `。
 
 ## 前端设计要求
 
@@ -28,7 +28,7 @@
   页面需要根据浏览器页面自动调节，当浏览器页面高度调节时，也需要可以正常显示。
 
   具体要求包括：1) 实现垂直滚动功能，确保内容超出视口高度时可通过滚动查看全部内容；2) 设计自适应高度布局，使页面主体内容区域能够根据浏览器窗口或移动设备屏幕的可用高度自动调整；3) 确保在各种主流浏览器(Chrome、Firefox、Safari、Edge)和不同尺寸的移动设备上均能正常工作；4) 页面布局在窗口大小改变或设备旋转时能够平滑调整，避免内容截断或出现不必要的空白区域。
-- 添加新的图标时，需修改`frontend\static\css\font-awesome.local.css`文件，添加新的图标类名。
+- 添加新的图标时，需修改`app\static\css\font-awesome.local.css`文件，添加新的图标类名。
 - 每个 js 文件的文件名应与其所实现的功能模块相关，采用驼峰命名法。
-- 所有 js 文件均存储在`frontend\js`目录下。
-- -在终端中用 Node 解析 app.js、api.js等js文件， 来快速检查语法错误，预期结果：无语法错误。`cd g:\Code\Go-WorkSpace\HomeRecord ; node --check g:/Code/Go-WorkSpace/HomeRecord/frontend/js/app.js; if($LASTEXITCODE -eq 0){Write-Host "app.js PARSE_OK"}`。
+- 所有 js 文件均存储在`app\static\js`目录下。
+- 在终端中用 Node 解析 app.js、api.js等js文件， 来快速检查语法错误，预期结果：无语法错误。`cd g:\Code\Go-WorkSpace\HomeRecord ; node --check g:/Code/Go-WorkSpace/HomeRecord/app/static/js/app.js; if($LASTEXITCODE -eq 0){Write-Host "app.js PARSE_OK"}`。

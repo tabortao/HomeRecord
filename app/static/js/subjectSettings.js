@@ -1,6 +1,6 @@
 // 学科设置模块
 import * as api from './api.js';
-import { domUtils } from './utils.js';
+import { domUtils, storageUtils } from './utils.js';
 
 class SubjectSettingsManager {
     constructor() {
@@ -13,10 +13,11 @@ class SubjectSettingsManager {
         this.newSubjectColor = document.getElementById('new-subject-color');
         this.addSubjectBtn = document.getElementById('add-subject-btn');
         
-        // 初始化用户ID（与 app.js 保持一致）
-        this.userId = (window.appState && window.appState.currentUser && window.appState.currentUser.id)
-            || localStorage.getItem('user_id')
-            || '2';
+        // 初始化用户ID（严格从当前登录用户获取，避免错误地使用默认ID）
+        const currentUser = (window.appState && window.appState.currentUser)
+            || storageUtils.getUser()
+            || null;
+        this.userId = currentUser && currentUser.id ? currentUser.id : null;
         
         // 初始化事件监听
         this.initEvents();
@@ -64,6 +65,10 @@ class SubjectSettingsManager {
     // 加载学科列表
     async loadSubjects() {
         try {
+            if (!this.userId) {
+                domUtils.showToast('请先登录后查看学科设置', 'error');
+                return;
+            }
             const subjects = await api.categoryAPI.getCategories(this.userId);
             this.renderSubjects(subjects);
         } catch (error) {
@@ -390,6 +395,11 @@ class SubjectSettingsManager {
         const name = this.newSubjectName.value.trim();
         if (!name) {
             this.showToast('学科名称不能为空', 'error');
+            return;
+        }
+
+        if (!this.userId) {
+            this.showToast('请先登录后再添加学科', 'error');
             return;
         }
         

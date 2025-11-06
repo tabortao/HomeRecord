@@ -1,5 +1,5 @@
 from flask import request, jsonify, send_from_directory
-from models import db, User, Task, TaskCategory, Wish, OperationLog, Honor, UserHonor
+from models import db, User, Task, TaskCategory, Wish, OperationLog, Honor, UserHonor, UserSettings
 from datetime import datetime, timedelta
 import json
 import random
@@ -339,6 +339,83 @@ def register_routes(app):
         db.session.commit()
         
         return jsonify({'success': True, 'message': '个人信息更新成功'})
+
+    # 获取用户设置
+    @app.route('/api/users/<int:user_id>/settings', methods=['GET'])
+    def get_user_settings(user_id):
+        try:
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'success': False, 'message': '用户不存在'}), 404
+
+            # 如果是子账号，使用父账号ID来查询设置
+            effective_user_id = user.parent_id if user.parent_id else user.id
+
+            settings = UserSettings.query.filter_by(user_id=effective_user_id).first()
+            if not settings:
+                # 不存在则创建默认设置
+                settings = UserSettings(
+                    user_id=effective_user_id,
+                    fixed_tomato_page=False,
+                    task_auto_sort=False,
+                    tts_enabled=True
+                )
+                db.session.add(settings)
+                db.session.commit()
+
+            result = {
+                'user_id': effective_user_id,
+                'fixed_tomato_page': bool(settings.fixed_tomato_page),
+                'task_auto_sort': bool(settings.task_auto_sort),
+                'tts_enabled': bool(settings.tts_enabled),
+                'created_at': settings.created_at.isoformat() if settings.created_at else None,
+                'updated_at': settings.updated_at.isoformat() if settings.updated_at else None
+            }
+            return jsonify({'success': True, 'settings': result})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'获取用户设置失败: {str(e)}'}), 500
+
+    # 更新用户设置
+    @app.route('/api/users/<int:user_id>/settings', methods=['PUT'])
+    def update_user_settings(user_id):
+        try:
+            data = request.json or {}
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'success': False, 'message': '用户不存在'}), 404
+
+            effective_user_id = user.parent_id if user.parent_id else user.id
+            settings = UserSettings.query.filter_by(user_id=effective_user_id).first()
+            if not settings:
+                settings = UserSettings(user_id=effective_user_id)
+                db.session.add(settings)
+
+            # 允许更新的字段
+            allowed_fields = ['fixed_tomato_page', 'task_auto_sort', 'tts_enabled']
+            for key in allowed_fields:
+                if key in data:
+                    setattr(settings, key, bool(data.get(key)))
+
+            settings.updated_at = datetime.now()
+            db.session.commit()
+
+            # 记录操作日志
+            log = OperationLog(
+                user_id=effective_user_id,
+                user_nickname=user.nickname or user.username,
+                operation_type='更新用户设置',
+                operation_content='更新设置: ' + ', '.join([f"{k}={data.get(k)}" for k in data.keys() if k in allowed_fields]),
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
+            db.session.add(log)
+            db.session.commit()
+
+            return jsonify({'success': True, 'message': '用户设置更新成功'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'更新用户设置失败: {str(e)}'}), 500
     
     # 更新用户金币数量路由
     @app.route('/api/users/<int:user_id>/gold', methods=['PUT'])

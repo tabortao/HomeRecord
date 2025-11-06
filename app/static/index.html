@@ -439,6 +439,17 @@
                         <i class="fa fa-chevron-right text-gray-400"></i>
                     </button>
                     
+                    <!-- 朗读设置 -->
+                    <button id="tts-settings-btn" class="w-full p-2.5 rounded-lg hover:bg-purple-50 transition-colors duration-200 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-2.5">
+                                <i class="fa fa-volume-up text-purple-600"></i>
+                            </div>
+                            <span class="font-medium">朗读设置</span>
+                        </div>
+                        <i class="fa fa-chevron-right text-gray-400"></i>
+                    </button>
+                    
                     <!-- 学科设置 -->
                     <button id="subject-settings-btn" class="w-full p-2.5 rounded-lg hover:bg-green-50 transition-colors duration-200 flex items-center justify-between">
                         <div class="flex items-center">
@@ -540,6 +551,59 @@
                             </label>
                             <p class="text-sm text-gray-500 mt-1 ml-7">勾选后，番茄钟将保持全屏显示，不会缩小为悬浮球</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 朗读设置模态窗口 -->
+        <div id="tts-settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-lg w-5/6 max-w-md p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">朗读设置</h3>
+                    <button id="close-tts-settings" class="text-gray-400 hover:text-gray-600">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4 overflow-y-auto" style="max-height: 80vh;">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="tts-enabled" class="mr-2">
+                            <span class="text-gray-700">启用朗读</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">中文语音</label>
+                        <select id="tts-zh-voice" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
+                        <p class="text-gray-400 text-xs mt-1">建议选择普通话（zh-CN）。</p>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">英文语音</label>
+                        <select id="tts-en-voice" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="tts-auto-lang" class="mr-2">
+                            <span class="text-gray-700">自动识别语言</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">语速</label>
+                        <input type="range" id="tts-rate" min="0.5" max="1.8" step="0.1" class="w-full">
+                        <div class="text-gray-500 text-sm mt-1">当前：<span id="tts-rate-value">1.0</span></div>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">音调</label>
+                        <input type="range" id="tts-pitch" min="0.5" max="2.0" step="0.1" class="w-full">
+                        <div class="text-gray-500 text-sm mt-1">当前：<span id="tts-pitch-value">1.0</span></div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="tts-test-zh" class="flex-1 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">试听中文</button>
+                        <button id="tts-test-en" class="flex-1 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">试听英文</button>
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button id="cancel-tts-settings" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">取消</button>
+                        <button id="save-tts-settings" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">保存</button>
                     </div>
                 </div>
             </div>

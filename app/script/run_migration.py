@@ -68,7 +68,7 @@ try:
     # 为wish表现有记录设置默认兑换数量
     cursor.execute("UPDATE wish SET exchange_amount = 1 WHERE exchange_amount IS NULL")
     print("更新wish表现有记录默认兑换数量成功")
-    
+
     # 提交更改
     conn.commit()
     
@@ -104,6 +104,31 @@ try:
     print("\n示例心愿数据:")
     for row in cursor.fetchall():
         print(f"ID: {row[0]}, Name: {row[1]}, Cost: {row[2]}, Unit: {row[3]}, Exchange Amount: {row[4]}")
+
+    # 检查并更新user_settings表，添加tts_enabled字段
+    try:
+        cursor.execute("PRAGMA table_info(user_settings)")
+        us_columns = [column[1] for column in cursor.fetchall()]
+        print(f"\n当前user_settings表字段: {us_columns}")
+
+        if 'tts_enabled' not in us_columns:
+            cursor.execute("ALTER TABLE user_settings ADD COLUMN tts_enabled INTEGER DEFAULT 1")
+            print("添加tts_enabled字段到user_settings表成功")
+
+        # 为现有记录设置默认值
+        cursor.execute("UPDATE user_settings SET tts_enabled = 1 WHERE tts_enabled IS NULL")
+        print("更新user_settings表现有记录默认tts_enabled成功")
+
+        conn.commit()
+
+        # 验证更新后的user_settings表结构
+        cursor.execute("PRAGMA table_info(user_settings)")
+        us_updated_columns = cursor.fetchall()
+        print("\n更新后的user_settings表结构:")
+        for column in us_updated_columns:
+            print(f"- {column[1]} ({column[2]})")
+    except Exception as e:
+        print(f"更新user_settings表时出错: {str(e)}")
     
     # 检查并更新honor表，添加icon字段
     cursor.execute("PRAGMA table_info(honor)")

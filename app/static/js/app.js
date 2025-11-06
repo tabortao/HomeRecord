@@ -45,6 +45,8 @@ let appState = {
     tomatoElapsedSeconds: 0,
     // 番茄钟设置
     fixedTomatoPage: true,
+    // 朗读设置
+    ttsEnabled: true,
     // 任务设置
     taskSettings: {
         autoSort: false // 任务自动排序开关
@@ -378,6 +380,14 @@ function initTomatoSettings() {
             localStorage.setItem('tomatoSettings', JSON.stringify({
                 fixedTomatoPage: appState.fixedTomatoPage
             }));
+            // 同步到后端
+            try {
+                if (appState.currentUser && appState.currentUser.id) {
+                    api.userSettingsAPI.update(appState.currentUser.id, { fixed_tomato_page: appState.fixedTomatoPage });
+                }
+            } catch (e) {
+                console.warn('后端更新番茄钟设置失败:', e);
+            }
         });
     }
     
@@ -406,6 +416,49 @@ function initTomatoSettings() {
                 settingsModal.classList.add('hidden');
             }
         });
+    }
+}
+
+// 从后端加载并同步用户设置（固定番茄页、任务自动排序、朗读开关）
+async function loadUserSettingsFromBackend() {
+    try {
+        if (!appState.currentUser || !appState.currentUser.id) return;
+        const res = await api.userSettingsAPI.get(appState.currentUser.id);
+        if (!res || !res.success || !res.settings) return;
+        const s = res.settings;
+
+        // 同步番茄钟固定页面
+        appState.fixedTomatoPage = !!s.fixed_tomato_page;
+        try {
+            localStorage.setItem('tomatoSettings', JSON.stringify({ fixedTomatoPage: appState.fixedTomatoPage }));
+        } catch (_) {}
+        const tomatoCheckbox = document.getElementById('fixed-tomato-page');
+        if (tomatoCheckbox) tomatoCheckbox.checked = appState.fixedTomatoPage;
+
+        // 同步任务自动排序（保留本地 autoMigrate）
+        appState.taskSettings = {
+            ...appState.taskSettings,
+            autoSort: !!s.task_auto_sort
+        };
+        try { localStorage.setItem('taskSettings', JSON.stringify(appState.taskSettings)); } catch (_) {}
+        const sortCheckbox = document.getElementById('auto-sort-tasks');
+        if (sortCheckbox) sortCheckbox.checked = appState.taskSettings.autoSort;
+
+        // 同步朗读开关
+        appState.ttsEnabled = s.tts_enabled !== false;
+        const settingsNow = storageUtils.getSettings() || {};
+        settingsNow.tts = settingsNow.tts || {};
+        settingsNow.tts.enabled = appState.ttsEnabled;
+        storageUtils.saveSettings(settingsNow);
+        const ttsEnabledEl = document.getElementById('tts-enabled');
+        if (ttsEnabledEl) ttsEnabledEl.checked = appState.ttsEnabled;
+
+        // 刷新任务列表以应用朗读按钮可见性与排序
+        if (typeof window.loadTasks === 'function') {
+            window.loadTasks(appState.currentDate, appState.currentCategory);
+        }
+    } catch (error) {
+        console.error('加载用户设置失败:', error);
     }
 }
 
@@ -478,7 +531,7 @@ function hideTaskSettingsModal() {
 }
 
 // 保存任务设置
-function saveTaskSettings() {
+async function saveTaskSettings() {
     const autoSortCheckbox = document.getElementById('auto-sort-tasks');
     const autoMigrateCheckbox = document.getElementById('auto-migrate-tasks');
     
@@ -491,6 +544,14 @@ function saveTaskSettings() {
         try {
             localStorage.setItem('taskSettings', JSON.stringify(appState.taskSettings));
             domUtils.showToast('设置已保存');
+            // 同步自动排序设置到后端
+            try {
+                if (appState.currentUser && appState.currentUser.id) {
+                    await api.userSettingsAPI.update(appState.currentUser.id, { task_auto_sort: appState.taskSettings.autoSort });
+                }
+            } catch (e) {
+                console.warn('后端更新任务排序设置失败:', e);
+            }
             
             // 如果启用了自动迁移，立即执行一次迁移
             if (appState.taskSettings.autoMigrate) {
@@ -628,6 +689,8 @@ function initApp() {
     if (savedUser) {
         appState.currentUser = savedUser;
         showMainApp();
+        // 同步后端用户设置到前端
+        try { loadUserSettingsFromBackend(); } catch (e) { console.warn('同步用户设置时遇到问题:', e); }
         // 初始化番茄钟设置
         initTomatoSettings();
         // 初始化任务设置
@@ -1595,6 +1658,11 @@ function filterAndRenderTasks(tasks, filter) {
             const iconClass = isCompleted ? 'fa-check-circle' : 'fa-circle-o';
             const statusClass = isCompleted ? 'text-green-500' : 'text-gray-400';
             const taskStatusClass = isCompleted ? 'line-through text-gray-400' : '';
+            const speakButtonHTML = appState.ttsEnabled ? `
+                                <button class="task-speak p-1 hover:bg-blue-100 rounded-full transition-colors duration-200 mr-2" title="朗读任务">
+                                    <i class="fa fa-bullhorn text-blue-600"></i>
+                                </button>
+            ` : '';
             
             taskElement.innerHTML = `
                 <div class="flex items-center">
@@ -1605,9 +1673,7 @@ function filterAndRenderTasks(tasks, filter) {
                         <div class="flex justify-between items-start">
                             <h4 class="font-medium text-base ${taskStatusClass} flex-1">${task.name}</h4>
                             <div class="flex items-center">
-                                <button class="task-speak p-1 hover:bg-blue-100 rounded-full transition-colors duration-200 mr-2" title="朗读任务">
-                                    <i class="fa fa-bullhorn text-blue-600"></i>
-                                </button>
+                                ${speakButtonHTML}
                                 <button class="task-tomato p-1 hover:bg-green-100 rounded-full transition-colors duration-200 mr-2" title="番茄钟">
                                     <img src="static/images/番茄钟.png" alt="番茄钟" class="w-5 h-5">
                                 </button>
@@ -1693,40 +1759,68 @@ function filterAndRenderTasks(tasks, filter) {
 // 朗读任务内容
 function speakTask(task, category) {
     try {
+        if (appState.ttsEnabled === false) {
+            domUtils.showToast('朗读未开启', 'error');
+            return;
+        }
         const synth = window.speechSynthesis;
         if (!synth) {
             domUtils.showToast('当前浏览器不支持朗读', 'error');
             return;
         }
 
-        const remark = task.description && task.description.trim() !== '' ? `，备注：${task.description}` : '';
-        const text = `${category}作业，${task.name}${remark}`;
+        const remarkZh = task.description && task.description.trim() !== '' ? `，备注：${task.description}` : '';
+        const remarkEn = task.description && task.description.trim() !== '' ? `, Note: ${task.description}` : '';
+
+        const settings = storageUtils.getSettings() || {};
+        const tts = settings.tts || {};
+
+        // 自动语言识别：若文本包含拉丁字母且不含中文，则使用英文
+        const detectBase = `${task.name || ''} ${task.description || ''}`;
+        const hasZh = /[\u4e00-\u9fff]/.test(detectBase);
+        const hasLatin = /[A-Za-z]/.test(detectBase);
+        let useLang = 'zh-CN';
+        if (tts.autoLang !== false) {
+            useLang = (hasLatin && !hasZh) ? 'en-US' : 'zh-CN';
+        }
+
+        const text = useLang.startsWith('en')
+            ? `Homework: ${task.name}${remarkEn}`
+            : `${category}作业，${task.name}${remarkZh}`;
 
         if (synth.speaking) {
             synth.cancel();
         }
 
         const utter = new SpeechSynthesisUtterance(text);
-        // 优先使用简体中文普通话
-        utter.lang = 'zh-CN';
+        utter.lang = useLang;
         let voices = synth.getVoices();
-        // 个别浏览器需要等待voices加载
         if (!voices || voices.length === 0) {
-            synth.onvoiceschanged = () => {
-                voices = synth.getVoices();
-            };
+            synth.onvoiceschanged = () => { voices = synth.getVoices(); };
         }
+
+        let chosen = null;
         if (voices && voices.length > 0) {
-            // 优先 zh-CN（排除粤语 zh-HK 和台语 zh-TW）
-            const preferred = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('zh-cn'))
-                || voices.find(v => /zh\-cn|zh_cn|zh.*hans/i.test(v.lang))
-                || voices.find(v => /zh/i.test(v.lang));
-            if (preferred) {
-                utter.voice = preferred;
+            if (useLang.startsWith('en')) {
+                const enURI = tts.enVoiceURI;
+                chosen = voices.find(v => (v.voiceURI === enURI))
+                    || voices.find(v => (v.lang || '').toLowerCase().startsWith('en-us'))
+                    || voices.find(v => /en/i.test(v.lang || ''));
+            } else {
+                const zhURI = tts.zhVoiceURI;
+                chosen = voices.find(v => (v.voiceURI === zhURI))
+                    || voices.find(v => (v.lang || '').toLowerCase().startsWith('zh-cn'))
+                    || voices.find(v => /zh\-cn|zh_cn|zh.*hans/i.test(v.lang || ''))
+                    || voices.find(v => /zh/i.test(v.lang || ''));
+            }
+            if (chosen) {
+                utter.voice = chosen;
+                utter.lang = chosen.lang || useLang;
             }
         }
-        utter.rate = 1;
-        utter.pitch = 1;
+
+        utter.rate = tts.rate ?? 1;
+        utter.pitch = tts.pitch ?? 1;
 
         synth.speak(utter);
         domUtils.showToast('正在朗读任务…');
@@ -5576,6 +5670,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // 朗读设置事件
+    document.getElementById('tts-settings-btn')?.addEventListener('click', showTtsSettingsModal);
+    document.getElementById('close-tts-settings')?.addEventListener('click', hideTtsSettingsModal);
+    document.getElementById('cancel-tts-settings')?.addEventListener('click', hideTtsSettingsModal);
+    document.getElementById('save-tts-settings')?.addEventListener('click', saveTtsSettings);
+    document.getElementById('tts-test-zh')?.addEventListener('click', () => testSpeak('zh'));
+    document.getElementById('tts-test-en')?.addEventListener('click', () => testSpeak('en'));
+    
     // 点击模态窗口背景关闭
     document.getElementById('about-modal')?.addEventListener('click', function(event) {
         if (event.target === this) {
@@ -5647,6 +5749,263 @@ function handleXiaohongshuClick() {
     const url = this.getAttribute('data-url') || 'https://www.xiaohongshu.com';
     // 在新窗口打开链接
     window.open(url, '_blank');
+}
+
+// ---------------- 朗读设置（TTS） ----------------
+function getVoicesSafe() {
+    const synth = window.speechSynthesis;
+    if (!synth) return [];
+    return synth.getVoices();
+}
+
+function populateTtsVoiceSelect(selectEl, voices, savedURI, fallbackStrategy) {
+    if (!selectEl) return;
+    selectEl.innerHTML = '';
+    // 如果没有可用语音，显示占位并禁用选择框
+    if (!voices || voices.length === 0) {
+        const opt = document.createElement('option');
+        opt.textContent = '无可用语音';
+        opt.value = '';
+        opt.disabled = true;
+        opt.selected = true;
+        selectEl.appendChild(opt);
+        selectEl.disabled = true;
+        return;
+    }
+    // 正常填充语音选项
+    selectEl.disabled = false;
+    voices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.voiceURI || `${v.name}-${v.lang}`;
+        opt.textContent = `${v.name || '语音'}${v.lang ? ` (${v.lang})` : ''}`;
+        selectEl.appendChild(opt);
+    });
+    if (savedURI) {
+        const found = Array.from(selectEl.options).find(o => o.value === savedURI);
+        if (found) {
+            selectEl.value = savedURI;
+            return;
+        }
+    }
+    if (typeof fallbackStrategy === 'function') {
+        const uri = fallbackStrategy(voices);
+        if (uri) selectEl.value = uri;
+    }
+}
+
+function showTtsSettingsModal() {
+    const modal = document.getElementById('tts-settings-modal');
+    if (!modal) return;
+
+    const settings = storageUtils.getSettings() || {};
+    const tts = settings.tts || {};
+
+    const rateInput = document.getElementById('tts-rate');
+    const pitchInput = document.getElementById('tts-pitch');
+    const rateVal = document.getElementById('tts-rate-value');
+    const pitchVal = document.getElementById('tts-pitch-value');
+    const autoLang = document.getElementById('tts-auto-lang');
+
+    const initRate = tts.rate ?? 1;
+    const initPitch = tts.pitch ?? 1;
+    rateInput.value = initRate;
+    pitchInput.value = initPitch;
+    rateVal.textContent = initRate.toFixed(1);
+    pitchVal.textContent = initPitch.toFixed(1);
+    autoLang.checked = tts.autoLang !== false;
+
+    // 启用朗读开关状态
+    const enabledEl = document.getElementById('tts-enabled');
+    const enabledFromStorage = (tts.enabled !== undefined) ? !!tts.enabled : true;
+    const enabled = (appState.ttsEnabled !== undefined) ? !!appState.ttsEnabled : enabledFromStorage;
+    if (enabledEl) enabledEl.checked = enabled;
+
+    const synth = window.speechSynthesis;
+    let voices = getVoicesSafe();
+
+    const zhSelect = document.getElementById('tts-zh-voice');
+    const enSelect = document.getElementById('tts-en-voice');
+
+    const setSelects = () => {
+        voices = getVoicesSafe();
+        const zhCandidates = voices.filter(v => {
+            const l = (v.lang || '').toLowerCase();
+            return l.startsWith('zh-cn') || /zh\-cn|zh_cn|zh.*hans/i.test(l) || (/zh/i.test(l) && !l.startsWith('zh-hk') && !l.startsWith('zh-tw'));
+        });
+        let enCandidates = voices.filter(v => (v.lang || '').toLowerCase().startsWith('en'));
+
+        populateTtsVoiceSelect(
+            zhSelect,
+            // 若筛选不到中文语音，回退到所有语音列表
+            (zhCandidates.length ? zhCandidates : (voices.filter(v => /zh/i.test((v.lang || '').toLowerCase())))).length
+                ? (zhCandidates.length ? zhCandidates : voices.filter(v => /zh/i.test((v.lang || '').toLowerCase())))
+                : voices,
+            tts.zhVoiceURI,
+            (list) => {
+                const preferred = list.find(v => (v.lang || '').toLowerCase().startsWith('zh-cn')) || list[0];
+                return preferred ? (preferred.voiceURI || `${preferred.name}-${preferred.lang}`) : null;
+            }
+        );
+
+        populateTtsVoiceSelect(
+            enSelect,
+            // 若筛选不到英文语音，回退到所有语音列表
+            (enCandidates.length ? enCandidates : (voices.filter(v => /en/i.test((v.lang || '').toLowerCase())))).length
+                ? (enCandidates.length ? enCandidates : voices.filter(v => /en/i.test((v.lang || '').toLowerCase())))
+                : voices,
+            tts.enVoiceURI,
+            (list) => {
+                const preferred = list.find(v => (v.lang || '').toLowerCase().startsWith('en-us')) || list[0];
+                return preferred ? (preferred.voiceURI || `${preferred.name}-${preferred.lang}`) : null;
+            }
+        );
+
+        // 选择变更时立即保存到本地，避免下次刷新丢失选择
+        if (zhSelect) {
+            zhSelect.onchange = () => {
+                const settingsNow = storageUtils.getSettings() || {};
+                settingsNow.tts = settingsNow.tts || {};
+                settingsNow.tts.zhVoiceURI = zhSelect.value || null;
+                storageUtils.saveSettings(settingsNow);
+            };
+        }
+        if (enSelect) {
+            enSelect.onchange = () => {
+                const settingsNow = storageUtils.getSettings() || {};
+                settingsNow.tts = settingsNow.tts || {};
+                settingsNow.tts.enVoiceURI = enSelect.value || null;
+                storageUtils.saveSettings(settingsNow);
+            };
+        }
+    };
+
+    if (!voices || voices.length === 0) {
+        // 使用事件监听且只触发一次，避免重复重置选择
+        const handler = () => {
+            setSelects();
+            try { synth.removeEventListener('voiceschanged', handler); } catch (e) { /* 兼容性处理 */ }
+        };
+        try { synth.addEventListener('voiceschanged', handler, { once: true }); } catch (e) { synth.onvoiceschanged = handler; }
+        // 再次尝试延时刷新，提升首次加载成功率
+        setTimeout(() => setSelects(), 150);
+    } else {
+        setSelects();
+    }
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            hideTtsSettingsModal();
+        }
+    }, { once: true });
+}
+
+function hideTtsSettingsModal() {
+    const modal = document.getElementById('tts-settings-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+
+async function saveTtsSettings() {
+    const settings = storageUtils.getSettings() || {};
+    const tts = settings.tts || {};
+
+    const rate = parseFloat(document.getElementById('tts-rate').value);
+    const pitch = parseFloat(document.getElementById('tts-pitch').value);
+    const autoLang = document.getElementById('tts-auto-lang').checked;
+    const enabledEl = document.getElementById('tts-enabled');
+    const enabled = enabledEl ? enabledEl.checked : true;
+
+    const zhSelect = document.getElementById('tts-zh-voice');
+    const enSelect = document.getElementById('tts-en-voice');
+
+    tts.rate = isNaN(rate) ? 1 : Math.min(1.8, Math.max(0.5, rate));
+    tts.pitch = isNaN(pitch) ? 1 : Math.min(2.0, Math.max(0.5, pitch));
+    tts.autoLang = autoLang;
+    tts.enabled = enabled;
+    tts.zhVoiceURI = zhSelect?.value || null;
+    tts.enVoiceURI = enSelect?.value || null;
+
+    settings.tts = tts;
+    storageUtils.saveSettings(settings);
+
+    // 同步到后端
+    try {
+        if (appState.currentUser && appState.currentUser.id) {
+            await api.userSettingsAPI.update(appState.currentUser.id, { tts_enabled: enabled });
+        }
+    } catch (e) {
+        console.warn('后端更新朗读开关失败:', e);
+    }
+
+    // 更新全局状态并刷新任务列表以控制按钮显示
+    appState.ttsEnabled = enabled;
+    if (typeof window.loadTasks === 'function') {
+        window.loadTasks(appState.currentDate, appState.currentCategory);
+    }
+
+    domUtils.showToast('朗读设置已保存', 'success');
+    hideTtsSettingsModal();
+}
+
+// 速率与音调的即时显示
+document.addEventListener('DOMContentLoaded', () => {
+    const rate = document.getElementById('tts-rate');
+    const pitch = document.getElementById('tts-pitch');
+    const rateVal = document.getElementById('tts-rate-value');
+    const pitchVal = document.getElementById('tts-pitch-value');
+    rate?.addEventListener('input', () => { if (rateVal) rateVal.textContent = parseFloat(rate.value).toFixed(1); });
+    pitch?.addEventListener('input', () => { if (pitchVal) pitchVal.textContent = parseFloat(pitch.value).toFixed(1); });
+});
+
+function testSpeak(lang) {
+    try {
+        const synth = window.speechSynthesis;
+        if (!synth) {
+            domUtils.showToast('当前浏览器不支持朗读', 'error');
+            return;
+        }
+        if (synth.speaking) synth.cancel();
+
+        const settings = storageUtils.getSettings() || {};
+        const tts = settings.tts || {};
+        const rate = tts.rate ?? 1;
+        const pitch = tts.pitch ?? 1;
+
+        const voices = synth.getVoices() || [];
+        const zhURI = tts.zhVoiceURI;
+        const enURI = tts.enVoiceURI;
+
+        const utter = new SpeechSynthesisUtterance(lang === 'en' ? 'English homework, read chapter two.' : '数学作业，背诵古诗《春晓》。');
+        let useLang = lang === 'en' ? 'en-US' : 'zh-CN';
+        utter.lang = useLang;
+
+        let chosen = null;
+        if (lang === 'en') {
+            chosen = voices.find(v => (v.voiceURI === enURI)) || voices.find(v => (v.lang || '').toLowerCase().startsWith('en-us')) || voices.find(v => /en/i.test(v.lang || ''));
+        } else {
+            chosen = voices.find(v => (v.voiceURI === zhURI))
+                || voices.find(v => (v.lang || '').toLowerCase().startsWith('zh-cn'))
+                || voices.find(v => /zh\-cn|zh_cn|zh.*hans/i.test(v.lang || ''))
+                || voices.find(v => /zh/i.test(v.lang || ''));
+        }
+        if (chosen) {
+            utter.voice = chosen;
+            utter.lang = chosen.lang || useLang;
+        }
+
+        utter.rate = rate;
+        utter.pitch = pitch;
+        synth.speak(utter);
+        domUtils.showToast(lang === 'en' ? '英文试听中…' : '中文试听中…');
+    } catch (e) {
+        console.error('试听失败:', e);
+        domUtils.showToast('试听失败，请重试', 'error');
+    }
 }
 
 // 启动应用

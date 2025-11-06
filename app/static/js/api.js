@@ -76,6 +76,31 @@ const userAPI = {
     }
 };
 
+// 用户设置API
+const userSettingsAPI = {
+    // 获取用户设置
+    get: async (userId) => {
+        const response = await fetch(`${API_BASE_URL}/users/${userId}/settings`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        return await response.json();
+    },
+    // 更新用户设置
+    update: async (userId, settings) => {
+        const response = await fetch(`${API_BASE_URL}/users/${userId}/settings`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        });
+        return await response.json();
+    }
+};
+
 // 子账号管理API
 const subaccountAPI = {
     // 创建子账号
@@ -750,6 +775,7 @@ const honorAPI = {
 // 导出API
 const api = {
     userAPI,
+    userSettingsAPI,
     taskAPI,
     categoryAPI,
     wishAPI,
@@ -762,4 +788,4 @@ const api = {
 
 // 支持默认导出和命名导出
 export default api;
-export { userAPI, taskAPI, categoryAPI, wishAPI, goldAPI, statisticsAPI, operationLogAPI, honorAPI, subaccountAPI };
+export { userAPI, userSettingsAPI, taskAPI, categoryAPI, wishAPI, goldAPI, statisticsAPI, operationLogAPI, honorAPI, subaccountAPI };

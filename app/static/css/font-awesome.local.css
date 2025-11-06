@@ -332,3 +332,8 @@
 .fa-chevron-down:before {
   content: "\f078";
 }
+
+/* TTS settings button - speaker icon */
+.fa-volume-up:before {
+  content: "\f028";
+}
