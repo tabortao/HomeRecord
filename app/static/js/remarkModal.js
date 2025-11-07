@@ -22,19 +22,21 @@ import { domUtils } from './utils.js';
     overlay.style.zIndex = '9999';
     overlay.innerHTML = `
       <div class="bg-white w-11/12 max-w-2xl max-h-[90vh] rounded-xl shadow-lg overflow-y-auto flex flex-col">
-        <div class="px-4 py-3 border-b flex items-center justify-between sticky top-0 bg-white z-10">
-          <h3 class="font-semibold text-gray-800">任务备注</h3>
-          <button class="close-modal text-gray-500 hover:text-gray-700"><i class="fa fa-times"></i></button>
+        <div class="px-4 py-3 flex items-center justify-between sticky top-0 bg-indigo-600 text-white z-10 shadow">
+          <h3 class="font-semibold flex items-center"><i class="fa fa-comment mr-2"></i>任务备注</h3>
+          <button class="close-modal text-white hover:text-gray-200"><i class="fa fa-times"></i></button>
         </div>
         <div class="flex-1 overflow-y-auto p-4 space-y-3 remarks-list min-h-0"></div>
         <div class="border-t p-3 space-y-2 sticky bottom-0 bg-white z-10">
           <textarea class="remark-input w-full border rounded-lg p-2" rows="3" placeholder="输入备注内容（文字）"></textarea>
-          <div class="flex flex-wrap items-center gap-3">
-            <input type="file" class="remark-attach-input hidden" accept="image/*,audio/*" multiple />
-            <button class="upload-attachments px-3 py-1 bg-indigo-600 text-white rounded">上传附件</button>
-            <button class="record-audio px-3 py-1 bg-yellow-500 text-white rounded">开始录音</button>
-            <span class="recording-indicator hidden text-orange-600 text-sm">录音中...</span>
-            <button class="submit-remark px-3 py-1 bg-green-600 text-white rounded">保存备注</button>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-1 flex-wrap">
+              <input type="file" class="remark-attach-input hidden" accept="image/*,audio/*" multiple />
+              <button class="upload-attachments px-3 py-1 bg-indigo-600 text-white rounded">上传附件</button>
+              <button class="record-audio px-3 py-1 bg-yellow-500 text-white rounded">开始录音</button>
+              <span class="recording-indicator hidden text-orange-600 text-sm">录音中...</span>
+            </div>
+            <button class="submit-remark ml-auto px-3 py-1 bg-green-600 text-white rounded">保存备注</button>
           </div>
           <div class="attachments-preview mt-2 flex flex-wrap gap-2"></div>
           <div class="text-sm text-gray-500">支持文字、图片（可多选）、音频文件上传与录音</div>
