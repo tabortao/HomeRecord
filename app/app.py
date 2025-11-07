@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from werkzeug.exceptions import NotFound
 from flask_cors import CORS
-from models import db, User, Task, TaskCategory, Wish, OperationLog, Honor, UserHonor
+from models import db, User, Task, TaskCategory, Wish, OperationLog, Honor, UserHonor, TaskRemark
 from datetime import datetime, timedelta
 import json
 import os
@@ -316,6 +316,9 @@ def get_tasks():
             # 如果是仅查看权限，则不能编辑父账号的任务
             can_edit = permissions.get('view_only') is False
         
+        # 备注数量
+        remark_count = TaskRemark.query.filter_by(task_id=task.id, is_deleted=False).count()
+
         result.append({
             'id': task.id,
             'name': task.name,
@@ -332,7 +335,8 @@ def get_tasks():
             'series_id': task.series_id,
             'images': images,
             'user_id': task.user_id,  # 添加任务归属用户ID
-            'can_edit': can_edit      # 添加编辑权限标志
+            'can_edit': can_edit,     # 添加编辑权限标志
+            'remark_count': remark_count
         })
     
     return jsonify(result)

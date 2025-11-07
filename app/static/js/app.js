@@ -1658,6 +1658,11 @@ function filterAndRenderTasks(tasks, filter) {
             const iconClass = isCompleted ? 'fa-check-circle' : 'fa-circle-o';
             const statusClass = isCompleted ? 'text-green-500' : 'text-gray-400';
             const taskStatusClass = isCompleted ? 'line-through text-gray-400' : '';
+            const remarkIconHTML = `
+                                <button class="task-remarks p-1 hover:bg-yellow-100 rounded-full transition-colors duration-200 mr-2" title="查看备注">
+                                    <i class="fa fa-comment text-yellow-600"></i>
+                                </button>
+            `;
             const speakButtonHTML = appState.ttsEnabled ? `
                                 <button class="task-speak p-1 hover:bg-blue-100 rounded-full transition-colors duration-200 mr-2" title="朗读任务">
                                     <i class="fa fa-bullhorn text-blue-600"></i>
@@ -1673,6 +1678,7 @@ function filterAndRenderTasks(tasks, filter) {
                         <div class="flex justify-between items-start">
                             <h4 class="font-medium text-base ${taskStatusClass} flex-1">${task.name}</h4>
                             <div class="flex items-center">
+                                ${remarkIconHTML}
                                 ${speakButtonHTML}
                                 <button class="task-tomato p-1 hover:bg-green-100 rounded-full transition-colors duration-200 mr-2" title="番茄钟">
                                     <img src="static/images/番茄钟.png" alt="番茄钟" class="w-5 h-5">
@@ -1740,6 +1746,17 @@ function filterAndRenderTasks(tasks, filter) {
                 speakBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     speakTask(task, category);
+                });
+            }
+
+            // 备注图标按钮
+            const remarksBtn = taskElement.querySelector('.task-remarks');
+            if (remarksBtn) {
+                remarksBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (typeof window.openRemarksModal === 'function') {
+                        window.openRemarksModal(task.id);
+                    }
                 });
             }
             
@@ -2451,7 +2468,7 @@ function showTaskMenu(task) {
     // 如果可以编辑，添加编辑按钮
     if (canEdit) {
         menuHTML += `
-        <button class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded">
+        <button data-action="edit" class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded">
             <i class="fa fa-pencil text-gray-600 mr-3"></i>
             <span>编辑</span>
         </button>`;
@@ -2459,15 +2476,23 @@ function showTaskMenu(task) {
     
     // 番茄钟按钮始终显示
     menuHTML += `
-        <button class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded">
+        <button data-action="tomato" class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded">
             <i class="fa fa-clock-o text-yellow-500 mr-3"></i>
             <span>番茄钟</span>
         </button>`;
     
-    // 如果可以编辑，添加删除按钮
+    // 增加备注按钮（始终显示，位于删除按钮上方）
+    // 与任务卡片中的备注按钮图标颜色一致（黄色）
+    menuHTML += `
+        <button data-action="remark" class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-yellow-100 rounded">
+            <i class="fa fa-comment text-yellow-600 mr-3"></i>
+            <span>备注</span>
+        </button>`;
+
+    // 如果可以编辑，添加删除按钮（放在备注下方）
     if (canEdit) {
         menuHTML += `
-        <button class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded text-red-600">
+        <button data-action="delete" class="task-menu-item w-full flex items-center px-3 py-2 text-left hover:bg-gray-100 rounded text-red-600">
             <i class="fa fa-trash mr-3"></i>
             <span>删除</span>
         </button>`;
@@ -2492,21 +2517,40 @@ function showTaskMenu(task) {
         menuElement.style.right = `${window.innerWidth - rect.right}px`;
     }
     
-    // 绑定菜单事件
-    menuElement.querySelector('.task-menu-item:nth-child(1)').addEventListener('click', () => {
-        editTask(task);
-        menuElement.remove();
-    });
-    
-    menuElement.querySelector('.task-menu-item:nth-child(2)').addEventListener('click', () => {
-        startTomatoTimer(task);
-        menuElement.remove();
-    });
-    
-    menuElement.querySelector('.task-menu-item:nth-child(3)').addEventListener('click', () => {
-        deleteTask(task.id);
-        menuElement.remove();
-    });
+    // 绑定菜单事件（基于 data-action，避免顺序依赖）
+    const editBtn = menuElement.querySelector('[data-action="edit"]');
+    if (editBtn) {
+        editBtn.addEventListener('click', () => {
+            editTask(task);
+            menuElement.remove();
+        });
+    }
+
+    const tomatoBtn = menuElement.querySelector('[data-action="tomato"]');
+    if (tomatoBtn) {
+        tomatoBtn.addEventListener('click', () => {
+            startTomatoTimer(task);
+            menuElement.remove();
+        });
+    }
+
+    const remarkBtn = menuElement.querySelector('[data-action="remark"]');
+    if (remarkBtn) {
+        remarkBtn.addEventListener('click', () => {
+            if (typeof window.openRemarksModal === 'function') {
+                window.openRemarksModal(task.id);
+            }
+            menuElement.remove();
+        });
+    }
+
+    const deleteBtn = menuElement.querySelector('[data-action="delete"]');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+            deleteTask(task.id);
+            menuElement.remove();
+        });
+    }
     
     // 点击其他地方关闭菜单
     const handleClickOutside = (e) => {

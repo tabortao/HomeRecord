@@ -159,6 +159,43 @@ try:
     print("\n数据库迁移完成！")
 
     # ==========================
+    # 创建任务备注表 task_remark
+    # ==========================
+    try:
+        cursor.execute("PRAGMA table_info(task_remark)")
+        tr_columns = [column[1] for column in cursor.fetchall()]
+        if not tr_columns:
+            print("创建任务备注表 task_remark...")
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS task_remark (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    task_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    parent_id INTEGER,
+                    content_text TEXT,
+                    images TEXT,
+                    audio_url TEXT,
+                    is_deleted INTEGER DEFAULT 0,
+                    created_at TEXT,
+                    updated_at TEXT,
+                    FOREIGN KEY(task_id) REFERENCES task(id),
+                    FOREIGN KEY(user_id) REFERENCES user(id),
+                    FOREIGN KEY(parent_id) REFERENCES task_remark(id)
+                )
+                """
+            )
+            print("任务备注表创建成功")
+        else:
+            print("任务备注表已存在，跳过创建")
+        # 创建索引
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_task_remark_task_id ON task_remark(task_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_task_remark_parent_id ON task_remark(parent_id)")
+        conn.commit()
+    except Exception as e:
+        print(f"创建任务备注表时出错: {str(e)}")
+
+    # ==========================
     # 任务分类表迁移：添加sort_order并填充
     # ==========================
     try:
@@ -209,7 +246,7 @@ try:
             print(f"ID: {row[0]}, Name: {row[1]}, Color: {row[2]}, Builtin: {row[3]}, Order: {row[4]}")
     except Exception as e:
         print(f"更新task_category表时出错: {str(e)}")
-    
+
 finally:
     # 关闭数据库连接
     try:

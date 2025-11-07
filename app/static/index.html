@@ -171,7 +171,7 @@
     </div>
 
     <!-- 主应用页面 -->
-    <div id="app" class="hidden">
+    <div id="app" class="hidden min-h-screen flex flex-col">
         <!-- 页面标题区域 -->
     <div id="page-header" class="py-3 px-4 bg-white border-b border-green-100">
             <!-- 作业打卡页面标题 -->
@@ -230,7 +230,7 @@
         </div>
 
         <!-- 内容区域 -->
-        <div id="content" class="flex-1 p-3 pb-20 main-content overflow-y-auto">
+        <div id="content" class="flex-1 p-3 pb-20 main-content overflow-y-auto min-h-0">
             <!-- 作业打卡页面 -->
             <div id="task-page">
                 <!-- 日期选择器 -->
@@ -267,7 +267,7 @@
                 <!-- </div> -->
 
                 <!-- 任务列表 -->
-                <div id="task-list">
+                <div id="task-list" class="min-h-0">
                     <!-- 任务将通过JS动态生成 -->
                     <div class="text-center text-gray-500 py-8">
                         暂无任务，点击右下角按钮添加
@@ -1371,4 +1371,6 @@
         </div>
     </div>
 </body>
+<!-- 备注弹窗脚本 -->
+<script type="module" src="static/js/remarkModal.js"></script>
 </html>

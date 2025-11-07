@@ -1,5 +1,5 @@
 from flask import request, jsonify, send_from_directory
-from models import db, User, Task, TaskCategory, Wish, OperationLog, Honor, UserHonor, UserSettings
+from models import db, User, Task, TaskCategory, Wish, OperationLog, Honor, UserHonor, UserSettings, TaskRemark
 from datetime import datetime, timedelta
 import json
 import random
@@ -10,6 +10,139 @@ import time
 from werkzeug.utils import secure_filename
 
 def register_routes(app):
+    # =====================
+    # 任务备注相关路由
+    # =====================
+    @app.route('/api/tasks/<int:task_id>/remarks', methods=['GET'])
+    def list_task_remarks(task_id):
+        try:
+            remarks = TaskRemark.query.filter_by(task_id=task_id, is_deleted=False).order_by(TaskRemark.created_at.asc()).all()
+            result = []
+            for r in remarks:
+                images = []
+                if r.images:
+                    try:
+                        images = json.loads(r.images)
+                    except json.JSONDecodeError:
+                        images = []
+                result.append({
+                    'id': r.id,
+                    'task_id': r.task_id,
+                    'user_id': r.user_id,
+                    'user_nickname': User.query.get(r.user_id).nickname if User.query.get(r.user_id) else '未知用户',
+                    'parent_id': r.parent_id,
+                    'content_text': r.content_text or '',
+                    'images': images,
+                    'audio_url': r.audio_url or '',
+                    'created_at': r.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                })
+            return jsonify({'success': True, 'remarks': result})
+        except Exception as e:
+            app.logger.error(f"获取任务备注失败: {str(e)}")
+            return jsonify({'success': False, 'message': '获取备注失败'}), 500
+
+    @app.route('/api/tasks/<int:task_id>/remarks', methods=['POST'])
+    def create_task_remark(task_id):
+        try:
+            data = request.json or {}
+            user_id = data.get('user_id')
+            content_text = (data.get('content_text') or '').strip()
+            images = data.get('images') or []
+            audio_url = (data.get('audio_url') or '').strip()
+            parent_id = data.get('parent_id')
+
+            if not user_id:
+                return jsonify({'success': False, 'message': '缺少用户ID'}), 400
+
+            task = Task.query.get(task_id)
+            if not task:
+                return jsonify({'success': False, 'message': '任务不存在'}), 404
+
+            images_json = json.dumps(images) if images else None
+
+            remark = TaskRemark(
+                task_id=task_id,
+                user_id=user_id,
+                parent_id=parent_id,
+                content_text=content_text,
+                images=images_json,
+                audio_url=audio_url
+            )
+            db.session.add(remark)
+            db.session.commit()
+
+            # 记录操作日志
+            user = User.query.get(user_id)
+            log = OperationLog(
+                user_id=user_id,
+                user_nickname=user.nickname or user.username if user else '未知用户',
+                operation_type='任务备注',
+                operation_content=f'添加任务备注：任务ID {task_id}，内容：{content_text[:50]}',
+                operation_time=datetime.now(),
+                operation_result='成功'
+            )
+            db.session.add(log)
+            db.session.commit()
+
+            return jsonify({'success': True, 'remark_id': remark.id})
+        except Exception as e:
+            app.logger.error(f"创建任务备注失败: {str(e)}")
+            return jsonify({'success': False, 'message': '创建备注失败'}), 500
+
+    @app.route('/api/tasks/remarks/<int:remark_id>', methods=['DELETE'])
+    def delete_task_remark(remark_id):
+        try:
+            remark = TaskRemark.query.get(remark_id)
+            if not remark or remark.is_deleted:
+                return jsonify({'success': False, 'message': '备注不存在'}), 404
+            remark.is_deleted = True
+            db.session.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            app.logger.error(f"删除任务备注失败: {str(e)}")
+            return jsonify({'success': False, 'message': '删除备注失败'}), 500
+
+    @app.route('/api/tasks/<int:task_id>/remarks/upload', methods=['POST'])
+    def upload_task_remark_file(task_id):
+        try:
+            task = Task.query.get(task_id)
+            if not task:
+                return jsonify({'success': False, 'message': '任务不存在'}), 404
+            if 'file' not in request.files:
+                return jsonify({'success': False, 'message': '没有文件上传'})
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({'success': False, 'message': '未选择文件'})
+
+            # 类型: image 或 audio
+            file_type = request.args.get('type', 'image')
+
+            # 验证扩展名
+            if '.' not in file.filename:
+                return jsonify({'success': False, 'message': '缺少文件扩展名'})
+            ext = file.filename.rsplit('.', 1)[1].lower()
+            ALLOWED_IMAGE = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            ALLOWED_AUDIO = {'mp3', 'wav', 'ogg', 'm4a', 'webm'}
+            if file_type == 'image' and ext not in ALLOWED_IMAGE:
+                return jsonify({'success': False, 'message': '不支持的图片类型'})
+            if file_type == 'audio' and ext not in ALLOWED_AUDIO:
+                return jsonify({'success': False, 'message': '不支持的音频类型'})
+
+            # 保存到与任务图片相同的目录: uploads/task_images/{user_id}/{task_id}/
+            base_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'task_images', str(task.user_id), str(task_id))
+            os.makedirs(base_dir, exist_ok=True)
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            filename = secure_filename(f'{file_type}_{timestamp}_{uuid.uuid4().hex[:8]}.{ext}')
+            filepath = os.path.join(base_dir, filename)
+            file.save(filepath)
+
+            # 前端访问URL（与任务图片一致的前缀）
+            file_url = f'/static/uploads/task_images/{task.user_id}/{task_id}/{filename}'
+            # 返回兼容字段，前端可读取 file_url 或 url
+            return jsonify({'success': True, 'file_url': file_url, 'url': file_url, 'type': file_type})
+        except Exception as e:
+            app.logger.error(f"上传备注文件失败: {str(e)}")
+            return jsonify({'success': False, 'message': '上传失败'}), 500
     # 批量添加任务API
     @app.route('/api/tasks/batch', methods=['POST'])
     def add_tasks_batch():
@@ -566,6 +699,8 @@ def register_routes(app):
                         images = json.loads(task.images)
                     except json.JSONDecodeError:
                         images = []
+                # 备注数量
+                remark_count = TaskRemark.query.filter_by(task_id=task.id, is_deleted=False).count()
                 
                 task_dict = {
                     'id': task.id,
@@ -581,6 +716,7 @@ def register_routes(app):
                     'user_id': task.user_id,
                     'series_id': task.series_id,
                     'images': images,
+                    'remark_count': remark_count,
                     'created_at': task.created_at.isoformat() if task.created_at else None
                 }
                 result.append(task_dict)
@@ -793,60 +929,21 @@ def register_routes(app):
             # 初始化操作者名称，避免未定义的情况
             operator_name = '系统'
             
-            # 删除任务相关的图片文件
-            if task.images:
-                try:
-                    # 使用后端配置的上传目录（backend/static/uploads）
-                    upload_folder = app.config['UPLOAD_FOLDER']
-                    
-                    # 解析图片URL列表
-                    image_urls = json.loads(task.images)
-                    app.logger.info(f"开始处理任务{task_id}的{len(image_urls)}张图片")
-                    
-                    # 方法1：直接删除任务ID对应的目录（更高效的方式）
-                    task_dir = os.path.join(upload_folder, 'task_images', str(user_id), str(task_id))
-                    if os.path.exists(task_dir):
-                        app.logger.info(f"找到任务{task_id}的图片目录: {task_dir}")
-                        # 递归删除目录及其所有内容
-                        import shutil
-                        try:
-                            shutil.rmtree(task_dir)
-                            app.logger.info(f"成功删除任务目录及其所有内容: {task_dir}")
-                        except Exception as e:
-                            app.logger.error(f"删除任务目录时出错 {task_dir}: {str(e)}")
-                    else:
-                        app.logger.info(f"任务目录不存在: {task_dir}")
-                    
-                    # 方法2：直接从URL构建绝对路径并删除（作为备用方法）
-                    for image_url in image_urls:
-                        try:
-                            # 构建正确的文件路径
-                            if image_url.startswith('/static/uploads/'):
-                                # 从/static/uploads/开头的URL中提取相对路径
-                                relative_path = image_url.replace('/static/uploads/', '')
-                                file_path = os.path.join(upload_folder, relative_path)
-                            elif image_url.startswith('static/uploads/'):
-                                # 处理没有前导斜杠的情况
-                                file_path = os.path.join(upload_folder, image_url.replace('static/uploads/', ''))
-                            else:
-                                # 尝试从URL中提取task_images部分
-                                if '/task_images/' in image_url:
-                                    path_parts = image_url.split('/task_images/')[1]
-                                    file_path = os.path.join(upload_folder, 'task_images', path_parts)
-                                else:
-                                    # 无法解析的URL格式
-                                    continue
-                            
-                            # 尝试删除文件
-                            if os.path.exists(file_path):
-                                os.remove(file_path)
-                                app.logger.info(f"通过URL解析删除成功: {file_path}")
-                        except Exception as e:
-                            app.logger.error(f"处理URL {image_url} 时出错: {str(e)}")
-                            
-                except Exception as e:
-                    app.logger.error(f"删除图片时出错: {str(e)}")
-                    # 继续执行任务删除，不因图片删除失败而中断
+            # 删除任务相关的附件目录（图片、音频等），无论images字段是否为空
+            try:
+                upload_folder = app.config['UPLOAD_FOLDER']
+                task_dir = os.path.join(upload_folder, 'task_images', str(user_id), str(task_id))
+                import shutil
+                if os.path.exists(task_dir):
+                    try:
+                        shutil.rmtree(task_dir)
+                        app.logger.info(f"已删除任务附件目录及其内容: {task_dir}")
+                    except Exception as e:
+                        app.logger.error(f"删除任务附件目录失败 {task_dir}: {str(e)}")
+                else:
+                    app.logger.info(f"任务附件目录不存在: {task_dir}")
+            except Exception as e:
+                app.logger.error(f"清理任务附件目录时出错: {str(e)}")
             
             # 如果是已完成的任务，需要扣除对应的金币
             if task_status == '已完成' and task_points > 0:
@@ -997,42 +1094,19 @@ def register_routes(app):
             user_id = tasks[0].user_id
             total_deducted_points = 0
 
-            # 为每个任务删除对应的图片文件
+            # 为每个任务删除对应的附件目录（图片、音频等）
             for task in tasks:
-                if task.images:
-                    try:
-                        image_urls = json.loads(task.images)
-                        upload_folder = app.config['UPLOAD_FOLDER']
-
-                        # 删除任务ID对应目录
-                        task_dir = os.path.join(upload_folder, 'task_images', str(user_id), str(task.id))
-                        if os.path.exists(task_dir):
-                            import shutil
-                            try:
-                                shutil.rmtree(task_dir)
-                            except Exception as e:
-                                print(f"删除任务目录时出错 {task_dir}: {str(e)}")
-
-                        # 备用：从URL删除文件
-                        for image_url in image_urls:
-                            try:
-                                if image_url.startswith('/static/uploads/'):
-                                    relative_path = image_url.replace('/static/uploads/', '')
-                                    file_path = os.path.join(upload_folder, relative_path)
-                                elif image_url.startswith('static/uploads/'):
-                                    file_path = os.path.join(upload_folder, image_url.replace('static/uploads/', ''))
-                                else:
-                                    if '/task_images/' in image_url:
-                                        path_parts = image_url.split('/task_images/')[1]
-                                        file_path = os.path.join(upload_folder, 'task_images', path_parts)
-                                    else:
-                                        continue
-                                if os.path.exists(file_path):
-                                    os.remove(file_path)
-                            except Exception as e:
-                                print(f"处理任务图片URL {image_url} 时出错: {str(e)}")
-                    except Exception as e:
-                        print(f"删除任务图片时出错: {str(e)}")
+                try:
+                    upload_folder = app.config['UPLOAD_FOLDER']
+                    task_dir = os.path.join(upload_folder, 'task_images', str(user_id), str(task.id))
+                    import shutil
+                    if os.path.exists(task_dir):
+                        try:
+                            shutil.rmtree(task_dir)
+                        except Exception as e:
+                            print(f"删除任务目录时出错 {task_dir}: {str(e)}")
+                except Exception as e:
+                    print(f"删除任务附件目录时出错: {str(e)}")
 
                 # 统计金币扣除（已完成任务）
                 if task.status == '已完成' and task.points > 0:

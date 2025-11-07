@@ -231,6 +231,10 @@
 .fa-ellipsis-v:before {
   content: "\f142";
 }
+/* 备注/评论图标 */
+.fa-comment:before {
+  content: "\f075";
+}
 /* 小喇叭朗读按钮图标 */
 .fa-bullhorn:before {
   content: "\f0a1";

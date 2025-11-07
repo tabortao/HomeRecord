@@ -310,6 +310,48 @@ const taskAPI = {
     }
 };
 
+// 任务备注相关API
+const remarkAPI = {
+    // 获取任务备注列表
+    list: async (taskId) => {
+        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/remarks`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        return await response.json();
+    },
+    // 创建任务备注
+    create: async (taskId, { userId, contentText = '', images = [], audioUrl = '', parentId = null }) => {
+        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/remarks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                content_text: contentText,
+                images: images,
+                audio_url: audioUrl,
+                parent_id: parentId
+            })
+        });
+        return await response.json();
+    },
+    // 删除任务备注
+    delete: async (remarkId) => {
+        const response = await fetch(`${API_BASE_URL}/tasks/remarks/${remarkId}`, { method: 'DELETE' });
+        return await response.json();
+    },
+    // 上传备注附件（图片或音频）
+    upload: async (taskId, file, type = 'image') => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/remarks/upload?type=${encodeURIComponent(type)}`, {
+            method: 'POST',
+            body: formData
+        });
+        return await response.json();
+    }
+};
+
 // 分类相关API
 const categoryAPI = {
     // 获取分类列表
@@ -784,9 +826,10 @@ const api = {
     statisticsAPI,
     operationLogAPI,
     honorAPI,
+    remarkAPI,
     subaccountAPI
 };
 
 // 支持默认导出和命名导出
 export default api;
-export { userAPI, userSettingsAPI, taskAPI, categoryAPI, wishAPI, goldAPI, statisticsAPI, operationLogAPI, honorAPI, subaccountAPI };
+export { userAPI, userSettingsAPI, taskAPI, categoryAPI, wishAPI, goldAPI, statisticsAPI, operationLogAPI, honorAPI, subaccountAPI, remarkAPI };

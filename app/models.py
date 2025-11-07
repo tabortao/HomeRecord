@@ -59,6 +59,23 @@ class Task(db.Model):
     remark = db.Column(db.Text)
     images = db.Column(db.Text)  # 存储任务图片路径，JSON格式
 
+# 任务备注表（支持文本、图片、语音、回复）
+class TaskRemark(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey('task_remark.id'), nullable=True)  # 回复父备注ID
+    content_text = db.Column(db.Text)  # 备注文本内容
+    images = db.Column(db.Text)  # JSON数组字符串，存储图片URL列表
+    audio_url = db.Column(db.String(255))  # 语音文件URL
+    is_deleted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # 关系
+    task = db.relationship('Task', backref=db.backref('remarks', lazy=True))
+    user = db.relationship('User')
+
 # 任务分类表
 class TaskCategory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
