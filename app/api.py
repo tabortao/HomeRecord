@@ -1010,8 +1010,8 @@ def register_routes(app):
         if file.filename == '':
             return jsonify({'success': False, 'message': '未选择文件'})
         
-        # 验证文件类型
-        ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+        # 验证文件类型（允许 webp）
+        ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
         if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in ALLOWED_EXTENSIONS:
             return jsonify({'success': False, 'message': '不支持的文件类型'})
         

@@ -137,6 +137,40 @@ const subaccountAPI = {
 };
 
 // 任务相关API
+// 将图片文件转换为 WebP（失败则回退原文件）
+async function convertImageFileToWebP(file, quality = 0.85) {
+    try {
+        const type = (file.type || '').toLowerCase();
+        if (type === 'image/webp') return file;
+        if (!type.startsWith('image')) return file;
+    } catch {}
+    return new Promise((resolve) => {
+        try {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || img.width;
+                    canvas.height = img.naturalHeight || img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    canvas.toBlob((blob) => {
+                        if (!blob) { resolve(file); return; }
+                        const name = (file.name || 'image').replace(/\.[^.]+$/, '') + '.webp';
+                        const webpFile = new File([blob], name, { type: 'image/webp' });
+                        resolve(webpFile);
+                    }, 'image/webp', quality);
+                } catch (err) { resolve(file); }
+            };
+            img.onerror = () => resolve(file);
+            const reader = new FileReader();
+            reader.onload = () => { img.src = reader.result; };
+            reader.onerror = () => resolve(file);
+            reader.readAsDataURL(file);
+        } catch (e) { resolve(file); }
+    });
+}
+
 const taskAPI = {
     // 获取任务列表
     getTasks: async (userId, date, category) => {
@@ -279,29 +313,53 @@ const taskAPI = {
     
     // 上传任务图片
     uploadTaskImages: async (taskId, files) => {
-        // 由于后端API只支持单个文件上传，我们需要循环上传每个文件
+        // 后端API只支持单文件上传，前端循环；上传前尽量转换为 WebP
         const uploadedImages = [];
-        
-        for (let i = 0; i < files.length; i++) {
+        const fileArray = Array.from(files || []);
+
+        for (let i = 0; i < fileArray.length; i++) {
+            const originalFile = fileArray[i];
+            let uploadFile = originalFile;
+            // 仅对图片尝试转换为 WebP
+            try {
+                if ((originalFile.type || '').startsWith('image')) {
+                    uploadFile = await convertImageFileToWebP(originalFile, 0.85);
+                }
+            } catch {}
+
             const formData = new FormData();
-            // 根据后端api.py中的要求，字段名应为'file'
-            formData.append('file', files[i]);
-            
+            formData.append('file', uploadFile);
+
             try {
                 const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/upload`, {
                     method: 'POST',
                     body: formData
                 });
-                
                 const result = await response.json();
                 if (result.success && result.image_url) {
                     uploadedImages.push(result.image_url);
+                } else {
+                    // 若失败且与原文件不同，尝试回退上传原文件
+                    if (uploadFile !== originalFile) {
+                        const fdRetry = new FormData();
+                        fdRetry.append('file', originalFile);
+                        try {
+                            const respRetry = await fetch(`${API_BASE_URL}/tasks/${taskId}/upload`, {
+                                method: 'POST',
+                                body: fdRetry
+                            });
+                            const retryRes = await respRetry.json();
+                            if (retryRes.success && retryRes.image_url) {
+                                uploadedImages.push(retryRes.image_url);
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
                 }
             } catch (error) {
                 console.error('上传图片失败:', error);
             }
         }
-        
+
         return {
             success: uploadedImages.length > 0,
             image_url: uploadedImages[0], // 保持向后兼容
