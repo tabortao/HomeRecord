@@ -140,20 +140,13 @@ const domUtils = {
         }
 
         if (contentEl) {
-            const topSectionHeight = (headerEl ? headerEl.offsetHeight : 0) + (statsEl ? statsEl.offsetHeight : 0);
-            const bottomNavHeight = bottomNavEl && !bottomNavEl.classList.contains('hidden') ? bottomNavEl.offsetHeight : 0;
-            const style = window.getComputedStyle(contentEl);
-            const paddingTop = parseFloat(style.paddingTop) || 0;
-            const paddingBottom = parseFloat(style.paddingBottom) || 0;
-            const extraGap = 4;
-            const maxContentHeight = viewportHeight - topSectionHeight - bottomNavHeight - paddingTop - paddingBottom - extraGap;
-            if (maxContentHeight > 0) {
-                const h = Math.floor(maxContentHeight);
-                contentEl.style.maxHeight = `${h}px`;
-                contentEl.style.height = `${h}px`;
-                contentEl.style.transition = 'max-height 0.2s ease, height 0.2s ease';
+            // 依赖布局的 flex-1 与 min-h-0，让内容区自然占满剩余空间。
+            // 仅确保滚动开启，并清除可能的旧内联高度，避免内容变小或出现大空白。
+            try {
                 contentEl.style.overflowY = 'auto';
-            }
+                contentEl.style.maxHeight = '';
+                contentEl.style.height = '';
+            } catch {}
         }
     },
 
