@@ -445,8 +445,8 @@ const wishAPI = {
         return await response.json();
     },
 
-    // 兑换心愿
-    exchangeWish: async (wishId, userId, quantity = 1) => {
+    // 兑换心愿（支持备注）
+    exchangeWish: async (wishId, userId, quantity = 1, remark = '') => {
         const response = await fetch(`${API_BASE_URL}/wishes/exchange/${wishId}`, {
             method: 'POST',
             headers: {
@@ -454,7 +454,8 @@ const wishAPI = {
             },
             body: JSON.stringify({ 
                 user_id: userId, 
-                quantity: quantity 
+                quantity: quantity,
+                remark: remark
             })
         });
         return await response.json();

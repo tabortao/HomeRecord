@@ -3531,60 +3531,87 @@ async function handleExchangeWish(wishId, wishName, cost) {
     const wish = wishes.find(w => w.id === wishId);
     const userInfo = await api.userAPI.getUserInfo(appState.currentUser.id);
     
-    // 让用户输入兑换数量
-    domUtils.showPrompt(
-        '输入兑换数量',
-        wish.exchange_amount && wish.unit 
-            ? `请输入要兑换的${wishName}数量（每${wish.exchange_amount}${wish.unit}需要${cost}金币）`
-            : `请输入要兑换的${wishName}数量（每个需要${cost}金币）`,
-        '1', // 默认兑换1个
-        async (quantityStr) => {
-            // 验证输入数量
-            const quantity = parseInt(quantityStr);
-            if (isNaN(quantity) || quantity <= 0) {
-                domUtils.showToast('请输入有效的兑换数量', 'error');
-                return;
-            }
-            
-            // 计算总金币消耗
-            const totalCost = cost * quantity;
-            
-            // 检查金币是否足够
-            if (userInfo.user.total_gold < totalCost) {
-                domUtils.showToast('金币不足，无法兑换', 'error');
-                return;
-            }
-            
-            // 显示确认弹窗
-            let confirmMessage = `确定要花费 ${totalCost} 金币兑换 ${quantity} 个「${wishName}」吗？`;
-            if (wish.exchange_amount && wish.unit) {
-                const totalAmount = quantity * wish.exchange_amount;
-                confirmMessage = `确定要花费 ${totalCost} 金币兑换 ${totalAmount}${wish.unit} 的「${wishName}」吗？`;
-            }
-            
-            domUtils.showConfirm(
-                '确认兑换',
-                confirmMessage,
-                async () => {
-                    try {
-                        // 执行兑换操作
-                        const result = await api.wishAPI.exchangeWish(wishId, appState.currentUser.id, quantity);
-                        if (result.success) {
-                            // 更新页面数据
-                            await loadWishes();
-                            await loadStatistics();
-                            await updateUserInfo(); // 确保所有页面的金币显示一致
-                            // 显示兑换成功提示
-                            domUtils.showToast(`兑换成功${quantity}个${wishName}（扣除${totalCost}金币）`);
-                        }
-                    } catch (error) {
-                        console.error('兑换失败:', error);
-                        domUtils.showToast('兑换失败，请重试', 'error');
-                    }
-                }
-            );
+    // 自定义弹窗：输入兑换数量 + 备注
+    const existingDialog = document.getElementById('wish-exchange-dialog');
+    if (existingDialog) existingDialog.remove();
+    const dialogHtml = `
+        <div id="wish-exchange-dialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
+                <h3 class="text-lg font-bold text-gray-800 mb-2">输入兑换信息</h3>
+                <p class="text-gray-600 mb-4">${wish.exchange_amount && wish.unit 
+                    ? `请输入要兑换的${wishName}数量（每${wish.exchange_amount}${wish.unit}需要${cost}金币）`
+                    : `请输入要兑换的${wishName}数量（每个需要${cost}金币）`}</p>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">兑换数量</label>
+                        <input type="number" id="wish-exchange-quantity" value="1" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">备注（可选）</label>
+                        <textarea id="wish-exchange-remark" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none h-20" placeholder="请输入小心愿备注信息，如具体内容或用途"></textarea>
+                    </div>
+                </div>
+                <div class="flex space-x-4 mt-4">
+                    <button id="wish-exchange-cancel" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700">取消</button>
+                    <button id="wish-exchange-ok" class="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg">确定</button>
+                </div>
+            </div>
+        </div>`;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = dialogHtml;
+    const dialogEl = tempDiv.firstElementChild;
+    document.body.appendChild(dialogEl);
+    const qtyInput = dialogEl.querySelector('#wish-exchange-quantity');
+    const remarkInput = dialogEl.querySelector('#wish-exchange-remark');
+    qtyInput.focus();
+    // 绑定取消
+    dialogEl.querySelector('#wish-exchange-cancel').addEventListener('click', () => {
+        dialogEl.remove();
+    });
+    // 绑定确定
+    dialogEl.querySelector('#wish-exchange-ok').addEventListener('click', async () => {
+        const quantity = parseInt(qtyInput.value, 10);
+        const remark = (remarkInput.value || '').trim();
+        if (isNaN(quantity) || quantity <= 0) {
+            domUtils.showToast('请输入有效的兑换数量', 'error');
+            return;
         }
-    );
+        const totalCost = cost * quantity;
+        if (userInfo.user.total_gold < totalCost) {
+            domUtils.showToast('金币不足，无法兑换', 'error');
+            return;
+        }
+        let confirmMessage = `确定要花费 ${totalCost} 金币兑换 ${quantity} 个「${wishName}」吗？`;
+        if (wish.exchange_amount && wish.unit) {
+            const totalAmount = quantity * wish.exchange_amount;
+            confirmMessage = `确定要花费 ${totalCost} 金币兑换 ${totalAmount}${wish.unit} 的「${wishName}」吗？`;
+        }
+        if (remark) {
+            confirmMessage += `\n备注：${remark}`;
+        }
+        domUtils.showConfirm(
+            '确认兑换',
+            confirmMessage,
+            async () => {
+                try {
+                    const result = await api.wishAPI.exchangeWish(wishId, appState.currentUser.id, quantity, remark);
+                    if (result.success) {
+                        dialogEl.remove();
+                        await loadWishes();
+                        await loadStatistics();
+                        await updateUserInfo();
+                        domUtils.showToast(`兑换成功${quantity}个${wishName}（扣除${totalCost}金币）`);
+                    }
+                } catch (error) {
+                    console.error('兑换失败:', error);
+                    domUtils.showToast('兑换失败，请重试', 'error');
+                }
+            },
+            () => {},
+            '确定',
+            '取消'
+        );
+    });
 }
 
 // 显示兑换记录相关变量
@@ -3843,6 +3870,7 @@ async function loadExchangeHistory(page) {
                                     <span class="${resultClass} font-medium px-2 py-0.5 rounded-full text-xs">${record.operation_result}</span>
                                 </div>
                                 <p class="text-gray-600 text-sm mb-1">${userInfo}使用<span class="text-yellow-500 font-bold">${record.cost}</span>金币</p>
+                                ${record.remark ? `<p class=\"text-gray-500 text-xs mb-1\">备注：${record.remark}</p>` : ''}
                                 <p class="text-gray-400 text-xs">${formattedTime}</p>
                             </div>
                         </div>

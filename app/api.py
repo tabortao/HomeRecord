@@ -1432,6 +1432,8 @@ def register_routes(app):
         user_id = data.get('user_id')
         # 获取兑换数量，默认为1
         quantity = data.get('quantity', 1)
+        # 备注信息（可选）
+        remark = data.get('remark')
         
         # 验证数量参数
         if not isinstance(quantity, int) or quantity <= 0:
@@ -1466,11 +1468,18 @@ def register_routes(app):
         # 获取当前操作用户信息
         current_user = User.query.get(user_id)
         
+        # 构建操作内容，包含备注（如果有）
+        operation_content = f'兑换心愿：{wish.name}，消耗{total_cost}金币，兑换{unit_info}'
+        if remark:
+            # 清理换行，避免解析影响
+            safe_remark = str(remark).replace('\n', ' ').strip()
+            operation_content += f'，备注：{safe_remark}'
+
         log = OperationLog(
             user_id=user_id,
             user_nickname=current_user.nickname or current_user.username if current_user else '未知用户',  # 使用昵称或用户名
             operation_type='兑换心愿',
-            operation_content=f'兑换心愿：{wish.name}，消耗{total_cost}金币，兑换{unit_info}',
+            operation_content=operation_content,
             operation_time=datetime.now(),
             operation_result='成功'
         )
@@ -1539,6 +1548,10 @@ def register_routes(app):
             exchange_match = re.search(r'兑换([^，]+)', content)
             exchange_info = exchange_match.group(1) if exchange_match else '未知数量'
             
+            # 解析备注（可选）
+            remark_match = re.search(r'备注：(.+)', content)
+            remark = remark_match.group(1).strip() if remark_match else ''
+
             # 查询心愿图标信息
             wish_icon = None
             try:
@@ -1556,6 +1569,7 @@ def register_routes(app):
                 'wish_name': wish_name,
                 'cost': cost,
                 'exchange_info': exchange_info,
+                'remark': remark,
                 'operation_time': log.operation_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'operation_result': log.operation_result,
                 'icon': wish_icon
