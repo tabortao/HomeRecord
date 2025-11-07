@@ -944,7 +944,17 @@ def register_routes(app):
                     app.logger.info(f"任务附件目录不存在: {task_dir}")
             except Exception as e:
                 app.logger.error(f"清理任务附件目录时出错: {str(e)}")
-            
+
+            # 先删除该任务的所有备注，避免外键约束导致事务失败
+            try:
+                remarks = TaskRemark.query.filter_by(task_id=task_id).all()
+                for r in remarks:
+                    db.session.delete(r)
+                app.logger.info(f"删除任务备注数量: {len(remarks)}, task_id: {task_id}")
+            except Exception as e:
+                app.logger.error(f"删除任务备注时发生异常，task_id: {task_id}, 错误信息: {str(e)}")
+                # 不直接返回，让主流程继续由统一的异常处理回滚
+
             # 如果是已完成的任务，需要扣除对应的金币
             if task_status == '已完成' and task_points > 0:
                 # 获取用户
@@ -1107,6 +1117,14 @@ def register_routes(app):
                             print(f"删除任务目录时出错 {task_dir}: {str(e)}")
                 except Exception as e:
                     print(f"删除任务附件目录时出错: {str(e)}")
+
+                # 删除任务的备注，避免外键约束导致删除失败
+                try:
+                    remarks = TaskRemark.query.filter_by(task_id=task.id).all()
+                    for r in remarks:
+                        db.session.delete(r)
+                except Exception as e:
+                    print(f"删除任务备注时出错 task_id={task.id}: {str(e)}")
 
                 # 统计金币扣除（已完成任务）
                 if task.status == '已完成' and task.points > 0:

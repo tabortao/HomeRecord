@@ -125,6 +125,67 @@ const storageUtils = {
 
 // DOM工具函数
 const domUtils = {
+    // 仅应用一次自适应高度计算（供页面显示后或内容变动后手动调用）
+    applyAdaptiveHeight: () => {
+        const viewportHeight = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+        const appEl = document.getElementById('app');
+        const contentEl = document.getElementById('content');
+        const headerEl = document.getElementById('page-header');
+        const statsEl = document.getElementById('statistics-bar');
+        const bottomNavEl = document.getElementById('bottom-nav');
+
+        if (appEl) {
+            appEl.style.height = `${viewportHeight}px`;
+            appEl.style.transition = 'height 0.2s ease';
+        }
+
+        if (contentEl) {
+            const topSectionHeight = (headerEl ? headerEl.offsetHeight : 0) + (statsEl ? statsEl.offsetHeight : 0);
+            const bottomNavHeight = bottomNavEl && !bottomNavEl.classList.contains('hidden') ? bottomNavEl.offsetHeight : 0;
+            const style = window.getComputedStyle(contentEl);
+            const paddingTop = parseFloat(style.paddingTop) || 0;
+            const paddingBottom = parseFloat(style.paddingBottom) || 0;
+            const extraGap = 4;
+            const maxContentHeight = viewportHeight - topSectionHeight - bottomNavHeight - paddingTop - paddingBottom - extraGap;
+            if (maxContentHeight > 0) {
+                const h = Math.floor(maxContentHeight);
+                contentEl.style.maxHeight = `${h}px`;
+                contentEl.style.height = `${h}px`;
+                contentEl.style.transition = 'max-height 0.2s ease, height 0.2s ease';
+                contentEl.style.overflowY = 'auto';
+            }
+        }
+    },
+
+    // 初始化并绑定自适应高度监听（支持移动浏览器地址栏动态变化）
+    initAdaptiveHeight: () => {
+        // 避免重复绑定事件监听
+        if (window.__adaptiveHeightInitialized) {
+            try { domUtils.applyAdaptiveHeight(); } catch {}
+            return;
+        }
+        window.__adaptiveHeightInitialized = true;
+
+        // 首次应用
+        try { domUtils.applyAdaptiveHeight(); } catch {}
+
+        // 在窗口大小变化与设备旋转时更新
+        let rafId = null;
+        const schedule = () => {
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                try { domUtils.applyAdaptiveHeight(); } catch {}
+                rafId = null;
+            });
+        };
+
+        window.addEventListener('resize', schedule, { passive: true });
+        window.addEventListener('orientationchange', schedule, { passive: true });
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', schedule, { passive: true });
+            window.visualViewport.addEventListener('scroll', schedule, { passive: true });
+        }
+    },
     // 显示消息提示
     showToast: (message, type = 'success') => {
         // 移除已存在的toast

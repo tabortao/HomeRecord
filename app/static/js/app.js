@@ -684,6 +684,8 @@ async function migrateUnfinishedTasks() {
 }
 
 function initApp() {
+    // 初始化自适应高度与滚动，确保任务页面随浏览器高度变化平滑调整
+    try { domUtils.initAdaptiveHeight(); } catch (e) { console.warn('自适应高度初始化失败:', e); }
     // 检查用户登录状态
     const savedUser = storageUtils.getUser();
     if (savedUser) {
@@ -783,6 +785,8 @@ function showMainApp() {
     // 显示添加任务按钮
     const addTaskBtn = document.getElementById('add-task-btn');
     if (addTaskBtn) addTaskBtn.classList.remove('hidden');
+    // 显示后重新计算自适应高度，确保滚动区域正确
+    try { domUtils.applyAdaptiveHeight(); } catch (e) {}
     
     // 初始化数据
     initData();
