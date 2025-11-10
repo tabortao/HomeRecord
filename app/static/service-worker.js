@@ -1,4 +1,4 @@
-const CACHE_NAME = 'homerecord-cache-v2';
+const CACHE_NAME = 'homerecord-cache-v3';
 const CORE_ASSETS = [
   // HTML
   '/static/index.html',
@@ -15,14 +15,78 @@ const CORE_ASSETS = [
   '/static/js/taskTabs.js',
   '/static/js/pwa.js',
   // Images
-  '/static/images/favicon/favicon.ico',
-  '/static/images/icons/pwa-icon.svg',
-  '/static/images/icons/pwa-maskable.svg'
+  '/static/images/favicon/favicon.ico'
 ];
+
+// 预缓存 images 目录中的所有文件，以提升后续访问速度
+const IMAGE_ASSETS = [
+  // avatars
+  '/static/images/avatars/avatar1.svg',
+  '/static/images/avatars/avatar2.svg',
+  '/static/images/avatars/avatar3.svg',
+  '/static/images/avatars/avatar4.svg',
+  '/static/images/avatars/avatar5.svg',
+  '/static/images/avatars/avatar6.svg',
+  '/static/images/avatars/avatar7.svg',
+  '/static/images/avatars/avatar8.svg',
+  '/static/images/avatars/avatar9.svg',
+  '/static/images/avatars/default.svg',
+  // favicon
+  '/static/images/favicon/android-chrome-192x192.png',
+  '/static/images/favicon/android-chrome-512x512.png',
+  '/static/images/favicon/apple-touch-icon.png',
+  '/static/images/favicon/favicon-16x16.png',
+  '/static/images/favicon/favicon-32x32.png',
+  '/static/images/favicon/favicon.ico',
+  '/static/images/favicon/site.webmanifest',
+  // honors
+  '/static/images/honors/default.png',
+  '/static/images/honors/专注达人.png',
+  '/static/images/honors/任务高手.png',
+  '/static/images/honors/全能选手.png',
+  '/static/images/honors/勤奋努力.png',
+  '/static/images/honors/周末战士.png',
+  '/static/images/honors/坚持不懈.png',
+  '/static/images/honors/坚持到底.png',
+  '/static/images/honors/学习小能手.png',
+  '/static/images/honors/学习规划师.png',
+  '/static/images/honors/学习达人.png',
+  '/static/images/honors/学科之星.png',
+  '/static/images/honors/完美主义.png',
+  '/static/images/honors/心愿达人.png',
+  '/static/images/honors/成长先锋.png',
+  '/static/images/honors/持之以恒.png',
+  '/static/images/honors/早起鸟.png',
+  '/static/images/honors/时间管理.png',
+  '/static/images/honors/时间管理大师.png',
+  '/static/images/honors/知识探索者.png',
+  '/static/images/honors/积分富翁.png',
+  '/static/images/honors/计划大师.png',
+  '/static/images/honors/进步神速.png',
+  '/static/images/honors/连续打卡7天.png',
+  '/static/images/honors/错题克星.png',
+  '/static/images/honors/阅读之星.png',
+  '/static/images/honors/高效学习.png',
+  // others
+  '/static/images/others/panda.png',
+  '/static/images/others/陪伴学习-熊猫.png',
+  // root images
+  '/static/images/玩平板.png',
+  '/static/images/玩手机.png',
+  '/static/images/玩游戏.png',
+  '/static/images/番茄钟.png',
+  '/static/images/看电视.png',
+  '/static/images/自由活动.png',
+  '/static/images/零花钱.png'
+];
+
+const PRECACHE_ASSETS = CORE_ASSETS.concat(IMAGE_ASSETS);
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(PRECACHE_ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
